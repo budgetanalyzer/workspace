@@ -1,0 +1,28 @@
+{
+  "name": "Budget Analyzer",
+  "dockerComposeFile": "../claude-code-sandbox/docker-compose.yml",
+  "service": "claude-dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "none",
+
+  "initializeCommand": "bash ${localWorkspaceFolder}/claude-code-sandbox/setup-env.sh",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    }
+  },
+
+  "remoteEnv": {
+    "SSH_AUTH_SOCK": ""
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  }
+}

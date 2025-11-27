@@ -4,6 +4,44 @@ set -e
 # Ensure proper ownership of workspace
 sudo chown -R vscode:vscode /workspace 2>/dev/null || true
 
+# =======================================================
+# CLONE BUDGET ANALYZER REPOS
+# =======================================================
+
+echo "--- Checking Budget Analyzer repositories ---"
+
+REPOS=(
+  "orchestration"
+  "service-common"
+  "transaction-service"
+  "currency-service"
+  "permission-service"
+  "token-validation-service"
+  "session-gateway"
+  "budget-analyzer-web"
+  "architecture-conversations"
+  "checkstyle-config"
+  "claude-discovery"
+)
+
+for repo in "${REPOS[@]}"; do
+  if [ ! -d "/workspace/$repo" ]; then
+    echo "Cloning $repo..."
+    # Try HTTPS first (works without SSH keys), fall back to SSH
+    if git clone "https://github.com/budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
+      echo "✓ Cloned $repo (HTTPS)"
+    elif git clone "git@github.com:budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
+      echo "✓ Cloned $repo (SSH)"
+    else
+      echo "✗ Failed to clone $repo"
+    fi
+  else
+    echo "✓ $repo already exists"
+  fi
+done
+
+echo ""
+
 # Ensure .anthropic directory exists with proper permissions
 if [ ! -d "/home/vscode/.anthropic" ]; then
     mkdir -p /home/vscode/.anthropic

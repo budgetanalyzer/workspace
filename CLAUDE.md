@@ -20,6 +20,27 @@
 ls -d /workspace/*/
 ```
 
+## Getting Started
+
+```bash
+# Clone this repo
+git clone git@github.com:budgetanalyzer/workspace.git
+cd workspace
+
+# Open in VS Code
+code .
+
+# VS Code will prompt: "Reopen in Container" → Click it
+# Container builds (~5 min first time)
+# All other repos auto-clone into /workspace/
+# Claude Code CLI is pre-installed
+```
+
+**After container starts:**
+- All repos available at `/workspace/{repo-name}/`
+- Run `claude` to start Claude Code CLI
+- See `CLAUDE-GATEWAY.md` for ecosystem navigation
+
 ## Purpose
 
 This repo exists solely to provide the development environment.
