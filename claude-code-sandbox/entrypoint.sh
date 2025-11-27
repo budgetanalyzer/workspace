@@ -27,16 +27,32 @@ REPOS=(
 for repo in "${REPOS[@]}"; do
   if [ ! -d "/workspace/$repo" ]; then
     echo "Cloning $repo..."
-    # Try HTTPS first (works without SSH keys), fall back to SSH
     if git clone "https://github.com/budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
-      echo "✓ Cloned $repo (HTTPS)"
-    elif git clone "git@github.com:budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
-      echo "✓ Cloned $repo (SSH)"
+      echo "✓ Cloned $repo"
     else
       echo "✗ Failed to clone $repo"
     fi
   else
     echo "✓ $repo already exists"
+  fi
+done
+
+# =======================================================
+# CONVERT ORIGINS TO SSH
+# =======================================================
+
+echo "--- Converting origins to SSH ---"
+
+for repo in "workspace" "${REPOS[@]}"; do
+  if [ -d "/workspace/$repo" ]; then
+    current_origin=$(git -C "/workspace/$repo" remote get-url origin 2>/dev/null || echo "")
+    if [[ "$current_origin" == https://github.com/* ]]; then
+      ssh_origin=$(echo "$current_origin" | sed 's|https://github.com/|git@github.com:|')
+      git -C "/workspace/$repo" remote set-url origin "$ssh_origin"
+      echo "✓ $repo: converted to SSH"
+    elif [[ "$current_origin" == git@github.com:* ]]; then
+      echo "✓ $repo: already SSH"
+    fi
   fi
 done
 
