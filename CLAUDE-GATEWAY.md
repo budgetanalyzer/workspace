@@ -27,7 +27,7 @@ fi
 
 - **ENV:DEVCONTAINER** → Proceed to "Ecosystem Navigation" section below
 - **ENV:DOCKER_ONLY** → Execute Step 0a (create sandbox files). After file creation, output the handoff text specified in Step 0a.
-- **ENV:NO_DOCKER** → Execute Step 0b (install Docker instructions)
+- **ENV:NO_DOCKER** → Output: "No Docker available. Operating in read-only discussion mode." Then proceed to "Curated Conversations" for discussion.
 
 ---
 
@@ -74,25 +74,6 @@ WORKDIR /workspace
 > Sandbox created at ~/claude-sandbox/
 >
 > Next: Exit VS Code → Open ~/claude-sandbox → Click "Reopen in Container" → Wait ~10 min for build
-
----
-
-## Step 0b: Install Docker (no-Docker users)
-
-**Output this message to the user:**
-
-> Docker is required but not installed.
->
-> **Install Docker Desktop:**
-> - Windows/Mac: https://docker.com/products/docker-desktop
-> - Linux: https://docs.docker.com/engine/install/
->
-> **After installing:**
-> 1. Start Docker Desktop (Windows/Mac) or the Docker service (Linux)
-> 2. Wait for it to fully start (system tray icon stops animating)
-> 3. Return here and say "ready" — I'll re-check and continue setup
-
-**Then STOP and wait for user response.** Do not proceed until user confirms Docker is installed.
 
 ---
 
