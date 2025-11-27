@@ -166,3 +166,15 @@ find /workspace -maxdepth 2 -name "CLAUDE.md" -type f
 # Quick health check on services
 kubectl get pods -n budget-analyzer
 ```
+
+---
+
+## Web Search Protocol
+
+BEFORE any WebSearch tool call:
+1. Read `Today's date` from `<env>` block
+2. Extract the current year
+3. Use current year in queries about "latest", "best", "current" topics
+4. NEVER use previous years unless explicitly searching historical content
+
+FAILURE MODE: Training data defaults to 2023/2024. Override with `<env>` year.
