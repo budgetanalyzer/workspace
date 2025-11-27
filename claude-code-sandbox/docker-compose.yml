@@ -1,0 +1,32 @@
+services:
+  claude-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: vscode
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+
+    volumes:
+      # Mount dev directory as workspace (read/write)
+      - ../../:/workspace:cached
+
+      # Mount claude-code-sandbox as read-only (security: Claude Code cannot modify its own config)
+      - .:/workspace/workspace/claude-code-sandbox:ro
+
+      # Persistent storage for Claude Code credentials
+      - claude-anthropic:/home/vscode/.anthropic
+
+    # Use host network for simplicity
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Map to Docker host IP
+
+    # Keep container running
+    command: sleep infinity
+
+    user: vscode
+
+volumes:
+  claude-anthropic:
