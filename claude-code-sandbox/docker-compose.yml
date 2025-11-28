@@ -18,6 +18,9 @@ services:
       # Persistent storage for Claude Code credentials
       - claude-anthropic:/home/vscode/.anthropic
 
+      # NEW: Mount kubeconfig for kubectl access to host's Kind cluster
+      - ~/.kube:/home/vscode/.kube:cached
+
     # Use host network for simplicity
     network_mode: host
     extra_hosts:

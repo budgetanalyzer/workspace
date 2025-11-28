@@ -1,5 +1,5 @@
-# Use Ubuntu 24.04 as base image
-FROM ubuntu:24.04
+# Use Ubuntu 24.04 as base image (explicit registry reference)
+FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
