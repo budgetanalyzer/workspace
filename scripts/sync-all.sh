@@ -43,8 +43,8 @@ for git_dir in "$WORKSPACE_DIR"/*/.git; do
         continue
     fi
 
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    # Check for uncommitted changes (staged, modified, or untracked)
+    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
         echo -e "${YELLOW}[SKIP]${NC} $REPO_NAME - has uncommitted changes"
         SKIPPED=$((SKIPPED + 1))
         continue
