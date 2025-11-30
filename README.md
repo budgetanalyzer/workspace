@@ -1,6 +1,8 @@
 # Budget Analyzer Workspace
 
-Development environment entry point for the Budget Analyzer reference architecture.
+> "Archetype: gateway. Role: Development environment entry point; owns sandbox configuration."
+>
+> — [CLAUDE.md](CLAUDE.md#tree-position)
 
 ## Quick Start
 
