@@ -9,8 +9,7 @@
 1. Clone this repo
 2. Open in VS Code with Dev Containers extension
 3. "Reopen in Container" when prompted
-
-All other repos auto-clone to `/workspace/` inside the container.
+4. Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
 ## What's Here
 
