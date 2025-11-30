@@ -4,18 +4,11 @@ Development environment entry point for the Budget Analyzer reference architectu
 
 ## Quick Start
 
-1. Clone this repo alongside all other Budget Analyzer repos:
-   ```
-   /your-workspace/
-   ├── workspace/              # This repo
-   ├── orchestration/
-   ├── transaction-service/
-   └── ...
-   ```
-
+1. Clone this repo
 2. Open in VS Code with Dev Containers extension
-
 3. "Reopen in Container" when prompted
+
+All other repos auto-clone to `/workspace/` inside the container.
 
 ## What's Here
 
