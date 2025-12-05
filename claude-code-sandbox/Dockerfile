@@ -14,6 +14,11 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     build-essential \
     vim \
+    # Networking tools for DNS/email debugging
+    dnsutils \
+    iputils-ping \
+    traceroute \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js (latest LTS)
