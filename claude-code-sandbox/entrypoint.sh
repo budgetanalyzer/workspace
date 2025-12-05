@@ -27,7 +27,7 @@ REPOS=(
 for repo in "${REPOS[@]}"; do
   if [ ! -d "/workspace/$repo" ]; then
     echo "Cloning $repo..."
-    if git clone "https://github.com/budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
+    if git clone "https://github.com/budgetanalyzerllc/$repo.git" "/workspace/$repo" 2>/dev/null; then
       echo "✓ Cloned $repo"
     else
       echo "✗ Failed to clone $repo"
