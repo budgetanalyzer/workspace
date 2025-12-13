@@ -92,6 +92,43 @@ else
 fi
 
 # =======================================================
+# AUDIO TOOLS VERIFICATION
+# =======================================================
+
+echo ""
+echo "--- Verifying audio processing tools ---"
+
+if command -v ffmpeg &> /dev/null; then
+    echo "✓ ffmpeg $(ffmpeg -version 2>&1 | head -n 1)"
+else
+    echo "✗ Warning: ffmpeg is not available"
+fi
+
+if command -v sox &> /dev/null; then
+    echo "✓ sox $(sox --version 2>&1 | head -n 1)"
+else
+    echo "✗ Warning: sox is not available"
+fi
+
+if command -v ecasound &> /dev/null; then
+    echo "✓ ecasound available"
+else
+    echo "✗ Warning: ecasound is not available"
+fi
+
+if command -v rubberband &> /dev/null; then
+    echo "✓ rubberband available"
+else
+    echo "✗ Warning: rubberband is not available"
+fi
+
+if command -v mediainfo &> /dev/null; then
+    echo "✓ mediainfo available"
+else
+    echo "✗ Warning: mediainfo is not available"
+fi
+
+# =======================================================
 # GEMINI CLI SETUP
 # =======================================================
 
@@ -131,6 +168,14 @@ echo "Claude/Gemini Code Sandbox Environment"
 echo "======================================"
 echo "User: vscode (UID: 1002, GID: 1002)"
 echo "Workspace: /workspace (contains all projects)"
+echo ""
+echo "Audio Tools Available:"
+echo "  ffmpeg     - Encoding, format conversion, filters"
+echo "  sox        - Effects processing, analysis, batch ops"
+echo "  ecasound   - Multitrack CLI processing"
+echo "  rubberband - Time-stretching, pitch-shifting"
+echo "  mediainfo  - File analysis, metadata"
+echo "  LADSPA     - Plugin effects (reverb, compression, EQ)"
 echo ""
 echo "Gemini CLI Authentication Options:"
 echo "1. API Key (Recommended for dev containers):"
