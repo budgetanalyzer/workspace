@@ -9,7 +9,7 @@
 1. Clone this repo
 2. Open in VS Code with Dev Containers extension
 3. "Reopen in Container" when prompted
-4. Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
+4. Follow [Getting Started](https://github.com/budgetanalyzerllc/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
 ## What's Here
 
@@ -22,8 +22,8 @@
 
 This repo is intentionally minimal. It's just the front door.
 
-- For system orchestration: see [orchestration](https://github.com/budgetanalyzer/orchestration)
-- For architectural discussions: see [architecture-conversations](https://github.com/budgetanalyzer/architecture-conversations)
+- For system orchestration: see [orchestration](https://github.com/budgetanalyzerllc/orchestration)
+- For architectural discussions: see [architecture-conversations](https://github.com/budgetanalyzerllc/architecture-conversations)
 - For individual services: see the respective repos
 
 ## License
