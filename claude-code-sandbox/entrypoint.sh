@@ -129,6 +129,51 @@ else
 fi
 
 # =======================================================
+# CLAUDE CODE SKILLS
+# =======================================================
+
+echo ""
+echo "--- Installing Claude Code skills ---"
+if [ -d "/workspace/workspace/claude-code-sandbox/skills" ]; then
+    mkdir -p /home/vscode/.claude/skills
+    cp -r /workspace/workspace/claude-code-sandbox/skills/* /home/vscode/.claude/skills/
+    echo "✓ Skills installed: $(ls /home/vscode/.claude/skills/)"
+else
+    echo "  No skills directory found"
+fi
+
+# =======================================================
+# CLAUDE CODE STATUSLINE
+# =======================================================
+
+echo ""
+echo "--- Installing Claude Code statusline ---"
+SANDBOX_SCRIPTS="/workspace/workspace/claude-code-sandbox/scripts"
+CLAUDE_DIR="/home/vscode/.claude"
+SETTINGS_FILE="$CLAUDE_DIR/settings.json"
+
+if [ -f "$SANDBOX_SCRIPTS/statusline-command.sh" ]; then
+    cp "$SANDBOX_SCRIPTS/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
+    chmod +x "$CLAUDE_DIR/statusline-command.sh"
+    echo "✓ Statusline script installed"
+
+    # Merge statusLine config into settings.json without clobbering other settings
+    STATUSLINE_CONFIG='{"statusLine":{"type":"command","command":"/home/vscode/.claude/statusline-command.sh"}}'
+    if [ -f "$SETTINGS_FILE" ]; then
+        # Merge into existing settings
+        jq -s '.[0] * .[1]' "$SETTINGS_FILE" <(echo "$STATUSLINE_CONFIG") > "${SETTINGS_FILE}.tmp" \
+            && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+        echo "✓ Statusline config merged into settings.json"
+    else
+        # Create new settings file
+        echo "$STATUSLINE_CONFIG" | jq '.' > "$SETTINGS_FILE"
+        echo "✓ Statusline config written to new settings.json"
+    fi
+else
+    echo "  No statusline script found in sandbox"
+fi
+
+# =======================================================
 # GEMINI CLI SETUP
 # =======================================================
 
