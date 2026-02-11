@@ -2,7 +2,7 @@
 
 > "Archetype: gateway. Role: Development environment entry point; owns sandbox configuration."
 >
-> — [CLAUDE.md](CLAUDE.md#tree-position)
+> — [AGENTS.md](AGENTS.md#tree-position)
 
 ## Quick Start
 
@@ -15,7 +15,7 @@
 
 - `.devcontainer/` - VS Code devcontainer configuration
 - `claude-code-sandbox/` - Docker sandbox for AI agent isolation
-- `CLAUDE.md` - AI agent context
+- `AGENTS.md` - AI agent context
 - `CLAUDE-GATEWAY.md` - Ecosystem navigation for AI agents
 
 ## What's Not Here
