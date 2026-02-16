@@ -103,15 +103,27 @@ RUN groupadd --gid $USER_GID $USERNAME \
 COPY bash_aliases.sh /home/$USERNAME/.bash_aliases
 RUN chown $USER_UID:$USER_GID /home/$USERNAME/.bash_aliases
 
-# Install Claude Code CLI globally (npm - deprecated but required for proxy support)
+# =======================================================
+# AI CODING CLIs (all installed globally as root, cached in image layer)
+# =======================================================
+
+# Claude Code (npm - deprecated but required for proxy support)
 # Native binary (Bun) ignores HTTP_PROXY for streaming: github.com/anthropics/claude-code/issues/14165
 RUN npm install -g @anthropic-ai/claude-code
+
+# Codex CLI (OpenAI terminal agent, Apache 2.0)
+RUN npm install -g @openai/codex
+
+# Gemini CLI (Google terminal agent)
+RUN npm install -g @google/gemini-cli
 
 # Set up working directory with proper ownership
 RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
-# Create .anthropic directory for the container user
+# Create config directories for the container user
 RUN mkdir -p /home/$USERNAME/.anthropic && chown -R $USER_UID:$USER_GID /home/$USERNAME/.anthropic
+RUN mkdir -p /home/$USERNAME/.codex && chown -R $USER_UID:$USER_GID /home/$USERNAME/.codex
+RUN mkdir -p /home/$USERNAME/.gemini && chown -R $USER_UID:$USER_GID /home/$USERNAME/.gemini
 
 # Copy entrypoint and helper scripts
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
