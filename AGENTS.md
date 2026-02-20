@@ -1,15 +1,5 @@
 # Workspace Entry Point
 
-## Honest Discourse
-
-Do not over-validate ideas. The user wants honest pushback, not agreement.
-
-- If something seems wrong, say so directly
-- Distinguish "novel" from "obvious in retrospect"
-- Push back on vague claims — ask for concrete constraints
-- Don't say "great question" or "that's a really interesting point"
-- Skip the preamble and caveats — just answer
-
 ## Tree Position
 
 **Archetype**: gateway
@@ -48,8 +38,7 @@ code .
 
 **After container starts:**
 - All repos available at `/workspace/{repo-name}/`
-- Run `claude` to start Claude Code CLI
-- See `CLAUDE-GATEWAY.md` for ecosystem navigation
+- Run `claude` to start Claude Code CLI (or gemini or codex- all CLI tools are installed in devcontainer)
 
 ## Purpose
 
@@ -58,12 +47,10 @@ This repo exists solely to provide the development environment.
 **What lives here:**
 - `.devcontainer/` - VS Code devcontainer configuration
 - `claude-code-sandbox/` - Docker sandbox for AI agent isolation
-- `CLAUDE-GATEWAY.md` - Ecosystem navigation map
 
 **What doesn't live here:**
 - Code
-- Documentation (beyond navigation)
+- Documentation
 - Architecture decisions
 
-For ecosystem navigation, see [CLAUDE-GATEWAY.md](CLAUDE-GATEWAY.md).
 
