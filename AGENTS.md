@@ -38,7 +38,7 @@ code .
 
 **After container starts:**
 - All repos available at `/workspace/{repo-name}/`
-- Run `claude` to start Claude Code CLI (or gemini or codex- all CLI tools are installed in devcontainer)
+- Run `claude` to start Claude Code CLI (or `gemini` or `codex`- all CLI tools are installed in devcontainer)
 
 ## Purpose
 
