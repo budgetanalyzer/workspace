@@ -20,26 +20,6 @@
 ls -d /workspace/*/
 ```
 
-## Getting Started
-
-```bash
-# Clone this repo
-git clone git@github.com:budgetanalyzer/workspace.git
-cd workspace
-
-# Open in VS Code
-code .
-
-# VS Code will prompt: "Reopen in Container" → Click it
-# Container builds (~5 min first time)
-# All other repos auto-clone into /workspace/
-# Claude Code CLI, Gemini CLI, and Codex CLI are pre-installed
-```
-
-**After container starts:**
-- All repos available at `/workspace/{repo-name}/`
-- Run `claude` to start Claude Code CLI (or `gemini` or `codex`- all CLI tools are installed in devcontainer)
-
 ## Purpose
 
 This repo exists solely to provide the development environment.
@@ -49,8 +29,6 @@ This repo exists solely to provide the development environment.
 - `claude-code-sandbox/` - Docker sandbox for AI agent isolation
 
 **What doesn't live here:**
-- Code
+- Application code
 - Documentation
 - Architecture decisions
-
-
