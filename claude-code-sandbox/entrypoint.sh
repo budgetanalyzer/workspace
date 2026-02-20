@@ -171,8 +171,6 @@ fi
 
 echo ""
 echo "--- Applying Claude Code settings ---"
-export CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
-echo "✓ CLAUDE_CODE_DISABLE_AUTO_MEMORY=1"
 
 OVERLAY_FILE="/workspace/workspace/claude-code-sandbox/settings-overlay.json"
 if [ -f "$OVERLAY_FILE" ]; then
