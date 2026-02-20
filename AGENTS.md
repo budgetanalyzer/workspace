@@ -33,7 +33,7 @@ code .
 # VS Code will prompt: "Reopen in Container" → Click it
 # Container builds (~5 min first time)
 # All other repos auto-clone into /workspace/
-# Claude Code CLI is pre-installed
+# Claude Code CLI, Gemini CLI, and Codex CLI are pre-installed
 ```
 
 **After container starts:**
