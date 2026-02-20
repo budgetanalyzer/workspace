@@ -14,8 +14,11 @@
     }
   },
 
+  "onCreateCommand": "sudo npm update -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli",
+
   "remoteEnv": {
-    "SSH_AUTH_SOCK": ""
+    "SSH_AUTH_SOCK": "",
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"
   },
 
   "customizations": {

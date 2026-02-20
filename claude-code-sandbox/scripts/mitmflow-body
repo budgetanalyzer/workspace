@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# mitmflow-body — Extract raw request or response body from a mitmweb flow
+set -euo pipefail
+
+MITM_API="${MITM_API:-http://localhost:8081}"
+MITM_PASS="${MITM_PASS:-mitmlocal}"
+
+if [[ $# -lt 1 ]] || [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    echo "Usage: mitmflow-body <flow-id> [request|response]"
+    echo "  Defaults to response. Output is raw (pipe to jq for JSON)."
+    exit 0
+fi
+
+FLOW_ID="$1"
+DIRECTION="${2:-response}"
+
+if [[ "$DIRECTION" != "request" && "$DIRECTION" != "response" ]]; then
+    echo "Error: direction must be 'request' or 'response'" >&2
+    exit 1
+fi
+
+# Support truncated IDs
+if [[ ${#FLOW_ID} -lt 36 ]]; then
+    FULL_ID=$(curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows" | jq -r ".[] | select(.id | startswith(\"${FLOW_ID}\")) | .id" | head -1)
+    if [[ -z "$FULL_ID" ]]; then
+        echo "Error: no flow matching '${FLOW_ID}'" >&2
+        exit 1
+    fi
+    FLOW_ID="$FULL_ID"
+fi
+
+curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows/${FLOW_ID}/${DIRECTION}/content.data" || {
+    echo "Error: cannot fetch ${DIRECTION} body for flow ${FLOW_ID}" >&2
+    exit 1
+}

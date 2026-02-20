@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# mitmflows — List captured mitmweb flows via REST API
+set -euo pipefail
+
+MITM_API="${MITM_API:-http://localhost:8081}"
+MITM_PASS="${MITM_PASS:-mitmlocal}"
+LIMIT=50
+FULL=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --full) FULL=true; shift ;;
+        --limit) LIMIT="$2"; shift 2 ;;
+        -h|--help)
+            echo "Usage: mitmflows [--limit N] [--full]"
+            echo "  --limit N   Show last N flows (default: 50)"
+            echo "  --full      Output raw JSON"
+            exit 0 ;;
+        *) echo "Unknown option: $1" >&2; exit 1 ;;
+    esac
+done
+
+DATA=$(curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows") || { echo "Error: cannot reach mitmweb at ${MITM_API}" >&2; exit 1; }
+
+if $FULL; then
+    echo "$DATA" | jq ".[-${LIMIT}:] | reverse"
+    exit 0
+fi
+
+echo "$DATA" | jq -r "
+    .[-${LIMIT}:] | reverse | .[] |
+    [
+        .id[0:8],
+        .request.method,
+        (.response.status_code // \"-\" | tostring),
+        .request.pretty_host,
+        .request.path[0:60],
+        ((.response.content_length // 0) | tostring) + \"B\"
+    ] | @tsv
+" | column -t -s$'\t' -N ID,METHOD,STATUS,HOST,PATH,SIZE 2>/dev/null \
+  || echo "$DATA" | jq -r "
+    .[-${LIMIT}:] | reverse | .[] |
+    [.id[0:8], .request.method, (.response.status_code // \"-\" | tostring), .request.pretty_host, .request.path[0:60], ((.response.content_length // 0) | tostring) + \"B\"] | @tsv
+"

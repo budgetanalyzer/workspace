@@ -2,21 +2,35 @@
 
 > "Archetype: gateway. Role: Development environment entry point; owns sandbox configuration."
 >
-> — [CLAUDE.md](CLAUDE.md#tree-position)
+> — [AGENTS.md](AGENTS.md#tree-position)
 
 ## Quick Start
 
-1. Clone this repo
-2. Open in VS Code with Dev Containers extension
-3. "Reopen in Container" when prompted
-4. Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
+### Prerequisites
+
+1. Install [VS Code](https://code.visualstudio.com/)
+2. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
+
+### Setup
+
+```bash
+git clone git@github.com:budgetanalyzer/workspace.git
+cd workspace
+code .
+```
+
+With the Dev Containers extension installed, VS Code will prompt "Reopen in Container" — click it. The container builds on first run.
+
+**After the container starts:**
+- All repos are available at `/workspace/{repo-name}/`
+- Claude Code, Gemini CLI, and Codex CLI are pre-installed
+- Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
 ## What's Here
 
 - `.devcontainer/` - VS Code devcontainer configuration
 - `claude-code-sandbox/` - Docker sandbox for AI agent isolation
-- `CLAUDE.md` - AI agent context
-- `CLAUDE-GATEWAY.md` - Ecosystem navigation for AI agents
+- `AGENTS.md` - AI agent context
 
 ## What's Not Here
 

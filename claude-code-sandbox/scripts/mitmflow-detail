@@ -1,0 +1,335 @@
+#!/usr/bin/env bash
+# mitmflow-detail — Show details of a single mitmweb flow
+set -euo pipefail
+
+MITM_API="${MITM_API:-http://localhost:8081}"
+MITM_PASS="${MITM_PASS:-mitmlocal}"
+BODY_LIMIT=500
+FULL=false
+MD_OUT=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --full) FULL=true; shift ;;
+        --md)
+            if [[ -n "${2:-}" && "${2:-}" != --* ]]; then
+                MD_OUT="$2"; shift 2
+            else
+                MD_OUT="__default__"; shift
+            fi
+            ;;
+        -h|--help)
+            echo "Usage: mitmflow-detail <flow-id> [--full] [--md <file>]"
+            echo "  --full       Show complete headers and bodies"
+            echo "  --md <file>  Write markdown to file (default: flow-<id>.md)"
+            exit 0 ;;
+        -*) echo "Unknown option: $1" >&2; exit 1 ;;
+        *) FLOW_ID="$1"; shift ;;
+    esac
+done
+
+if [[ -z "${FLOW_ID:-}" ]]; then
+    echo "Usage: mitmflow-detail <flow-id> [--full] [--md <file>]" >&2
+    exit 1
+fi
+
+# Fetch all flows once (used for both ID resolution and detail)
+ALL_FLOWS=$(curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows") || {
+    echo "Error: cannot fetch flows from ${MITM_API}" >&2; exit 1
+}
+
+# Support truncated IDs
+if [[ ${#FLOW_ID} -lt 36 ]]; then
+    FULL_ID=$(echo "$ALL_FLOWS" | jq -r ".[] | select(.id | startswith(\"${FLOW_ID}\")) | .id" | head -1)
+    if [[ -z "$FULL_ID" ]]; then
+        echo "Error: no flow matching '${FLOW_ID}'" >&2
+        exit 1
+    fi
+    FLOW_ID="$FULL_ID"
+fi
+
+# Extract matching flow from the list
+DATA=$(echo "$ALL_FLOWS" | jq ".[] | select(.id == \"${FLOW_ID}\")") || {
+    echo "Error: flow ${FLOW_ID} not found" >&2; exit 1
+}
+
+if [[ -z "$DATA" || "$DATA" == "null" ]]; then
+    echo "Error: flow ${FLOW_ID} not found in flows list" >&2
+    exit 1
+fi
+
+# Set default md path now that we have the ID
+if [[ "$MD_OUT" == "__default__" ]]; then
+    MD_OUT="flow-${FLOW_ID:0:8}.md"
+fi
+
+# Fetch body content from the content.data endpoints
+REQ_BODY=""
+RESP_BODY=""
+REQ_CLEN=$(echo "$DATA" | jq -r '.request.contentLength // 0')
+RESP_CLEN=$(echo "$DATA" | jq -r '.response.contentLength // 0')
+
+if [[ "$REQ_CLEN" -gt 0 ]] 2>/dev/null; then
+    REQ_BODY=$(curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows/${FLOW_ID}/request/content.data" || true)
+fi
+if [[ "$RESP_CLEN" -gt 0 ]] 2>/dev/null; then
+    RESP_BODY=$(curl -sf -H "Authorization: Bearer $MITM_PASS" "${MITM_API}/flows/${FLOW_ID}/response/content.data" || true)
+fi
+
+REDACT_HEADERS='Authorization|Cookie|Set-Cookie|X-Api-Key|X-API-Key|Api-Key'
+
+# For markdown, always show full bodies; for plain text, respect BODY_LIMIT
+if [[ -n "$MD_OUT" ]] || $FULL; then
+    BLIMIT=999999
+else
+    BLIMIT=$BODY_LIMIT
+fi
+
+# --- Helpers ---
+
+# Pretty-print JSON if valid, otherwise return as-is
+try_pretty_json() {
+    local input="$1"
+    echo "$input" | jq . 2>/dev/null || echo "$input"
+}
+
+# Check if body looks like SSE (text/event-stream or starts with event:)
+is_sse() {
+    local content_type="$1"
+    local body="$2"
+    if [[ "$content_type" == *"text/event-stream"* ]]; then
+        return 0
+    fi
+    if [[ "$body" == "event:"* ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Reconstruct SSE stream into a single JSON message
+reconstruct_sse() {
+    local body="$1"
+    echo "$body" | python3 -c '
+import sys, json
+
+lines = sys.stdin.read().splitlines()
+
+message = None
+content_blocks = {}
+
+for line in lines:
+    if not line.startswith("data: "):
+        continue
+    try:
+        data = json.loads(line[6:].strip())
+    except json.JSONDecodeError:
+        continue
+    evt = data.get("type", "")
+
+    if evt == "message_start":
+        message = data["message"]
+        message["content"] = []
+
+    elif evt == "content_block_start":
+        idx = data["index"]
+        content_blocks[idx] = data["content_block"]
+        if content_blocks[idx]["type"] == "tool_use":
+            content_blocks[idx]["_input_json"] = ""
+
+    elif evt == "content_block_delta":
+        idx = data["index"]
+        delta = data["delta"]
+        if delta["type"] == "text_delta":
+            content_blocks[idx].setdefault("text", "")
+            content_blocks[idx]["text"] += delta["text"]
+        elif delta["type"] == "thinking_delta":
+            content_blocks[idx].setdefault("thinking", "")
+            content_blocks[idx]["thinking"] += delta["thinking"]
+        elif delta["type"] == "input_json_delta":
+            content_blocks[idx]["_input_json"] += delta["partial_json"]
+
+    elif evt == "content_block_stop":
+        idx = data["index"]
+        block = content_blocks[idx]
+        if block.get("type") == "tool_use" and "_input_json" in block:
+            raw = block.pop("_input_json")
+            try:
+                block["input"] = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                block["input"] = raw
+
+    elif evt == "message_delta":
+        if "delta" in data:
+            for k, v in data["delta"].items():
+                message[k] = v
+        if "usage" in data:
+            message.setdefault("usage", {}).update(data["usage"])
+
+if message:
+    for idx in sorted(content_blocks.keys()):
+        message["content"].append(content_blocks[idx])
+    json.dump(message, sys.stdout, indent=2)
+    print()
+else:
+    print("Error: no message_start event found", file=sys.stderr)
+    sys.exit(1)
+'
+}
+
+# Format a body: pretty-print JSON, reconstruct SSE, or pass through
+format_body() {
+    local body="$1"
+    local content_type="$2"
+    local is_response="${3:-false}"
+
+    if [[ "$is_response" == "true" ]] && is_sse "$content_type" "$body"; then
+        local reconstructed
+        reconstructed=$(reconstruct_sse "$body" 2>/dev/null) || true
+        if [[ -n "$reconstructed" ]]; then
+            echo "$reconstructed"
+        else
+            echo "$body"
+        fi
+    elif [[ "$content_type" == *"json"* ]]; then
+        try_pretty_json "$body"
+    else
+        echo "$body"
+    fi
+}
+
+# Get content-type headers
+RESP_CT=$(echo "$DATA" | jq -r '[.response.headers[] | select(.[0] | ascii_downcase == "content-type")] | first | .[1] // ""')
+REQ_CT=$(echo "$DATA" | jq -r '[.request.headers[] | select(.[0] | ascii_downcase == "content-type")] | first | .[1] // ""')
+
+# --- Plain text output ---
+plain_output() {
+    echo "$DATA" | jq -r --argjson blimit "$BLIMIT" --arg redact "$REDACT_HEADERS" '
+        def redact_val($name):
+            if ($name | test($redact; "i")) then "[REDACTED]" else .[] end;
+
+        "=== REQUEST ===",
+        "\(.request.method) \(.request.scheme)://\(.request.pretty_host)\(.request.path)",
+        "",
+        "Headers:",
+        (.request.headers | map("  \(.[0]): \(if (.[0] | test($redact; "i")) then "[REDACTED]" else .[1] end)") | join("\n")),
+        "",
+        "=== RESPONSE ===",
+        "\(.response.status_code) \(.response.reason // "")",
+        "",
+        "Headers:",
+        (.response.headers | map("  \(.[0]): \(if (.[0] | test($redact; "i")) then "[REDACTED]" else .[1] end)") | join("\n"))
+    '
+
+    if [[ -n "$REQ_BODY" ]]; then
+        echo ""
+        echo "Request Body (${REQ_CLEN}B):"
+        local formatted
+        formatted=$(format_body "$REQ_BODY" "$REQ_CT" false)
+        echo "${formatted:0:$BLIMIT}"
+        if [[ ${#formatted} -gt $BLIMIT ]]; then echo "... (truncated)"; fi
+    fi
+
+    if [[ -n "$RESP_BODY" ]]; then
+        echo ""
+        echo "Response Body (${RESP_CLEN}B):"
+        local formatted
+        formatted=$(format_body "$RESP_BODY" "$RESP_CT" true)
+        echo "${formatted:0:$BLIMIT}"
+        if [[ ${#formatted} -gt $BLIMIT ]]; then echo "... (truncated)"; fi
+    fi
+}
+
+# --- Markdown output ---
+md_output() {
+    local method url status_code timestamp
+
+    method=$(echo "$DATA" | jq -r '.request.method')
+    url=$(echo "$DATA" | jq -r '"\(.request.scheme)://\(.request.pretty_host)\(.request.path)"')
+    status_code=$(echo "$DATA" | jq -r '.response.status_code')
+    timestamp=$(echo "$DATA" | jq -r '.request.timestamp_start | todate')
+
+    # Determine language hints for code fences
+    local resp_lang=""
+    if is_sse "$RESP_CT" "$RESP_BODY"; then
+        resp_lang="json"  # SSE gets reconstructed to JSON
+    else
+        case "$RESP_CT" in
+            *json*) resp_lang="json" ;;
+            *xml*|*html*) resp_lang="html" ;;
+            *javascript*) resp_lang="javascript" ;;
+            *css*) resp_lang="css" ;;
+        esac
+    fi
+
+    local req_lang=""
+    case "$REQ_CT" in
+        *json*) req_lang="json" ;;
+        *xml*|*html*) req_lang="html" ;;
+        *form*) req_lang="text" ;;
+    esac
+
+    cat <<MDEOF
+---
+method: ${method}
+url: ${url}
+status: ${status_code}
+timestamp: ${timestamp}
+flow_id: ${FLOW_ID}
+---
+
+# ${method} ${url}
+
+**Status**: ${status_code}
+**Timestamp**: ${timestamp}
+
+## Request Headers
+
+| Header | Value |
+|--------|-------|
+$(echo "$DATA" | jq -r --arg redact "$REDACT_HEADERS" '
+    .request.headers[] | "| \(.[0]) | \(if (.[0] | test($redact; "i")) then "[REDACTED]" else .[1] end) |"
+')
+
+## Response Headers
+
+| Header | Value |
+|--------|-------|
+$(echo "$DATA" | jq -r --arg redact "$REDACT_HEADERS" '
+    .response.headers[] | "| \(.[0]) | \(if (.[0] | test($redact; "i")) then "[REDACTED]" else .[1] end) |"
+')
+MDEOF
+
+    if [[ -n "$REQ_BODY" ]]; then
+        local formatted
+        formatted=$(format_body "$REQ_BODY" "$REQ_CT" false)
+        echo ""
+        echo "## Request Body"
+        echo ""
+        echo "\`\`\`${req_lang}"
+        echo "$formatted"
+        echo "\`\`\`"
+    fi
+
+    if [[ -n "$RESP_BODY" ]]; then
+        local formatted
+        formatted=$(format_body "$RESP_BODY" "$RESP_CT" true)
+        echo ""
+        if is_sse "$RESP_CT" "$RESP_BODY"; then
+            echo "## Response Body (reconstructed from SSE)"
+        else
+            echo "## Response Body"
+        fi
+        echo ""
+        echo "\`\`\`${resp_lang}"
+        echo "$formatted"
+        echo "\`\`\`"
+    fi
+}
+
+if [[ -n "$MD_OUT" ]]; then
+    mkdir -p "$(dirname "$MD_OUT")"
+    md_output > "$MD_OUT"
+    echo "Wrote: $MD_OUT"
+else
+    plain_output
+fi
