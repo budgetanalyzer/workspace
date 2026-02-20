@@ -27,7 +27,7 @@ REPOS=(
 for repo in "${REPOS[@]}"; do
   if [ ! -d "/workspace/$repo" ]; then
     echo "Cloning $repo..."
-    if git clone "https://github.com/budgetanalyzerllc/$repo.git" "/workspace/$repo" 2>/dev/null; then
+    if git clone "https://github.com/budgetanalyzer/$repo.git" "/workspace/$repo" 2>/dev/null; then
       echo "✓ Cloned $repo"
     else
       echo "✗ Failed to clone $repo"
@@ -106,21 +106,6 @@ if command -v mvn &> /dev/null; then
 else
     echo "✗ Maven not available"
 fi
-
-# =======================================================
-# VERIFY AUDIO TOOLS
-# =======================================================
-
-echo ""
-echo "--- Audio tools ---"
-
-for tool in ffmpeg sox ecasound rubberband mediainfo; do
-    if command -v $tool &> /dev/null; then
-        echo "✓ $tool"
-    else
-        echo "✗ $tool not available"
-    fi
-done
 
 # =======================================================
 # CLAUDE CODE SKILLS

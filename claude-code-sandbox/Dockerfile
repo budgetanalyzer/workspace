@@ -63,32 +63,6 @@ RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm
 # Install tilt
 RUN curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
 
-# =======================================================
-# AUDIO PROCESSING TOOLS (for audio-engineer-claude)
-# =======================================================
-
-# Core audio processing
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    sox \
-    libsox-fmt-all \
-    ecasound \
-    lame \
-    flac \
-    vorbis-tools \
-    opus-tools \
-    mediainfo \
-    && rm -rf /var/lib/apt/lists/*
-
-# LADSPA plugins and additional audio tools
-RUN apt-get update && apt-get install -y \
-    ladspa-sdk \
-    swh-plugins \
-    cmt \
-    tap-plugins \
-    rubberband-cli \
-    && rm -rf /var/lib/apt/lists/*
-
 # Create vscode user with matching UID/GID from host
 ARG USERNAME=vscode
 ARG USER_UID
