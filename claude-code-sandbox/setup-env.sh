@@ -11,6 +11,7 @@ cat > "$ENV_FILE" << EOF
 # Auto-generated - do not commit
 USER_UID=$CURRENT_UID
 USER_GID=$CURRENT_GID
+CLI_CACHE_BUST=$(date +%s)
 EOF
 
 echo "✓ Generated .env in workspace/claude-code-sandbox/"
