@@ -1,1 +1,1 @@
-alias dangerous="ENABLE_CLAUDEAI_MCP_SERVERS=false claude --dangerously-skip-permissions"
+alias dangerous="env CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --dangerously-skip-permissions"
