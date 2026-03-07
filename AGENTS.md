@@ -20,6 +20,10 @@
 ls -d /workspace/*/
 ```
 
+## Code Exploration
+
+NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
+
 ## Purpose
 
 This repo exists solely to provide the development environment.
