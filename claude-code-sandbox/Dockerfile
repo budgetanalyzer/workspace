@@ -46,6 +46,10 @@ RUN apt-get update && apt-get install -y maven \
 ENV MAVEN_HOME=/usr/share/maven
 ENV PATH=$MAVEN_HOME/bin:$PATH
 
+ # Install Go
+ RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xz
+ ENV PATH=/usr/local/go/bin:$PATH
+
 # Install kubectl
 RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
     && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' > /etc/apt/sources.list.d/kubernetes.list \
