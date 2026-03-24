@@ -113,9 +113,9 @@ fi
 
 echo ""
 echo "--- Installing Claude Code skills ---"
-if [ -d "/workspace/workspace/claude-code-sandbox/skills" ]; then
+if [ -d "/workspace/workspace/ai-agent-sandbox/skills" ]; then
     mkdir -p /home/vscode/.claude/skills
-    cp -r /workspace/workspace/claude-code-sandbox/skills/* /home/vscode/.claude/skills/
+    cp -r /workspace/workspace/ai-agent-sandbox/skills/* /home/vscode/.claude/skills/
     echo "✓ Skills installed: $(ls /home/vscode/.claude/skills/)"
 else
     echo "  No skills directory found"
@@ -127,7 +127,7 @@ fi
 
 echo ""
 echo "--- Installing Claude Code statusline ---"
-SANDBOX_SCRIPTS="/workspace/workspace/claude-code-sandbox/scripts"
+SANDBOX_SCRIPTS="/workspace/workspace/ai-agent-sandbox/scripts"
 CLAUDE_DIR="/home/vscode/.claude"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
@@ -157,7 +157,7 @@ fi
 echo ""
 echo "--- Applying Claude Code settings ---"
 
-OVERLAY_FILE="/workspace/workspace/claude-code-sandbox/settings-overlay.json"
+OVERLAY_FILE="/workspace/workspace/ai-agent-sandbox/settings-overlay.json"
 if [ -f "$OVERLAY_FILE" ]; then
     if [ -f "$SETTINGS_FILE" ]; then
         jq -s '.[0] * .[1]' "$SETTINGS_FILE" "$OVERLAY_FILE" > "${SETTINGS_FILE}.tmp" \

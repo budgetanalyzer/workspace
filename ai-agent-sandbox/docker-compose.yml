@@ -13,8 +13,8 @@ services:
       # Mount dev directory as workspace (read/write)
       - ../../:/workspace:cached
 
-      # Mount claude-code-sandbox as read-only (security: Claude Code cannot modify its own config)
-      - .:/workspace/workspace/claude-code-sandbox:ro
+      # Mount ai-agent-sandbox as read-only (security: AI agents cannot modify their own config)
+      - .:/workspace/workspace/ai-agent-sandbox:ro
 
       # Persistent storage for Claude Code credentials
       - claude-anthropic:/home/vscode/.anthropic

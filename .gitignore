@@ -292,6 +292,7 @@ kubectl
 *~
 .#*
 \#*#
+tmp/
 
 # =============================================================================
 # MISCELLANEOUS
@@ -324,3 +325,5 @@ jacoco.xml
 TODO.local
 NOTES.local
 scratch/
+
+__pycache__

@@ -30,19 +30,48 @@ With the Dev Containers extension installed, VS Code will prompt "Reopen in Cont
 
 ### AI Coding CLIs
 
-Claude Code, Gemini CLI, and Codex CLI are pre-installed. The directory is named `claude-code-sandbox` but the environment is client-agnostic.
+Claude Code, Gemini CLI, and Codex CLI are pre-installed.
 
 **Auth:**
 - **Claude** — already authenticated via `~/.anthropic` volume mount
 - **Codex** — `export OPENAI_API_KEY` or run `codex` to sign in
 - **Gemini** — `export GEMINI_API_KEY` or run `gemini` to sign in
 
+### Claude Code Launch Options
+
+**Standard usage** — just run `claude` or use the convenience aliases:
+
+| Command | What it does |
+|---------|-------------|
+| `claude` | Standard launch with Anthropic's default system prompt |
+| `dangerous` | Alias: `--dangerously-skip-permissions` |
+| `high` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=high` |
+| `max` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=max` |
+
+All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
+
+**With traffic inspection:**
+
+| Command | What it does |
+|---------|-------------|
+| `claude-with-proxy` | Launch Claude Code with mitmproxy intercepting all API traffic. Inspection only — no prompt modification. |
+| `claude-with-custom-system-prompt` | Same as above, plus replaces Anthropic's ~24k-token default system prompt with a lean ~500-token version via a mitmproxy addon. |
+
+Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. See [AGENTS.md](AGENTS.md#custom-system-prompt-optional) for details on the replacement mechanism.
+
+**Disabling specific tools:**
+
+```bash
+claude --disallowedTools "Agent" --dangerously-skip-permissions
+```
+
+The `--disallowedTools` flag disables tools at launch. Disabling the Agent (subagent) tool is useful in small microservice repos where direct Grep/Glob/Read is faster and more predictable than autonomous subagent exploration. The Agent tool is designed for large monorepos — in small focused codebases it adds unnecessary overhead.
+
 ### HTTPS Traffic Inspection
 
 mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`). Scripts available in PATH:
 
-- `start-proxy` — start mitmweb (proxy :8080, UI :8081)
-- `claude-with-proxy` — launch Claude Code with proxy in one shot
+- `start-proxy` — start mitmweb (proxy :9080, UI :9081)
 - `mitmflows` — list captured flows as a table
 - `mitmflow-detail <id>` — full request/response with SSE reconstruction
 - `mitmflow-body <id> [request|response]` — raw body extraction
@@ -56,7 +85,7 @@ Note: Claude Code is installed via npm (not the native binary) because the nativ
 ## What's Here
 
 - `.devcontainer/` — VS Code devcontainer configuration
-- `claude-code-sandbox/` — Docker sandbox: Dockerfile, entrypoint, mitmproxy scripts, skills, settings overlay (mounted read-only at runtime)
+- `ai-agent-sandbox/` — Docker sandbox: Dockerfile, entrypoint, mitmproxy scripts, skills, settings overlay (mounted read-only at runtime)
 - `scripts/` — workspace utilities (`sync-all.sh`)
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 
@@ -81,7 +110,7 @@ The hook in `settings-overlay.json` cats AGENTS.md at session start, which arriv
 
 ### Read-Only Sandbox Mount
 
-`claude-code-sandbox/` is mounted `:ro` in docker-compose.yml. The AI agent cannot modify its own Dockerfile, entrypoint, settings, or skills. Changes to sandbox configuration require a human editing the source files and rebuilding.
+`ai-agent-sandbox/` is mounted `:ro` in docker-compose.yml. The AI agent cannot modify its own Dockerfile, entrypoint, settings, or skills. Changes to sandbox configuration require a human editing the source files and rebuilding.
 
 ### CLAUDE_CODE_DISABLE_AUTO_MEMORY
 
