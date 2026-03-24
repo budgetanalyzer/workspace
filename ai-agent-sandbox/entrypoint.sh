@@ -16,7 +16,6 @@ REPOS=(
   "transaction-service"
   "currency-service"
   "permission-service"
-  "token-validation-service"
   "session-gateway"
   "budget-analyzer-web"
   "architecture-conversations"
