@@ -11,6 +11,7 @@ WEB_PORT=$((PROXY_PORT + 1))
 export HTTPS_PROXY=http://127.0.0.1:$PROXY_PORT
 export HTTP_PROXY=http://127.0.0.1:$PROXY_PORT
 export NODE_EXTRA_CA_CERTS=$HOME/.mitmproxy/mitmproxy-ca-cert.pem
+
 export CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true
 export ENABLE_CLAUDEAI_MCP_SERVERS=false
 export CLAUDE_CODE_EFFORT_LEVEL=max

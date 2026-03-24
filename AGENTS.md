@@ -72,7 +72,7 @@ The reason this tool exists: Anthropic's default system prompt (~24k tokens) inc
 
 **How to use:** Launch via `claude-with-custom-system-prompt`, which starts mitmweb with the addon loaded. `claude-with-proxy` remains unchanged (inspection-only, no prompt replacement). The addon reads the prompt from `ai-agent-sandbox/system-prompt.md` at startup. Override the path with `--set system_prompt_file=/other/path.md` on the mitmweb command.
 
-**First-run capture:** The addon dumps the original CC system prompt to `tmp/original-system-prompt.json` on the first intercepted request.
+**First-run capture:** The addon dumps the original CC system prompt to `/tmp/claude-proxy-dumps/` on the first intercepted request. Filenames include the CWD and a UTC timestamp.
 
 **What it keeps:** tool selection rules, code discipline, careful execution, communication style.
 

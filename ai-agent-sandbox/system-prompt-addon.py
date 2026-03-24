@@ -1,24 +1,36 @@
-"""mitmproxy addon: replace Claude Code's system prompt in-flight.
+"""mitmproxy addon: replace Claude Code's default system prompt in-flight.
 
-Intercepts POST requests to api.anthropic.com/v1/messages and replaces
-the `system` field with a custom prompt loaded from disk.
+Workaround for Claude Code's --system-prompt / --system-prompt-file flags,
+which append to the default ~24k-token system prompt rather than replacing
+it. This addon intercepts POST requests to api.anthropic.com/v1/messages
+and replaces the last block of the `system` array (the main prompt body)
+with a custom prompt loaded from disk. Prefix blocks (billing header, title
+block) are preserved so the API continues to function normally.
+
+Only main conversation requests (those carrying a `tools` list) are
+modified. Ancillary requests (title generation, etc.) pass through
+unchanged.
+
+On first interception the original system prompt is dumped to
+/tmp/claude-proxy-dumps/ for reference.
 
 Usage:
-    mitmweb -s /workspace/workspace/system-prompt-addon.py
-    mitmweb -s /workspace/workspace/system-prompt-addon.py \
+    mitmweb -s system-prompt-addon.py
+    mitmweb -s system-prompt-addon.py \
         --set system_prompt_file=/path/to/custom.md
 """
 
 import json
 import logging
 import os
+from datetime import datetime, timezone
 
 from mitmproxy import ctx, http
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT_PATH = "/workspace/workspace/ai-agent-sandbox/system-prompt.md"
-DUMP_DIR = "/workspace/workspace/tmp"
+DUMP_DIR = "/tmp/claude-proxy-dumps"
 
 
 class SystemPromptReplacer:
@@ -26,6 +38,7 @@ class SystemPromptReplacer:
         self.custom_prompt: str = ""
         self.request_count: int = 0
         self.original_dumped: bool = False
+        self.cwd_label = os.getcwd().replace("/", "_").strip("_")
 
     def load(self, loader):
         loader.add_option(
@@ -89,13 +102,23 @@ class SystemPromptReplacer:
             # Keep all blocks except the last (the main prompt body).
             # This preserves the billing header, title block, etc.
             prefix_blocks = original_system[:-1]
-            data["system"] = prefix_blocks + [
-                {
-                    "type": "text",
-                    "text": self.custom_prompt,
-                    "cache_control": {"type": "ephemeral", "ttl": "1h"},
-                }
-            ]
+
+            # Preserve cache_control from the block we're replacing.
+            # Claude Code uses different TTLs for different request types:
+            # main conversation gets ttl='1h', but WebSearch sub-requests
+            # use bare ephemeral (no TTL = 5m server-side default). The API
+            # requires TTLs to be non-increasing across tools -> system ->
+            # messages, so hardcoding '1h' breaks WebSearch sub-requests
+            # where the preceding block has implicit 5m.
+            replaced_block = original_system[-1]
+            new_block = {
+                "type": "text",
+                "text": self.custom_prompt,
+            }
+            if "cache_control" in replaced_block:
+                new_block["cache_control"] = replaced_block["cache_control"]
+
+            data["system"] = prefix_blocks + [new_block]
         else:
             data["system"] = self.custom_prompt
 
@@ -119,8 +142,9 @@ class SystemPromptReplacer:
         """Dump the full modified request body for debugging."""
         try:
             os.makedirs(DUMP_DIR, exist_ok=True)
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             dump_path = os.path.join(
-                DUMP_DIR, f"request-{self.request_count:04d}.json"
+                DUMP_DIR, f"request-{self.cwd_label}-{ts}-{self.request_count:04d}.json"
             )
             with open(dump_path, "w") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -132,7 +156,8 @@ class SystemPromptReplacer:
         """Save the original system prompt once for reference."""
         try:
             os.makedirs(DUMP_DIR, exist_ok=True)
-            dump_path = os.path.join(DUMP_DIR, "original-system-prompt.json")
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            dump_path = os.path.join(DUMP_DIR, f"original-system-prompt-{self.cwd_label}-{ts}.json")
             with open(dump_path, "w") as f:
                 json.dump(original_system, f, indent=2, ensure_ascii=False)
             logger.info("Saved original system prompt to %s", dump_path)
