@@ -282,6 +282,7 @@ kubectl
 # TEMPORARY FILES & BACKUPS
 # =============================================================================
 
+tmp/
 *.tmp
 *.temp
 *.bak
@@ -292,7 +293,6 @@ kubectl
 *~
 .#*
 \#*#
-tmp/
 
 # =============================================================================
 # MISCELLANEOUS
@@ -326,4 +326,5 @@ TODO.local
 NOTES.local
 scratch/
 
+#Python cache
 __pycache__

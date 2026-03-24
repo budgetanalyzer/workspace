@@ -57,7 +57,7 @@ All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLA
 | `claude-with-proxy` | Launch Claude Code with mitmproxy intercepting all API traffic. Inspection only — no prompt modification. |
 | `claude-with-custom-system-prompt` | Same as above, plus replaces Anthropic's ~24k-token default system prompt with a lean ~500-token version via a mitmproxy addon. |
 
-Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. See [AGENTS.md](AGENTS.md#custom-system-prompt-optional) for details on the replacement mechanism.
+Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon is used to swap the prompt in-flight as a workaround. See [AGENTS.md](AGENTS.md#custom-system-prompt-optional) for details.
 
 **Disabling specific tools:**
 

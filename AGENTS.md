@@ -66,7 +66,9 @@ Using `claude-with-custom-system-prompt` is **not required** for normal developm
 
 The reason this tool exists: Anthropic's default system prompt (~24k tokens) includes verbose per-tool elaboration, generic coding advice, and guidance that duplicates or conflicts with what belongs in AGENTS.md. This matters because that prompt consumes context window on every request. `system-prompt.md` replaces it with a lean ~500-token version that keeps only the essential operating rules.
 
-**How it works:** A mitmproxy addon (`system-prompt-addon.py`) intercepts POST requests to `api.anthropic.com/v1/messages` and replaces only the last block of the `system` array (the main prompt body) in-flight. It preserves prefix blocks (billing header, title block) that the API requires. This bypasses Claude Code's CLI flags (`--system-prompt`, `--system-prompt-file`) which append rather than replace.
+**Why not `--system-prompt`?** Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default system prompt rather than replacing it (despite what the documentation suggests). There is no official CLI mechanism to replace the default prompt. This addon is a workaround for that limitation.
+
+**How it works:** A mitmproxy addon (`system-prompt-addon.py`) intercepts POST requests to `api.anthropic.com/v1/messages` and replaces only the last block of the `system` array (the main prompt body) with the custom prompt, in-flight. It preserves prefix blocks (billing header, title block) that the API requires. Only main conversation requests (those with a `tools` list) are modified; ancillary requests (title generation, etc.) pass through unchanged.
 
 **How to use:** Launch via `claude-with-custom-system-prompt`, which starts mitmweb with the addon loaded. `claude-with-proxy` remains unchanged (inspection-only, no prompt replacement). The addon reads the prompt from `ai-agent-sandbox/system-prompt.md` at startup. Override the path with `--set system_prompt_file=/other/path.md` on the mitmweb command.
 
