@@ -14,6 +14,6 @@ USER_GID=$CURRENT_GID
 CLI_CACHE_BUST=$(date +%s)
 EOF
 
-echo "✓ Generated .env in workspace/claude-code-sandbox/"
+echo "✓ Generated .env in workspace/ai-agent-sandbox/"
 echo "  USER_UID=$CURRENT_UID"
 echo "  USER_GID=$CURRENT_GID"

@@ -282,6 +282,7 @@ kubectl
 # TEMPORARY FILES & BACKUPS
 # =============================================================================
 
+tmp/
 *.tmp
 *.temp
 *.bak
@@ -324,3 +325,6 @@ jacoco.xml
 TODO.local
 NOTES.local
 scratch/
+
+#Python cache
+__pycache__

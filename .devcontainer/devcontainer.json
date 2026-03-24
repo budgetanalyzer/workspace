@@ -1,11 +1,11 @@
 {
   "name": "Budget Analyzer",
-  "dockerComposeFile": "../claude-code-sandbox/docker-compose.yml",
+  "dockerComposeFile": "../ai-agent-sandbox/docker-compose.yml",
   "service": "claude-dev",
   "workspaceFolder": "/workspace",
   "shutdownAction": "none",
 
-  "initializeCommand": "bash ${localWorkspaceFolder}/claude-code-sandbox/setup-env.sh",
+  "initializeCommand": "bash ${localWorkspaceFolder}/ai-agent-sandbox/setup-env.sh",
 
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {

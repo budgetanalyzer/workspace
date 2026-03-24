@@ -2,7 +2,7 @@
 # mitmflows — List captured mitmweb flows via REST API
 set -euo pipefail
 
-MITM_API="${MITM_API:-http://localhost:8081}"
+MITM_API="${MITM_API:-http://localhost:9081}"
 MITM_PASS="${MITM_PASS:-mitmlocal}"
 LIMIT=50
 FULL=false
