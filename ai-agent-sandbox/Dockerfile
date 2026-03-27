@@ -1,5 +1,10 @@
 # Use Ubuntu 24.04 as base image (explicit registry reference)
-FROM docker.io/library/ubuntu:24.04
+FROM docker.io/library/ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
+
+ARG TARGETARCH
+ARG NODE_MAJOR=20
+ARG HELM_VERSION=v3.20.1
+ARG TILT_VERSION=0.37.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -24,8 +29,13 @@ RUN apt-get update && apt-get install -y \
     bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (latest LTS)
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+# Install Node.js (pinned major line via signed NodeSource apt repo)
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSLo /tmp/nodesource.gpg.key https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    && gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.gpg.key \
+    && rm -f /tmp/nodesource.gpg.key \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -47,9 +57,9 @@ RUN apt-get update && apt-get install -y maven \
 ENV MAVEN_HOME=/usr/share/maven
 ENV PATH=$MAVEN_HOME/bin:$PATH
 
- # Install Go
- RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xz
- ENV PATH=/usr/local/go/bin:$PATH
+# Install Go
+RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xz
+ENV PATH=/usr/local/go/bin:$PATH
 
 # Install kubectl
 RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
@@ -59,14 +69,39 @@ RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --d
     && rm -rf /var/lib/apt/lists/*
 
 # Install kind
-RUN curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64 \
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64|arm64) : ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-${TARGETARCH}" \
     && chmod +x /usr/local/bin/kind
 
 # Install helm
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) helm_sha256='0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3' ;; \
+        arm64) helm_sha256='56b9d1b0e0efbb739be6e68a37860ace8ec9c7d3e6424e3b55d4c459bc3a0401' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz"; \
+    echo "${helm_sha256}  /tmp/helm.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/helm.tar.gz -C /tmp; \
+    mv "/tmp/linux-${TARGETARCH}/helm" /usr/local/bin/helm; \
+    chmod +x /usr/local/bin/helm; \
+    rm -rf /tmp/helm.tar.gz "/tmp/linux-${TARGETARCH}"
 
 # Install tilt
-RUN curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) tilt_arch='x86_64'; tilt_sha256='c2c7d3649233f01bc5d230b66b8ccd332401f348dc22b863fcf7244da6970ff1' ;; \
+        arm64) tilt_arch='arm64'; tilt_sha256='84457137539d8e4be6e90e9afecf8ef692ad3f8c19e9bf3355f3fbf4f8dce55f' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /tmp/tilt.tar.gz "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.${tilt_arch}.tar.gz"; \
+    echo "${tilt_sha256}  /tmp/tilt.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/tilt.tar.gz -C /usr/local/bin tilt; \
+    rm -f /tmp/tilt.tar.gz
 
 # Create vscode user with matching UID/GID from host
 ARG USERNAME=vscode
