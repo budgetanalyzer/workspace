@@ -1,7 +1,7 @@
 {
   "name": "Budget Analyzer",
   "dockerComposeFile": "../ai-agent-sandbox/docker-compose.yml",
-  "service": "claude-dev",
+  "service": "ai-dev",
   "workspaceFolder": "/workspace",
   "shutdownAction": "none",
 

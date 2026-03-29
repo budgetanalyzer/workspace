@@ -1,5 +1,5 @@
 services:
-  claude-dev:
+  ai-dev:
     build:
       context: .
       dockerfile: Dockerfile
@@ -16,8 +16,9 @@ services:
       # Mount ai-agent-sandbox as read-only (security: AI agents cannot modify their own config)
       - .:/workspace/workspace/ai-agent-sandbox:ro
 
-      # Persistent storage for Claude Code credentials
-      - claude-anthropic:/home/vscode/.anthropic
+      # Persistent storage for AI CLI credentials
+      - credentials-anthropic:/home/vscode/.anthropic
+      - credentials-openai:/home/vscode/.codex
 
       # NEW: Mount kubeconfig for kubectl access to host's Kind cluster
       - ~/.kube:/home/vscode/.kube:cached
@@ -33,4 +34,5 @@ services:
     user: vscode
 
 volumes:
-  claude-anthropic:
+  credentials-anthropic:
+  credentials-openai:
