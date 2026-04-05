@@ -131,6 +131,23 @@ RUN npm install -g @openai/codex
 # Gemini CLI (Google terminal agent)
 RUN npm install -g @google/gemini-cli
 
+# =======================================================
+# PLAYWRIGHT (headless browser for scraping / automation)
+# =======================================================
+
+# Install Playwright npm package globally
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+RUN npm install -g playwright
+
+# Install Chromium system dependencies (shared libs like libgbm, libasound, etc.)
+RUN npx playwright install-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download Chromium binary to shared path, readable by all users
+RUN mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} \
+    && npx playwright install chromium \
+    && chmod -R o+rx ${PLAYWRIGHT_BROWSERS_PATH}
+
 # Set up working directory with proper ownership
 RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
