@@ -53,4 +53,4 @@ fi
 echo "System prompt replacement active via proxy addon"
 echo "---"
 
-command claude --verbose --dangerously-skip-permissions "$@"
+command claude --verbose --dangerously-skip-permissions --model claude-opus-4-5-20251101 "$@"
