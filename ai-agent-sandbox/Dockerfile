@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     # Python package management
     python3-pip \
+    # Shell script linting
+    shellcheck \
     # mitmproxy install dependency
     pipx \
     bubblewrap \
