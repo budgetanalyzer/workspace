@@ -24,10 +24,15 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     traceroute \
     netcat-openbsd \
+    # Python package management
+    python3-pip \
     # mitmproxy install dependency
     pipx \
     bubblewrap \
     && rm -rf /var/lib/apt/lists/*
+
+# Install common Python libraries
+RUN pip3 install --no-cache-dir --break-system-packages pyyaml
 
 # Install Node.js (pinned major line via signed NodeSource apt repo)
 RUN mkdir -p /etc/apt/keyrings \
