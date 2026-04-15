@@ -31,7 +31,7 @@ When you need to test fixes to scripts or files that originate in `ai-agent-sand
 
 ALL work products — patched scripts, test copies, generated configs — MUST stay inside `/workspace/workspace/`. Do not write to locations outside this repo.
 
-**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git workflow entirely. You may suggest what to commit, but don't do it.
+**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git operations entirely. You may suggest what to commit, but don't do it.
 
 ## Code Exploration
 
@@ -42,9 +42,9 @@ NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read di
 Always keep documentation up to date after any configuration or code change.
 
 Update the nearest affected documentation in the same work:
-- `AGENTS.md` when instructions, guardrails, discovery commands, or repository-specific workflow changes
+- `AGENTS.md` when instructions, guardrails, or discovery commands change
 - `README.md` when setup, usage, or repository purpose changes
-- `docs/` when architecture, configuration, APIs, behaviors, or operational workflows change
+- `docs/` when architecture, configuration, APIs, behaviors, or operating procedures change
 
 Do not leave documentation updates as follow-up work.
 
