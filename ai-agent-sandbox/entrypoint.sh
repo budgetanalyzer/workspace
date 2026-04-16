@@ -18,7 +18,6 @@ REPOS=(
   "permission-service"
   "session-gateway"
   "budget-analyzer-web"
-  "architecture-conversations"
   "checkstyle-config"
   "claude-discovery"
 )

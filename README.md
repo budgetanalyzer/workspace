@@ -96,7 +96,6 @@ Note: Claude Code is installed via npm (not the native binary) because the nativ
 This repo is intentionally minimal. It's just the front door.
 
 - For system orchestration: see [orchestration](https://github.com/budgetanalyzer/orchestration)
-- For architectural discussions: see [architecture-conversations](https://github.com/budgetanalyzer/architecture-conversations)
 - For individual services: see the respective repos
 
 ## Design Decisions
