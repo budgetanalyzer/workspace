@@ -27,5 +27,8 @@
         "anthropic.claude-code"
       ]
     }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
   }
 }
