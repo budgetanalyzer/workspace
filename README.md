@@ -24,14 +24,15 @@ With the Dev Containers extension installed, VS Code will prompt "Reopen in Cont
 **After the container starts:**
 - All repos are available at `/workspace/{repo-name}/`
 - Claude Code, Gemini CLI, and Codex CLI are pre-installed
-- `pdftotext` is available via the `poppler-utils` package
 - Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
 ## What's Inside
 
 ### AI Coding CLIs
 
-Claude Code, Gemini CLI, and Codex CLI are pre-installed.
+Claude Code, Gemini CLI, and Codex CLI are pre-installed in the image build defined by `ai-agent-sandbox/Dockerfile`.
+
+Add extra system packages there as well rather than in `.devcontainer/devcontainer.json`. For example, `pdftotext` comes from the `poppler-utils` package.
 
 **Auth:**
 - **Claude** — already authenticated via `~/.anthropic` volume mount

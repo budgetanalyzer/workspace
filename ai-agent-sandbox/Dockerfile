@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     build-essential \
     vim \
+    poppler-utils \
     # Networking tools for DNS/email debugging
     dnsutils \
     iputils-ping \
