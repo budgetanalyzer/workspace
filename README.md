@@ -24,6 +24,7 @@ With the Dev Containers extension installed, VS Code will prompt "Reopen in Cont
 **After the container starts:**
 - All repos are available at `/workspace/{repo-name}/`
 - Claude Code, Gemini CLI, and Codex CLI are pre-installed
+- `pdftotext` is available via the `poppler-utils` package
 - Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
 ## What's Inside
