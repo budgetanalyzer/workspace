@@ -4,6 +4,19 @@
 >
 > — [AGENTS.md](AGENTS.md#tree-position)
 
+## Why This Exists
+
+This workspace runs AI coding agents (Claude Code, Codex, Gemini CLI) in a **sandboxed Docker container** with intentional security constraints:
+
+1. **No access to your filesystem** — only the mounted `/workspace` directory is visible
+2. **No SSH credentials** — `SSH_AUTH_SOCK` is explicitly cleared ([devcontainer.json:18](/.devcontainer/devcontainer.json#L18))
+3. **No git push capability** — without SSH credentials, the agent cannot push to GitHub
+4. **Read-only sandbox config** — `ai-agent-sandbox/` is mounted `:ro` ([docker-compose.yml:17](/ai-agent-sandbox/docker-compose.yml#L17)), so the agent cannot modify its own Dockerfile, entrypoint, or settings to subvert these rules
+
+**Worst case scenario:** If an agent does something unexpected, run `git reset --hard origin/main` and everything disappears — uncommitted changes *and* any local commits the agent made. All changes are local to the workspace directory and trivially reversible.
+
+This is the point. The agent can explore, refactor, break things, and experiment freely — but it can never escape the sandbox, push broken code, or cause damage outside this directory.
+
 ## Quick Start
 
 ### Prerequisites
@@ -19,12 +32,23 @@ cd workspace
 code .
 ```
 
-With the Dev Containers extension installed, VS Code will prompt "Reopen in Container" — click it. The container builds on first run.
+With the Dev Containers extension installed, VS Code will prompt "Reopen in Container" — click it. The container builds on first run (defined in [`ai-agent-sandbox/Dockerfile`](/ai-agent-sandbox/Dockerfile)).
 
 **After the container starts:**
 - All repos are available at `/workspace/{repo-name}/`
 - Claude Code, Gemini CLI, and Codex CLI are pre-installed
 - Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
+
+## Security Model
+
+| Constraint | Mechanism | Config Reference |
+|------------|-----------|------------------|
+| Filesystem isolation | Docker container with explicit volume mounts | [docker-compose.yml:13-17](/ai-agent-sandbox/docker-compose.yml#L13-L17) |
+| No SSH agent forwarding | `SSH_AUTH_SOCK: ""` in remoteEnv | [devcontainer.json:18](/.devcontainer/devcontainer.json#L18) |
+| Read-only sandbox | `.:/workspace/workspace/ai-agent-sandbox:ro` mount | [docker-compose.yml:17](/ai-agent-sandbox/docker-compose.yml#L17) |
+| No git credential helper | Agent's git push fails with "Permission denied (publickey)" | (verified at runtime) |
+
+The read-only sandbox mount is critical: even if an agent running with `--dangerously-skip-permissions` tries to modify `docker-compose.yml` or `Dockerfile` to grant itself SSH access, the write will fail. The agent cannot escalate its own privileges.
 
 ## What's Inside
 
@@ -88,8 +112,8 @@ Note: Claude Code is installed via npm (not the native binary) because the nativ
 
 ## What's Here
 
-- `.devcontainer/` — VS Code devcontainer configuration
-- `ai-agent-sandbox/` — Docker sandbox: Dockerfile, entrypoint, mitmproxy scripts, skills, settings overlay (mounted read-only at runtime)
+- `.devcontainer/` — VS Code devcontainer configuration (points to `ai-agent-sandbox/docker-compose.yml`)
+- `ai-agent-sandbox/` — Docker sandbox definition: Dockerfile, docker-compose.yml, entrypoint, mitmproxy scripts, skills, settings overlay. **Mounted read-only at runtime** — the agent cannot modify its own configuration.
 - `scripts/` — workspace utilities (`sync-all.sh`)
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 
@@ -110,10 +134,6 @@ We use AGENTS.md (the emerging multi-tool standard) instead of CLAUDE.md, inject
 - [#6235](https://github.com/anthropics/claude-code/issues/6235) — Claude Code doesn't natively read AGENTS.md
 
 The hook in `settings-overlay.json` cats AGENTS.md at session start, which arrives as a system-reminder without the subversive suffix.
-
-### Read-Only Sandbox Mount
-
-`ai-agent-sandbox/` is mounted `:ro` in docker-compose.yml. The AI agent cannot modify its own Dockerfile, entrypoint, settings, or skills. Changes to sandbox configuration require a human editing the source files and rebuilding.
 
 ### CLAUDE_CODE_DISABLE_AUTO_MEMORY
 
