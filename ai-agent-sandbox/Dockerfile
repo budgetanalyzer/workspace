@@ -171,6 +171,7 @@ COPY scripts/start-proxy.sh /usr/local/bin/start-proxy
 COPY scripts/claude-with-proxy.sh /usr/local/bin/claude-with-proxy
 COPY scripts/claude-with-custom-system-prompt.sh /usr/local/bin/claude-with-custom-system-prompt
 COPY scripts/claude-45-custom-system-prompt.sh /usr/local/bin/claude-45-custom-system-prompt
+COPY scripts/claude-46-custom-system-prompt.sh /usr/local/bin/claude-46-custom-system-prompt
 COPY scripts/mitmflows /usr/local/bin/mitmflows
 COPY scripts/mitmflow-detail /usr/local/bin/mitmflow-detail
 COPY scripts/mitmflow-body /usr/local/bin/mitmflow-body
