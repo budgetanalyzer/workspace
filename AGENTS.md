@@ -29,6 +29,12 @@ When you need to test fixes to scripts or files that originate in `ai-agent-sand
 2. Copy the file(s) there and make your edits in `tmp/`.
 3. Test from `tmp/`. Never move or install files to system paths (`/usr/local/bin`, `/usr/local/share`, `/opt`, etc.).
 
+When Python validation would normally write `__pycache__` under `ai-agent-sandbox/`, redirect it into `tmp/` instead, for example:
+
+```bash
+PYTHONPYCACHEPREFIX=/workspace/workspace/tmp/pycache python3 -m py_compile path/to/script.py
+```
+
 ALL work products — patched scripts, test copies, generated configs — MUST stay inside `/workspace/workspace/`. Do not write to locations outside this repo.
 
 **NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git operations entirely. You may suggest what to commit, but don't do it.
@@ -110,7 +116,21 @@ Multiple tools can be disabled by repeating the flag: `--disallowedTools "Agent"
 - `start-proxy` — start mitmweb proxy on :9080, UI on :9081
 - `mitmflows` — list captured HTTP flows
 - `mitmflow-detail <id>` — full request/response detail with SSE reconstruction
-- `mitmflow-body <id> [request|response]` — extract raw body
+- `mitmflow-body <id> [request|response|messages]` — render request or response bodies, or WebSocket messages
+
+### Staged Mitmproxy Improvements
+
+The read-only `ai-agent-sandbox/` mount means mitmproxy helper changes must be staged in this repo first. The current staged implementation lives under `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`.
+
+Those staged files include:
+- a shared `scripts/mitmflow-render.py` renderer for flow listing, body extraction, SSE event normalization, Anthropic/OpenAI stream reconstruction, Markdown export, and credential redaction
+- improved `mitmflows`, `mitmflow-body`, and `mitmflow-detail` entrypoints that default exports to `tmp/mitmproxy-flows/`
+- inspection-only Codex proxy launchers: `codex-with-proxy`, `codex-high-with-proxy`, `codex-max-with-proxy`
+- GPT-5.4-pinned Codex proxy launchers: `codex-54-with-proxy` (`gpt-5.4`) and `codex-54-mini-with-proxy` (`gpt-5.4-mini`)
+- model-pinned Codex proxy launchers: `codex-53-with-proxy` (`gpt-5.3-codex`) and `codex-mini-with-proxy` (`codex-mini-latest`)
+- a staged `Dockerfile` that pins mitmproxy to `12.2.2` and includes the new helper scripts in `/usr/local/bin`
+
+These staged files are not live until a human copies them into `ai-agent-sandbox/` from a writable context and rebuilds the devcontainer.
 
 ### Skills
 - `save-conversation` — write current conversation to `conversations/` directory
