@@ -67,27 +67,17 @@ Playwright is also pre-installed, along with the Chromium browser binary and its
 
 ### Claude Code Launch Options
 
-**Standard usage** — just run `claude` or use the convenience aliases:
-
-| Command | What it does |
-|---------|-------------|
-| `claude` | Standard launch with Anthropic's default system prompt |
-| `dangerous` | Alias: `--dangerously-skip-permissions` |
-| `high` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=high` |
-| `max` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=max` |
+**Standard usage** — run `claude` for the normal path. Convenience aliases such as `dangerous`, `high`, and `max` are also installed if you want the same launch with more aggressive permissions and effort defaults.
 
 All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
 
-**With traffic inspection:**
+If you want traffic inspection, start with `claude-with-proxy`. If you specifically want prompt replacement as well, use `claude-with-custom-system-prompt`.
 
-| Command | What it does |
-|---------|-------------|
-| `claude-with-proxy` | Launch Claude Code with mitmproxy intercepting all API traffic. Inspection only — no prompt modification. |
-| `claude-with-custom-system-prompt` | Same as above, plus replaces Anthropic's ~24k-token default system prompt with a lean ~500-token version via a mitmproxy addon. |
+If you are not sure what launchers exist, take a look at [`ai-agent-sandbox/scripts/`](/workspace/workspace/ai-agent-sandbox/scripts/). The proxy launchers follow readable names such as `claude-with-proxy`, `codex-with-proxy`, and `codex-*-with-proxy`.
 
 Request dumps (modified request bodies) are written to `/tmp/claude-proxy-dumps/` with CWD and timestamp in filenames for debugging.
 
-Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon is used to swap the prompt in-flight as a workaround. See [AGENTS.md](AGENTS.md#custom-system-prompt-optional) for details.
+Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon is used to swap the prompt in-flight as a workaround. See [AGENTS.md](AGENTS.md) for the operating rules and source-of-truth pointers around that setup.
 
 **Disabling specific tools:**
 
@@ -99,12 +89,7 @@ The `--disallowedTools` flag disables tools at launch. Disabling the Agent (suba
 
 ### HTTPS Traffic Inspection
 
-mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`). Scripts available in PATH:
-
-- `start-proxy` — start mitmweb (proxy :9080, UI :9081)
-- `mitmflows` — list captured flows as a table
-- `mitmflow-detail <id>` — full request/response with SSE reconstruction
-- `mitmflow-body <id> [request|response|messages]` — render request or response bodies, or WebSocket messages
+mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`). The day-to-day commands are `start-proxy`, `mitmflows`, `mitmflow-body`, and `mitmflow-detail`. For the full set of launchers and wrappers, browse [`ai-agent-sandbox/scripts/`](/workspace/workspace/ai-agent-sandbox/scripts/).
 
 Note: Claude Code is installed via npm (not the native binary) because the native Bun binary ignores `HTTP_PROXY` for streaming — see [anthropics/claude-code#14165](https://github.com/anthropics/claude-code/issues/14165).
 
@@ -112,18 +97,9 @@ Note: Claude Code is installed via npm (not the native binary) because the nativ
 
 Because `ai-agent-sandbox/` is mounted read-only inside the devcontainer, mitmproxy helper changes are staged under [`tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`](/workspace/workspace/tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/) until a human copies them into `ai-agent-sandbox/` from a writable context and rebuilds the container.
 
-That staged replacement set adds:
+The staged tree is the place to work if you are iterating on mitmproxy helpers, proxy launchers, or the shared `mitmflow-render.py` renderer before rollout. Inspect that directory directly instead of relying on this README to enumerate every staged script or launcher variant.
 
-- `scripts/mitmflow-render.py` — shared Python renderer used by thin `mitmflows`, `mitmflow-body`, and `mitmflow-detail` wrappers
-- `mitmflows --provider anthropic|openai|all --host <substring> --path <substring> --json`
-- `mitmflow-body <id> [request|response|messages]` modes: default formatted output, `--raw`, `--events`, `--json`, `--dedupe` for OpenAI WebSocket messages, and `--save`
-- `mitmflow-detail <id>` summary-first output plus `--full`, `--raw`, `--md [file]`, and `--no-redact`
-- default export/report output under [`tmp/mitmproxy-flows/`](/workspace/workspace/tmp/mitmproxy-flows/)
-- inspection-only Codex proxy launchers: `codex-with-proxy`, `codex-high-with-proxy`, and `codex-max-with-proxy`
-- GPT-5.4-pinned Codex proxy launchers: `codex-54-with-proxy` (`gpt-5.4`) and `codex-54-mini-with-proxy` (`gpt-5.4-mini`)
-- model-pinned Codex proxy launchers: `codex-53-with-proxy` (`gpt-5.3-codex`) and `codex-mini-with-proxy` (`codex-mini-latest`)
-
-The staged `Dockerfile` pins mitmproxy to `12.2.2` and fixes the helper script install list so rebuilt images are deterministic once those replacements are applied.
+The staged helpers add provider filtering, richer body/detail rendering, export support under [`tmp/mitmproxy-flows/`](/workspace/workspace/tmp/mitmproxy-flows/), and several proxy launcher wrappers for Codex alongside Claude.
 
 When validating staged Python helpers from `tmp/`, direct bytecode into the workspace instead of `ai-agent-sandbox/__pycache__`, for example:
 
@@ -161,25 +137,16 @@ Launch Claude or Codex through the proxy:
 ```bash
 claude-with-proxy
 codex-with-proxy
-codex-high-with-proxy
-codex-max-with-proxy
-codex-54-with-proxy
-codex-54-mini-with-proxy
-codex-53-with-proxy
-codex-mini-with-proxy
 ```
 
-Codex model selection is available directly on the CLI with `-m/--model`, so you can also run commands like:
+If you need a high-effort, pinned, or otherwise specialized launcher, browse `ai-agent-sandbox/scripts/` and pick the variant that matches what you are doing.
+
+Codex model selection is also available directly on the CLI with `-m/--model`, so a generic launcher is often enough:
 
 ```bash
 codex-with-proxy --model gpt-5.4
 codex-with-proxy --model gpt-5.4-mini
-codex-with-proxy --model gpt-5.3-codex
-codex-high-with-proxy -m codex-mini-latest
-CODEX_MODEL=gpt-5.3-codex codex-with-proxy
 ```
-
-As of April 30, 2026, OpenAI's official models guide recommends `gpt-5.5` as the default starting point, with `gpt-5.4` and `gpt-5.4-mini` as cheaper pinned alternatives.
 
 List recent flows:
 
@@ -200,6 +167,8 @@ mitmflow-body <id> response --raw
 mitmflow-body <id> messages --json
 mitmflow-body <id> messages --json --dedupe
 ```
+
+Use `request` and `response` for normal HTTP and SSE inspection. Use `messages` only for WebSocket-backed flows. In practice that is currently most useful for OpenAI traffic; Anthropic traffic is usually better inspected with `response --events` or `response --json`.
 
 `--dedupe` is only supported for OpenAI `messages` output and is rejected with `--raw` so the transport-faithful view remains lossless.
 
