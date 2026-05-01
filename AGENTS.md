@@ -1,121 +1,102 @@
 # Workspace Entry Point
 
-## Tree Position
+## Repository Position
 
-**Archetype**: gateway
-**Scope**: budgetanalyzer ecosystem
-**Role**: Development environment entry point; owns sandbox configuration
+**Archetype:** gateway
+**Scope:** budgetanalyzer ecosystem
+**Role:** development environment entry point; owns devcontainer and sandbox configuration
 
-### Relationships
-- **Provides environment for**: All repos in /workspace
-- **Defers to**: orchestration/ for runtime coordination
+This repo exists to provide the development environment. It owns the devcontainer, sandbox wiring, helper scripts, and agent-facing workspace guidance. It does not own application code or the active architecture docs for the services that live in sibling repositories.
 
-### Permissions
-- **Read**: All of /workspace
-- **Write**: This repository only (note: `ai-agent-sandbox/` is mounted read-only)
+### Boundaries
+- Read sibling repositories under `../` when work in this repo needs their current docs or manifests.
+- Write only within this repository.
+- `ai-agent-sandbox/` is a read-only bind mount in the running devcontainer. You cannot modify, overwrite, or delete files there in place.
+- Stage sandbox-derived edits, tests, and generated files under `tmp/`.
+- **NO GIT WRITE OPERATIONS:** Do not run git write commands such as `commit`, `push`, `checkout`, or `reset` unless the user explicitly requests them. The user controls git operations entirely.
 
-### Discovery
+## Discovery
+
+Use discovery commands instead of maintaining static inventories.
+
 ```bash
-# What's in the workspace
-ls -d /workspace/*/
+# Workspace siblings
+ls -d ../*/
+
+# Repo structure
+find . -maxdepth 2 -type f | sort
+
+# Available sandbox launchers and helpers
+find ai-agent-sandbox/scripts -maxdepth 1 -type f | sort
+find ai-agent-sandbox/skills -maxdepth 2 -type f | sort
+
+# Staged mitmproxy helper work
+find tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+
+# Relevant config and hook surfaces
+rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
+
+# Sandbox compose services
+docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 ```
 
-## Sandbox Guardrails
+## Source Of Truth
 
-`ai-agent-sandbox/` is a read-only bind mount. You CANNOT modify, overwrite, or delete any file inside it.
-
-When you need to test fixes to scripts or files that originate in `ai-agent-sandbox/`:
-1. Create a `tmp/` directory in THIS repo (`/workspace/workspace/tmp/`).
-2. Copy the file(s) there and make your edits in `tmp/`.
-3. Test from `tmp/`. Never move or install files to system paths (`/usr/local/bin`, `/usr/local/share`, `/opt`, etc.).
-
-ALL work products — patched scripts, test copies, generated configs — MUST stay inside `/workspace/workspace/`. Do not write to locations outside this repo.
-
-**NO GIT WRITE OPERATIONS**: Never run git commands (commit, push, checkout, reset, etc.) without explicit user request. The user controls git operations entirely. You may suggest what to commit, but don't do it.
+- Workspace purpose and human-facing usage live in `README.md`. Read it before changing setup assumptions, launch guidance, or repository purpose.
+- Wider system startup and local environment expectations live in `../orchestration/docs/development/getting-started.md`. Read it before changing how this workspace relates to the rest of the ecosystem.
+- Devcontainer settings live in `.devcontainer/devcontainer.json`. Read it before changing editor container behavior, remote environment variables, or installed extensions.
+- Sandbox mounts and isolation rules live in `ai-agent-sandbox/docker-compose.yml`. Read it before changing volume mounts, networking, or runtime write boundaries.
+- Installed CLIs and launcher provisioning live in `ai-agent-sandbox/Dockerfile` and `ai-agent-sandbox/entrypoint.sh`. Read them before changing what is installed in `PATH` or how helper commands are exposed.
+- Session-start hooks and AI context injection live in `ai-agent-sandbox/settings-overlay.json`. Read it before changing startup behavior or how agent context files are injected.
+- Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
+- Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
+- Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally. Treat `docs/plans/2026-04-30-*.md` as context for that work, not as the primary source of truth.
+- Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
 
-NEVER use Agent/subagent tools for code exploration. Use Grep, Glob, and Read directly.
+- Use direct repo search and file reads for exploration. Do not use Agent or subagent tools for code exploration in this workspace.
+- Prefer `rg`, `find`, and targeted file reads over static inventories or guesswork.
+- When launching Claude Code for focused work in a small repo, prefer disabling the Agent tool with `--disallowedTools "Agent"`. Autonomous subagent exploration is useful in larger monorepos, but in small focused repos it usually adds overhead and indirection compared with direct search.
 
-## Documentation Discipline
+## Custom System Prompt
 
-Always keep documentation up to date after any configuration or code change.
+Using `claude-with-custom-system-prompt` is optional. The standard `claude` command and the inspection-only `claude-with-proxy` flow are fine for normal development.
 
-Update the nearest affected documentation in the same work:
-- `AGENTS.md` when instructions, guardrails, or discovery commands change
-- `README.md` when setup, usage, or repository purpose changes
-- `docs/` when architecture, configuration, APIs, behaviors, or operating procedures change
+This custom launcher exists because Claude Code's `--system-prompt` flags append to Anthropic's default system prompt instead of replacing it. The mitmproxy addon in `ai-agent-sandbox/system-prompt-addon.py` swaps only the main prompt body in flight and preserves the required prefix blocks. The custom prompt text lives in `ai-agent-sandbox/system-prompt.md`.
 
-Do not leave documentation updates as follow-up work.
+Read those files before changing prompt replacement behavior. Use `claude-with-proxy` when you only need traffic inspection. Use `claude-with-custom-system-prompt` when you specifically want the lean prompt behavior as part of the test or workflow.
 
-## Purpose
+## Operating Rules
 
-This repo exists solely to provide the development environment.
+- Keep all work products inside this repository. Do not install, copy, or move files into system paths.
+- When you need to test a file that originates in `ai-agent-sandbox/`, copy it into `tmp/` and test from there.
+- Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
+- Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
+- Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
 
-**What lives here:**
-- `.devcontainer/` - VS Code devcontainer configuration
-- `ai-agent-sandbox/` - Docker sandbox for AI agent isolation
-- `ai-agent-sandbox/system-prompt.md` - Custom lean system prompt for Claude Code
+## Development Workflow
 
-**What doesn't live here:**
-- Application code
-- Service or architecture documentation
-- Architecture decisions
+- Read the relevant source-of-truth file before changing setup assumptions, sandbox configuration, launchers, hooks, or staged mitmproxy helpers.
+- Prefer checked-in scripts and config files over reconstructing commands from memory.
+- When continuing staged mitmproxy work, make and test changes under `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`.
+- Keep documentation updates in the same change set as the behavior or workflow change that required them.
 
-## Custom System Prompt (Optional)
+## Validation
 
-Using `claude-with-custom-system-prompt` is **not required** for normal development. The standard `claude` command (or aliases like `dangerous`, `high`, `max`) works fine with Anthropic's default system prompt plus AGENTS.md.
+- Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
+- Run `shellcheck <changed shell scripts>` after changing shell scripts.
+- Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
+- If a touched file has pre-existing validation failures, report them explicitly and do not claim full verification.
+- If a required verifier cannot run because a tool or dependency is unavailable, report that explicitly and stop short of claiming the work is fully verified.
 
-The reason this tool exists: Anthropic's default system prompt (~24k tokens) includes verbose per-tool elaboration, generic coding advice, and guidance that duplicates or conflicts with what belongs in AGENTS.md. This matters because that prompt consumes context window on every request. `system-prompt.md` replaces it with a lean ~500-token version that keeps only the essential operating rules.
+## Documentation Maintenance
 
-**Why not `--system-prompt`?** Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default system prompt rather than replacing it (despite what the documentation suggests). There is no official CLI mechanism to replace the default prompt. This addon is a workaround for that limitation.
-
-**How it works:** A mitmproxy addon (`system-prompt-addon.py`) intercepts POST requests to `api.anthropic.com/v1/messages` and replaces only the last block of the `system` array (the main prompt body) with the custom prompt, in-flight. It preserves prefix blocks (billing header, title block) that the API requires. Only main conversation requests (those with a `tools` list) are modified; ancillary requests (title generation, etc.) pass through unchanged.
-
-**How to use:** Launch via `claude-with-custom-system-prompt`, which starts mitmweb with the addon loaded. `claude-with-proxy` remains unchanged (inspection-only, no prompt replacement). The addon reads the prompt from `ai-agent-sandbox/system-prompt.md` at startup. Override the path with `--set system_prompt_file=/other/path.md` on the mitmweb command.
-
-**First-run capture:** The addon dumps the original CC system prompt to `/tmp/claude-proxy-dumps/` on the first intercepted request. Filenames include the CWD and a UTC timestamp.
-
-**What it keeps:** tool selection rules, code discipline, careful execution, communication style.
-
-**What it removes:** Anthropic branding, verbose per-tool elaboration, contradictory priority framing, generic advice already in AGENTS.md.
-
-**Boundary:** System prompt = how the AI operates tools and communicates. AGENTS.md = what each project requires and how to navigate it. AGENTS.md is portable across CC, Codex, and Gemini CLI.
-
-**Verify via mitmproxy:** `mitmflow-body <id> request | jq '.system'` should show the billing header block, the title block ("You are Claude Code..."), and the lean custom prompt as the last block. The long default system prompt body should be absent.
-
-## CLI Flags
-
-### `--disallowedTools`
-
-Claude Code supports `--disallowedTools "ToolName"` to disable specific tools at launch. Useful example:
-
-```bash
-claude --disallowedTools "Agent" --dangerously-skip-permissions
-```
-
-**Why disable Agent:** The Agent (subagent) tool spawns autonomous sub-tasks that explore the codebase independently. This is valuable in large monorepos where a single task might touch many packages, but in small focused microservice repos it adds overhead and indirection. For straightforward tasks in small codebases, direct use of Grep, Glob, and Read is faster and more predictable than delegating to a subagent.
-
-Multiple tools can be disabled by repeating the flag: `--disallowedTools "Agent" --disallowedTools "WebSearch"`.
-
-## Tools Available
-
-### Launch Commands
-- `claude` — standard Claude Code (uses Anthropic's default system prompt)
-- `dangerous` / `high` / `max` — aliases that set effort level and `--dangerously-skip-permissions`
-- `claude-with-proxy` — launch Claude Code with mitmproxy traffic inspection (no prompt modification)
-- `claude-with-custom-system-prompt` — launch Claude Code with mitmproxy replacing the default system prompt with the lean version
-
-### HTTPS Inspection (mitmproxy)
-- `start-proxy` — start mitmweb proxy on :9080, UI on :9081
-- `mitmflows` — list captured HTTP flows
-- `mitmflow-detail <id>` — full request/response detail with SSE reconstruction
-- `mitmflow-body <id> [request|response]` — extract raw body
-
-### Skills
-- `save-conversation` — write current conversation to `conversations/` directory
-
-### Statusline
-Custom status bar showing context window usage and rate limits. Configured automatically.
+- Keep documentation updates in the same change set as the behavior or workflow change that required them. Do not leave doc updates as follow-up work.
+- Update `AGENTS.md` when repository instructions, guardrails, workflows, or discovery commands change.
+- Update `README.md` when setup, launch usage, or repository purpose changes.
+- Update active docs under `docs/` when operating procedures or staged helper behavior changes.
+- Update the nearest affected owner doc rather than duplicating the same detail across multiple docs.
+- Do not update `docs/plans/` unless the user explicitly asks to revise plan or history documents.
 
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->

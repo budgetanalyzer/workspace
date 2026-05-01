@@ -58,6 +58,8 @@ Claude Code, Gemini CLI, and Codex CLI are pre-installed in the image build defi
 
 Add extra system packages there as well rather than in `.devcontainer/devcontainer.json`. For example, `pdftotext` comes from the `poppler-utils` package.
 
+Playwright is also pre-installed, along with the Chromium browser binary and its system dependencies. The browser cache lives at `/opt/playwright-browsers`. A built container can verify that Chromium is present with `playwright install --list`.
+
 **Auth:**
 - **Claude** — already authenticated via `~/.anthropic` volume mount
 - **Codex** — `export OPENAI_API_KEY` or run `codex` to sign in
@@ -65,27 +67,17 @@ Add extra system packages there as well rather than in `.devcontainer/devcontain
 
 ### Claude Code Launch Options
 
-**Standard usage** — just run `claude` or use the convenience aliases:
-
-| Command | What it does |
-|---------|-------------|
-| `claude` | Standard launch with Anthropic's default system prompt |
-| `dangerous` | Alias: `--dangerously-skip-permissions` |
-| `high` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=high` |
-| `max` | Alias: above + `CLAUDE_CODE_EFFORT_LEVEL=max` |
+**Standard usage** — run `claude` for the normal path. Convenience aliases such as `dangerous`, `high`, and `max` are also installed if you want the same launch with more aggressive permissions and effort defaults.
 
 All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
 
-**With traffic inspection:**
+If you want traffic inspection, start with `claude-with-proxy`. If you specifically want prompt replacement as well, use `claude-with-custom-system-prompt`.
 
-| Command | What it does |
-|---------|-------------|
-| `claude-with-proxy` | Launch Claude Code with mitmproxy intercepting all API traffic. Inspection only — no prompt modification. |
-| `claude-with-custom-system-prompt` | Same as above, plus replaces Anthropic's ~24k-token default system prompt with a lean ~500-token version via a mitmproxy addon. |
+If you are not sure what launchers exist, take a look at [`ai-agent-sandbox/scripts/`](/workspace/workspace/ai-agent-sandbox/scripts/). The proxy launchers follow readable names such as `claude-with-proxy`, `codex-with-proxy`, and `codex-*-with-proxy`.
 
 Request dumps (modified request bodies) are written to `/tmp/claude-proxy-dumps/` with CWD and timestamp in filenames for debugging.
 
-Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon is used to swap the prompt in-flight as a workaround. See [AGENTS.md](AGENTS.md#custom-system-prompt-optional) for details.
+Using `claude-with-custom-system-prompt` is **not required** for normal development. It exists because Anthropic's default system prompt includes verbose per-tool elaboration and generic advice that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon is used to swap the prompt in-flight as a workaround. See [AGENTS.md](AGENTS.md) for the operating rules and source-of-truth pointers around that setup.
 
 **Disabling specific tools:**
 
@@ -97,14 +89,110 @@ The `--disallowedTools` flag disables tools at launch. Disabling the Agent (suba
 
 ### HTTPS Traffic Inspection
 
-mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`). Scripts available in PATH:
-
-- `start-proxy` — start mitmweb (proxy :9080, UI :9081)
-- `mitmflows` — list captured flows as a table
-- `mitmflow-detail <id>` — full request/response with SSE reconstruction
-- `mitmflow-body <id> [request|response]` — raw body extraction
+mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`). The day-to-day commands are `start-proxy`, `mitmflows`, `mitmflow-body`, and `mitmflow-detail`. For the full set of launchers and wrappers, browse [`ai-agent-sandbox/scripts/`](/workspace/workspace/ai-agent-sandbox/scripts/).
 
 Note: Claude Code is installed via npm (not the native binary) because the native Bun binary ignores `HTTP_PROXY` for streaming — see [anthropics/claude-code#14165](https://github.com/anthropics/claude-code/issues/14165).
+
+### Staged Mitmproxy Improvements
+
+Because `ai-agent-sandbox/` is mounted read-only inside the devcontainer, mitmproxy helper changes are staged under [`tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`](/workspace/workspace/tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/) until a human copies them into `ai-agent-sandbox/` from a writable context and rebuilds the container.
+
+The staged tree is the place to work if you are iterating on mitmproxy helpers, proxy launchers, or the shared `mitmflow-render.py` renderer before rollout. Inspect that directory directly instead of relying on this README to enumerate every staged script or launcher variant.
+
+The staged helpers add provider filtering, richer body/detail rendering, export support under [`tmp/mitmproxy-flows/`](/workspace/workspace/tmp/mitmproxy-flows/), and several proxy launcher wrappers for Codex alongside Claude.
+
+When validating staged Python helpers from `tmp/`, direct bytecode into the workspace instead of `ai-agent-sandbox/__pycache__`, for example:
+
+```bash
+PYTHONPYCACHEPREFIX=/workspace/workspace/tmp/pycache python3 -m py_compile \
+  tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/scripts/mitmflow-render.py
+```
+
+#### Usage
+
+Until those staged files are copied into `ai-agent-sandbox/` and the devcontainer is rebuilt, run the staged commands directly from:
+
+[`tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/scripts/`](/workspace/workspace/tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/scripts/)
+
+After rollout and rebuild, the same commands are available in `PATH` without the `tmp/...` prefix.
+
+**Typical workflow**
+
+1. Start mitmproxy or launch a CLI through the proxy.
+2. Make one Claude or Codex request.
+3. List recent flows to get the short ID.
+4. Inspect the request body, streamed events, WebSocket messages, or summary view.
+5. Export a Markdown report when you need something shareable.
+
+**Examples**
+
+Start the proxy directly:
+
+```bash
+start-proxy
+```
+
+Launch Claude or Codex through the proxy:
+
+```bash
+claude-with-proxy
+codex-with-proxy
+```
+
+If you need a high-effort, pinned, or otherwise specialized launcher, browse `ai-agent-sandbox/scripts/` and pick the variant that matches what you are doing.
+
+Codex model selection is also available directly on the CLI with `-m/--model`, so a generic launcher is often enough:
+
+```bash
+codex-with-proxy --model gpt-5.4
+codex-with-proxy --model gpt-5.4-mini
+```
+
+List recent flows:
+
+```bash
+mitmflows --limit 20
+mitmflows --provider anthropic
+mitmflows --provider openai --json
+mitmflows --host openai --path /v1/responses
+```
+
+Inspect a request, response, or WebSocket message payload:
+
+```bash
+mitmflow-body <id> request --json
+mitmflow-body <id> response
+mitmflow-body <id> response --events
+mitmflow-body <id> response --raw
+mitmflow-body <id> messages --json
+mitmflow-body <id> messages --json --dedupe
+```
+
+Use `request` and `response` for normal HTTP and SSE inspection. Use `messages` only for WebSocket-backed flows. In practice that is currently most useful for OpenAI traffic; Anthropic traffic is usually better inspected with `response --events` or `response --json`.
+
+`--dedupe` is only supported for OpenAI `messages` output and is rejected with `--raw` so the transport-faithful view remains lossless.
+
+Render a summary or full diagnostic view:
+
+```bash
+mitmflow-detail <id>
+mitmflow-detail <id> --full
+mitmflow-detail <id> --raw
+mitmflow-detail <id> --md
+```
+
+Exports default to:
+
+[`tmp/mitmproxy-flows/`](/workspace/workspace/tmp/mitmproxy-flows/)
+
+So, for example:
+
+```bash
+mitmflow-body <id> request --json --save anthropic-request.json
+mitmflow-detail <id> --md
+```
+
+will write files under `tmp/mitmproxy-flows/` unless you pass an absolute path inside the workspace.
 
 ### Save Conversation Skill
 
