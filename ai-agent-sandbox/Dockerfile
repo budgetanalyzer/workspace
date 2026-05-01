@@ -161,7 +161,6 @@ RUN mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} \
 RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
 # Create config directories for the container user
-RUN mkdir -p /home/$USERNAME/.anthropic && chown -R $USER_UID:$USER_GID /home/$USERNAME/.anthropic
 RUN mkdir -p /home/$USERNAME/.codex && chown -R $USER_UID:$USER_GID /home/$USERNAME/.codex
 RUN mkdir -p /home/$USERNAME/.gemini && chown -R $USER_UID:$USER_GID /home/$USERNAME/.gemini
 

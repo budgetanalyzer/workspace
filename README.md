@@ -61,8 +61,8 @@ Add extra system packages there as well rather than in `.devcontainer/devcontain
 Playwright is also pre-installed, along with the Chromium browser binary and its system dependencies. The browser cache lives at `/opt/playwright-browsers`. A built container can verify that Chromium is present with `playwright install --list`.
 
 **Auth:**
-- **Claude** — already authenticated via `~/.anthropic` volume mount
-- **Codex** — `export OPENAI_API_KEY` or run `codex` to sign in
+- **Claude** — run `claude auth login`
+- **Codex** — `export OPENAI_API_KEY` or run `codex login`
 - **Gemini** — `export GEMINI_API_KEY` or run `gemini` to sign in
 
 ### Claude Code Launch Options
