@@ -46,8 +46,6 @@ This repo is intentionally minimal — just the front door.
 - System orchestration: [orchestration](https://github.com/budgetanalyzer/orchestration)
 - Individual services: see respective repos
 
-## [Design Decisions](docs/design-decisions.md)
-
 ## License
 
 MIT
