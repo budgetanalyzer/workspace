@@ -178,19 +178,12 @@ COPY scripts/mitmflow-detail /usr/local/bin/mitmflow-detail
 COPY scripts/mitmflow-body /usr/local/bin/mitmflow-body
 COPY scripts/mitmflow-render.py /usr/local/bin/mitmflow-render.py
 COPY scripts/codex-with-proxy.sh /usr/local/bin/codex-with-proxy
-COPY scripts/codex-high-with-proxy.sh /usr/local/bin/codex-high-with-proxy
 COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
-COPY scripts/codex-54-with-proxy.sh /usr/local/bin/codex-54-with-proxy
-COPY scripts/codex-54-mini-with-proxy.sh /usr/local/bin/codex-54-mini-with-proxy
-COPY scripts/codex-53-with-proxy.sh /usr/local/bin/codex-53-with-proxy
-COPY scripts/codex-mini-with-proxy.sh /usr/local/bin/codex-mini-with-proxy
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
-    /usr/local/bin/codex-with-proxy /usr/local/bin/codex-high-with-proxy /usr/local/bin/codex-max-with-proxy \
-    /usr/local/bin/codex-54-with-proxy /usr/local/bin/codex-54-mini-with-proxy \
-    /usr/local/bin/codex-53-with-proxy /usr/local/bin/codex-mini-with-proxy
+    /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy
 
 # Switch to non-root user
 USER $USERNAME
