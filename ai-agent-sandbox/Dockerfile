@@ -4,7 +4,7 @@ FROM docker.io/library/ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337
 ARG TARGETARCH
 ARG NODE_MAJOR=20
 ARG HELM_VERSION=v3.20.1
-ARG TILT_VERSION=0.37.0
+ARG TILT_VERSION=0.37.3
 ARG MITMPROXY_VERSION=12.2.2
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -48,15 +48,16 @@ RUN mkdir -p /etc/apt/keyrings \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Azul Zulu OpenJDK 24
+# Install Azul Zulu OpenJDK 25
 RUN apt-get update && apt-get install -y gnupg ca-certificates curl \
     && curl -s https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" > /etc/apt/sources.list.d/zulu.list \
     && apt-get update \
-    && apt-get install -y zulu24-jdk \
+    && apt-get install -y zulu25-jdk \
+    && ln -sfn "/usr/lib/jvm/zulu25-ca-${TARGETARCH}" /usr/lib/jvm/zulu25 \
     && rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/zulu24
+ENV JAVA_HOME=/usr/lib/jvm/zulu25
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # Install Maven via apt (more reliable than manual download)
@@ -71,8 +72,8 @@ RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 
 # Install kubectl
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' > /etc/apt/sources.list.d/kubernetes.list \
+RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' > /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
     && apt-get install -y kubectl \
     && rm -rf /var/lib/apt/lists/*
@@ -83,7 +84,7 @@ RUN set -eux; \
         amd64|arm64) : ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-${TARGETARCH}" \
+    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-${TARGETARCH}" \
     && chmod +x /usr/local/bin/kind
 
 # Install helm
@@ -103,8 +104,8 @@ RUN set -eux; \
 # Install tilt
 RUN set -eux; \
     case "${TARGETARCH}" in \
-        amd64) tilt_arch='x86_64'; tilt_sha256='c2c7d3649233f01bc5d230b66b8ccd332401f348dc22b863fcf7244da6970ff1' ;; \
-        arm64) tilt_arch='arm64'; tilt_sha256='84457137539d8e4be6e90e9afecf8ef692ad3f8c19e9bf3355f3fbf4f8dce55f' ;; \
+        amd64) tilt_arch='x86_64'; tilt_sha256='e90bc6cf70882bc7579d8174a27cab2de0284612ec7339e4b32f669cd5de4e5c' ;; \
+        arm64) tilt_arch='arm64'; tilt_sha256='826f48198f368ef5edb684e9ae4c87ff76eca84c904f72b2376b29b93bffc019' ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fsSLo /tmp/tilt.tar.gz "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.${tilt_arch}.tar.gz"; \
