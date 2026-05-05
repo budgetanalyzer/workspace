@@ -3,6 +3,7 @@ FROM docker.io/library/ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337
 
 ARG TARGETARCH
 ARG NODE_MAJOR=20
+ARG KUBECTL_VERSION=v1.35.4
 ARG HELM_VERSION=v3.20.1
 ARG TILT_VERSION=0.37.3
 ARG MITMPROXY_VERSION=12.2.2
@@ -72,11 +73,15 @@ RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 
 # Install kubectl
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' > /etc/apt/sources.list.d/kubernetes.list \
-    && apt-get update \
-    && apt-get install -y kubectl \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) kubectl_sha256='b529430df69a688fd61b64ad2299edb5fd71cb58be2a4779dba624c7d3510efd' ;; \
+        arm64) kubectl_sha256='6a5a4cc4e396d7626a7a693a3044b51c75520f81db30fe6816c2554e53be336f' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl"; \
+    echo "${kubectl_sha256}  /usr/local/bin/kubectl" | sha256sum -c -; \
+    chmod +x /usr/local/bin/kubectl
 
 # Install kind
 RUN set -eux; \
