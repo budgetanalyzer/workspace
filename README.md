@@ -30,6 +30,7 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - **Claude Code, Gemini CLI, Codex CLI** — pre-installed with convenience aliases and proxy launchers ([details](docs/launch-options.md))
 - **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
 - **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
+- **actionlint** — GitHub Actions workflow linting available on `PATH`
 
 ## What's Here
 

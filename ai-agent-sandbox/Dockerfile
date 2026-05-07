@@ -1,11 +1,14 @@
-# Use Ubuntu 24.04 as base image (explicit registry reference)
-FROM docker.io/library/ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
+# Use the pinned Ubuntu 24.04 digest. Keep this digest-only because the
+# Dev Containers image resolver rejects tag+digest base references.
+FROM docker.io/library/ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
 
 ARG TARGETARCH
 ARG NODE_MAJOR=20
+ARG KUBECTL_VERSION=v1.35.4
 ARG HELM_VERSION=v3.20.1
-ARG TILT_VERSION=0.37.0
+ARG TILT_VERSION=0.37.3
 ARG MITMPROXY_VERSION=12.2.2
+ARG ACTIONLINT_VERSION=1.7.12
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -48,15 +51,16 @@ RUN mkdir -p /etc/apt/keyrings \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Azul Zulu OpenJDK 24
+# Install Azul Zulu OpenJDK 25
 RUN apt-get update && apt-get install -y gnupg ca-certificates curl \
     && curl -s https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" > /etc/apt/sources.list.d/zulu.list \
     && apt-get update \
-    && apt-get install -y zulu24-jdk \
+    && apt-get install -y zulu25-jdk \
+    && ln -sfn "/usr/lib/jvm/zulu25-ca-${TARGETARCH}" /usr/lib/jvm/zulu25 \
     && rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/zulu24
+ENV JAVA_HOME=/usr/lib/jvm/zulu25
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # Install Maven via apt (more reliable than manual download)
@@ -70,12 +74,29 @@ ENV PATH=$MAVEN_HOME/bin:$PATH
 RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH=/usr/local/go/bin:$PATH
 
+# Install actionlint
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) actionlint_sha256='8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' ;; \
+        arm64) actionlint_sha256='325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /tmp/actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${TARGETARCH}.tar.gz"; \
+    echo "${actionlint_sha256}  /tmp/actionlint.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint; \
+    chmod +x /usr/local/bin/actionlint; \
+    rm -f /tmp/actionlint.tar.gz
+
 # Install kubectl
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' > /etc/apt/sources.list.d/kubernetes.list \
-    && apt-get update \
-    && apt-get install -y kubectl \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) kubectl_sha256='b529430df69a688fd61b64ad2299edb5fd71cb58be2a4779dba624c7d3510efd' ;; \
+        arm64) kubectl_sha256='6a5a4cc4e396d7626a7a693a3044b51c75520f81db30fe6816c2554e53be336f' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl"; \
+    echo "${kubectl_sha256}  /usr/local/bin/kubectl" | sha256sum -c -; \
+    chmod +x /usr/local/bin/kubectl
 
 # Install kind
 RUN set -eux; \
@@ -83,7 +104,7 @@ RUN set -eux; \
         amd64|arm64) : ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-${TARGETARCH}" \
+    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-${TARGETARCH}" \
     && chmod +x /usr/local/bin/kind
 
 # Install helm
@@ -103,8 +124,8 @@ RUN set -eux; \
 # Install tilt
 RUN set -eux; \
     case "${TARGETARCH}" in \
-        amd64) tilt_arch='x86_64'; tilt_sha256='c2c7d3649233f01bc5d230b66b8ccd332401f348dc22b863fcf7244da6970ff1' ;; \
-        arm64) tilt_arch='arm64'; tilt_sha256='84457137539d8e4be6e90e9afecf8ef692ad3f8c19e9bf3355f3fbf4f8dce55f' ;; \
+        amd64) tilt_arch='x86_64'; tilt_sha256='e90bc6cf70882bc7579d8174a27cab2de0284612ec7339e4b32f669cd5de4e5c' ;; \
+        arm64) tilt_arch='arm64'; tilt_sha256='826f48198f368ef5edb684e9ae4c87ff76eca84c904f72b2376b29b93bffc019' ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     curl -fsSLo /tmp/tilt.tar.gz "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.${tilt_arch}.tar.gz"; \
@@ -177,19 +198,12 @@ COPY scripts/mitmflow-detail /usr/local/bin/mitmflow-detail
 COPY scripts/mitmflow-body /usr/local/bin/mitmflow-body
 COPY scripts/mitmflow-render.py /usr/local/bin/mitmflow-render.py
 COPY scripts/codex-with-proxy.sh /usr/local/bin/codex-with-proxy
-COPY scripts/codex-high-with-proxy.sh /usr/local/bin/codex-high-with-proxy
 COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
-COPY scripts/codex-54-with-proxy.sh /usr/local/bin/codex-54-with-proxy
-COPY scripts/codex-54-mini-with-proxy.sh /usr/local/bin/codex-54-mini-with-proxy
-COPY scripts/codex-53-with-proxy.sh /usr/local/bin/codex-53-with-proxy
-COPY scripts/codex-mini-with-proxy.sh /usr/local/bin/codex-mini-with-proxy
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
-    /usr/local/bin/codex-with-proxy /usr/local/bin/codex-high-with-proxy /usr/local/bin/codex-max-with-proxy \
-    /usr/local/bin/codex-54-with-proxy /usr/local/bin/codex-54-mini-with-proxy \
-    /usr/local/bin/codex-53-with-proxy /usr/local/bin/codex-mini-with-proxy
+    /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy
 
 # Switch to non-root user
 USER $USERNAME
