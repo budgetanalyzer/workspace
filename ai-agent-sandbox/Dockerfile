@@ -1,5 +1,6 @@
-# Use Ubuntu 24.04 as base image (explicit registry reference)
-FROM docker.io/library/ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
+# Use the pinned Ubuntu 24.04 digest. Keep this digest-only because the
+# Dev Containers image resolver rejects tag+digest base references.
+FROM docker.io/library/ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
 
 ARG TARGETARCH
 ARG NODE_MAJOR=20
@@ -7,6 +8,7 @@ ARG KUBECTL_VERSION=v1.35.4
 ARG HELM_VERSION=v3.20.1
 ARG TILT_VERSION=0.37.3
 ARG MITMPROXY_VERSION=12.2.2
+ARG ACTIONLINT_VERSION=1.7.12
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -71,6 +73,19 @@ ENV PATH=$MAVEN_HOME/bin:$PATH
 # Install Go
 RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH=/usr/local/go/bin:$PATH
+
+# Install actionlint
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) actionlint_sha256='8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' ;; \
+        arm64) actionlint_sha256='325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6' ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSLo /tmp/actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${TARGETARCH}.tar.gz"; \
+    echo "${actionlint_sha256}  /tmp/actionlint.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint; \
+    chmod +x /usr/local/bin/actionlint; \
+    rm -f /tmp/actionlint.tar.gz
 
 # Install kubectl
 RUN set -eux; \

@@ -45,7 +45,7 @@ for repo in "workspace" "${REPOS[@]}"; do
   if [ -d "/workspace/$repo" ]; then
     current_origin=$(git -C "/workspace/$repo" remote get-url origin 2>/dev/null || echo "")
     if [[ "$current_origin" == https://github.com/* ]]; then
-      ssh_origin=$(echo "$current_origin" | sed 's|https://github.com/|git@github.com:|')
+      ssh_origin=${current_origin/https:\/\/github.com\//git@github.com:}
       git -C "/workspace/$repo" remote set-url origin "$ssh_origin"
       echo "✓ $repo: converted to SSH"
     elif [[ "$current_origin" == git@github.com:* ]]; then
@@ -103,6 +103,12 @@ if command -v mvn &> /dev/null; then
     echo "✓ Maven $(mvn --version 2>&1 | head -n 1)"
 else
     echo "✗ Maven not available"
+fi
+
+if command -v actionlint &> /dev/null; then
+    echo "✓ actionlint $(actionlint --version)"
+else
+    echo "✗ actionlint not available"
 fi
 
 # =======================================================
