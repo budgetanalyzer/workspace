@@ -14,7 +14,7 @@ claude-with-proxy
 codex-with-proxy
 ```
 
-`codex-with-proxy` starts mitmproxy and then delegates to `codex-lean`, so it keeps the same disabled project-doc, web-search, MCP, subagent, connector, and UI defaults as normal Codex launches.
+`codex-with-proxy` starts mitmproxy and then delegates to `codex-lean`, so it keeps the same disabled project-doc, web-search, MCP, subagent, connector, and UI defaults as direct `codex-lean` launches.
 
 Codex model selection still works directly on the CLI:
 

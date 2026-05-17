@@ -15,7 +15,6 @@ alias high45='env MAX_THINKING_TOKENS=32000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLA
 alias max45='env MAX_THINKING_TOKENS=128000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
 
 # -- Codex CLI aliases --------------------------------------------------------
-alias codex="codex-lean"
 alias codex-dangerous="codex-lean"
 alias codex-high="env CODEX_REASONING_EFFORT=high codex-lean"
 alias codex-max="env CODEX_REASONING_EFFORT=xhigh codex-lean"

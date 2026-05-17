@@ -14,7 +14,7 @@ All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLA
 
 ## Codex Lean Usage
 
-The sandbox installs `codex-lean` and aliases `codex` to it. The wrapper always launches Codex with the lean sandbox defaults from `ai-agent-sandbox/codex-config.toml`:
+The sandbox installs `codex-lean` but leaves `codex` unaliased so the upstream Codex CLI can still run with its default behavior. The lean wrapper passes its defaults as command-line `-c` overrides on each launch:
 
 - no project instruction loading (`project_doc_max_bytes = 0`)
 - no web search
@@ -23,13 +23,15 @@ The sandbox installs `codex-lean` and aliases `codex` to it. The wrapper always 
 - no browser/computer/image tools
 - no hooks or plugin hooks
 - no TUI notifications, animations, status line, or terminal title updates
+- visible agent reasoning (`hide_agent_reasoning = false`)
 - `danger-full-access` with approval prompts disabled, relying on the external container sandbox
+
+Codex also supports persistent settings in `~/.codex/config.toml`. Those settings apply to every plain `codex` invocation, and command-line `-c key=value` options override them for that invocation. This sandbox does not install a Codex config file because doing so would also change vanilla `codex`; lean behavior lives in `codex-lean` and the aliases below.
 
 Convenience aliases:
 
 | Alias | Effect |
 |-------|--------|
-| `codex` | `codex-lean` |
 | `codex-dangerous` | `codex-lean` |
 | `codex-high` | `codex-lean` with high reasoning effort |
 | `codex-max` | `codex-lean` with extra-high reasoning effort |
@@ -62,5 +64,5 @@ Disabling the Agent (subagent) tool is useful in small microservice repos where 
 ## Auth
 
 - **Claude** — `claude auth login`
-- **Codex** — `export OPENAI_API_KEY` or `codex login`; normal launches use `codex-lean`
+- **Codex** — `export OPENAI_API_KEY` or `codex login`; use `codex` for upstream defaults and `codex-lean` or Codex aliases for lean defaults
 - **Gemini** — `export GEMINI_API_KEY` or run `gemini` to sign in

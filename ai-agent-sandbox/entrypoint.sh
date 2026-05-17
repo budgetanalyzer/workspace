@@ -181,23 +181,13 @@ else
     echo "  No settings overlay found"
 fi
 
-# =======================================================
-# CODEX LEAN CONFIGURATION
-# =======================================================
-
-echo ""
-echo "--- Applying Codex lean configuration ---"
-
-CODEX_SOURCE_CONFIG="/workspace/workspace/ai-agent-sandbox/codex-config.toml"
 CODEX_DIR="/home/vscode/.codex"
 CODEX_CONFIG_FILE="$CODEX_DIR/config.toml"
 
 mkdir -p "$CODEX_DIR"
-if [ -f "$CODEX_SOURCE_CONFIG" ]; then
-    cp "$CODEX_SOURCE_CONFIG" "$CODEX_CONFIG_FILE"
-    echo "✓ Codex lean config installed"
-else
-    echo "  No Codex lean config found"
+if [ -f "$CODEX_CONFIG_FILE" ] && grep -Fq "Lean default Codex configuration for the sandbox image" "$CODEX_CONFIG_FILE"; then
+    rm "$CODEX_CONFIG_FILE"
+    echo "✓ Removed old generated Codex lean config so plain codex uses upstream defaults"
 fi
 
 # =======================================================
@@ -209,11 +199,11 @@ echo "AI Coding Sandbox"
 echo "======================================"
 echo ""
 echo "CLIs:     claude | codex | gemini"
-echo "Context:  Claude/Gemini read repo instructions. Codex aliases use lean defaults."
+echo "Context:  Claude/Gemini read repo instructions. Codex aliases use codex-lean defaults."
 echo ""
 echo "Auth:"
 echo "  Claude — run 'claude auth login'"
-echo "  Codex  — export OPENAI_API_KEY or run 'codex login' (then use codex/codex-lean)"
+echo "  Codex  — export OPENAI_API_KEY or run 'codex login' (use codex for upstream defaults, codex-lean for lean defaults)"
 echo "  Gemini — export GEMINI_API_KEY or run 'gemini' to sign in"
 echo ""
 

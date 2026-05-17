@@ -181,10 +181,9 @@ RUN mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} \
 # Set up working directory with proper ownership
 RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
-# Create config directories for the container user
+# Create auth/config directories for the container user. Codex lean defaults
+# are passed by the codex-lean launcher so plain codex keeps upstream defaults.
 RUN mkdir -p /home/$USERNAME/.codex && chown -R $USER_UID:$USER_GID /home/$USERNAME/.codex
-COPY codex-config.toml /home/$USERNAME/.codex/config.toml
-RUN chown $USER_UID:$USER_GID /home/$USERNAME/.codex/config.toml
 RUN mkdir -p /home/$USERNAME/.gemini && chown -R $USER_UID:$USER_GID /home/$USERNAME/.gemini
 
 # Copy entrypoint and helper scripts
