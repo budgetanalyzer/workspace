@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch mitmproxy + Codex CLI in one shot
+# Launch mitmproxy + Codex lean CLI in one shot
 set -euo pipefail
 
 PROXY_PORT="${PROXY_PORT:-9080}"
@@ -8,7 +8,6 @@ WEB_PORT=$((PROXY_PORT + 1))
 export HTTPS_PROXY="http://127.0.0.1:${PROXY_PORT}"
 export HTTP_PROXY="http://127.0.0.1:${PROXY_PORT}"
 export NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-$HOME/.mitmproxy/mitmproxy-ca-cert.pem}"
-export CODEX_DISABLE_PROJECT_DOC=1
 
 PROXY_OWNED=false
 
@@ -43,9 +42,4 @@ fi
 
 echo "---"
 
-CMD=(codex --dangerously-bypass-approvals-and-sandbox)
-if [ -n "${CODEX_MODEL:-}" ]; then
-    CMD+=(--model "$CODEX_MODEL")
-fi
-
-command "${CMD[@]}" "$@"
+command codex-lean "$@"

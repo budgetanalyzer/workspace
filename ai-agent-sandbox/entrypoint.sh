@@ -74,6 +74,12 @@ else
     echo "✗ Codex CLI not available"
 fi
 
+if command -v codex-lean &> /dev/null; then
+    echo "✓ Codex lean launcher installed"
+else
+    echo "✗ Codex lean launcher not available"
+fi
+
 if command -v gemini &> /dev/null; then
     echo "✓ Gemini CLI $(gemini --version 2>&1 | head -n 1 || echo 'installed')"
 else
@@ -176,6 +182,25 @@ else
 fi
 
 # =======================================================
+# CODEX LEAN CONFIGURATION
+# =======================================================
+
+echo ""
+echo "--- Applying Codex lean configuration ---"
+
+CODEX_SOURCE_CONFIG="/workspace/workspace/ai-agent-sandbox/codex-config.toml"
+CODEX_DIR="/home/vscode/.codex"
+CODEX_CONFIG_FILE="$CODEX_DIR/config.toml"
+
+mkdir -p "$CODEX_DIR"
+if [ -f "$CODEX_SOURCE_CONFIG" ]; then
+    cp "$CODEX_SOURCE_CONFIG" "$CODEX_CONFIG_FILE"
+    echo "✓ Codex lean config installed"
+else
+    echo "  No Codex lean config found"
+fi
+
+# =======================================================
 # BANNER
 # =======================================================
 
@@ -184,11 +209,11 @@ echo "AI Coding Sandbox"
 echo "======================================"
 echo ""
 echo "CLIs:     claude | codex | gemini"
-echo "Context:  All three read AGENTS.md. Claude Code also reads CLAUDE.md."
+echo "Context:  Claude/Gemini read repo instructions. Codex aliases use lean defaults."
 echo ""
 echo "Auth:"
 echo "  Claude — run 'claude auth login'"
-echo "  Codex  — export OPENAI_API_KEY or run 'codex login'"
+echo "  Codex  — export OPENAI_API_KEY or run 'codex login' (then use codex/codex-lean)"
 echo "  Gemini — export GEMINI_API_KEY or run 'gemini' to sign in"
 echo ""
 

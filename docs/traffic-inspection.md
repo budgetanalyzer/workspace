@@ -14,11 +14,14 @@ claude-with-proxy
 codex-with-proxy
 ```
 
-Codex model selection works directly on the CLI:
+`codex-with-proxy` starts mitmproxy and then delegates to `codex-lean`, so it keeps the same disabled project-doc, web-search, MCP, subagent, connector, and UI defaults as normal Codex launches.
+
+Codex model selection still works directly on the CLI:
 
 ```bash
 codex-with-proxy --model gpt-5.4
 codex-with-proxy --model gpt-5.4-mini
+CODEX_REASONING_EFFORT=xhigh codex-with-proxy
 ```
 
 ## Inspecting Flows
