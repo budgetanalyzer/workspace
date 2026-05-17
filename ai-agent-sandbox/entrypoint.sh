@@ -138,6 +138,9 @@ fi
 echo ""
 echo "--- Applying Claude Code settings ---"
 
+SANDBOX_SCRIPTS="/workspace/workspace/ai-agent-sandbox/scripts"
+CLAUDE_DIR="/home/vscode/.claude"
+SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 OVERLAY_FILE="/workspace/workspace/ai-agent-sandbox/settings-overlay.json"
 if [ -f "$OVERLAY_FILE" ]; then
     if [ -f "$SETTINGS_FILE" ]; then
