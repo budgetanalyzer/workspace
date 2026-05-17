@@ -14,9 +14,10 @@ alias dangerous45='env CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_
 alias high45='env MAX_THINKING_TOKENS=32000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
 alias max45='env MAX_THINKING_TOKENS=128000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
 
-# -- Codex CLI aliases (no --system-prompt support) ---------------------------
-alias codex-dangerous="env CODEX_DISABLE_PROJECT_DOC=1 codex --dangerously-bypass-approvals-and-sandbox"
-alias codex-high="env CODEX_DISABLE_PROJECT_DOC=1 codex --dangerously-bypass-approvals-and-sandbox -c model_reasoning_effort=high"
-alias codex-max="env CODEX_DISABLE_PROJECT_DOC=1 codex --dangerously-bypass-approvals-and-sandbox -c model_reasoning_effort=xhigh"
+# -- Codex CLI aliases --------------------------------------------------------
+alias codex-dangerous="codex-lean"
+alias codex-high="env CODEX_REASONING_EFFORT=high codex-lean"
+alias codex-max="env CODEX_REASONING_EFFORT=xhigh codex-lean"
 alias codex-proxy="codex-with-proxy"
+alias codex-high-proxy="env CODEX_REASONING_EFFORT=high codex-with-proxy"
 alias codex-max-proxy="codex-max-with-proxy"

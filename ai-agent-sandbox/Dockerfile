@@ -181,7 +181,8 @@ RUN mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} \
 # Set up working directory with proper ownership
 RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
-# Create config directories for the container user
+# Create auth/config directories for the container user. Codex lean defaults
+# are passed by the codex-lean launcher so plain codex keeps upstream defaults.
 RUN mkdir -p /home/$USERNAME/.codex && chown -R $USER_UID:$USER_GID /home/$USERNAME/.codex
 RUN mkdir -p /home/$USERNAME/.gemini && chown -R $USER_UID:$USER_GID /home/$USERNAME/.gemini
 
@@ -197,13 +198,14 @@ COPY scripts/mitmflows /usr/local/bin/mitmflows
 COPY scripts/mitmflow-detail /usr/local/bin/mitmflow-detail
 COPY scripts/mitmflow-body /usr/local/bin/mitmflow-body
 COPY scripts/mitmflow-render.py /usr/local/bin/mitmflow-render.py
+COPY scripts/codex-lean.sh /usr/local/bin/codex-lean
 COPY scripts/codex-with-proxy.sh /usr/local/bin/codex-with-proxy
 COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
-    /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy
+    /usr/local/bin/codex-lean /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy
 
 # Switch to non-root user
 USER $USERNAME

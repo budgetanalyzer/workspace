@@ -74,6 +74,12 @@ else
     echo "✗ Codex CLI not available"
 fi
 
+if command -v codex-lean &> /dev/null; then
+    echo "✓ Codex lean launcher installed"
+else
+    echo "✗ Codex lean launcher not available"
+fi
+
 if command -v gemini &> /dev/null; then
     echo "✓ Gemini CLI $(gemini --version 2>&1 | head -n 1 || echo 'installed')"
 else
@@ -126,35 +132,6 @@ else
 fi
 
 # =======================================================
-# CLAUDE CODE STATUSLINE
-# =======================================================
-
-echo ""
-echo "--- Installing Claude Code statusline ---"
-SANDBOX_SCRIPTS="/workspace/workspace/ai-agent-sandbox/scripts"
-CLAUDE_DIR="/home/vscode/.claude"
-SETTINGS_FILE="$CLAUDE_DIR/settings.json"
-
-if [ -f "$SANDBOX_SCRIPTS/statusline-command.sh" ]; then
-    cp "$SANDBOX_SCRIPTS/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
-    chmod +x "$CLAUDE_DIR/statusline-command.sh"
-    echo "✓ Statusline script installed"
-
-    # Merge statusLine config into settings.json without clobbering other settings
-    STATUSLINE_CONFIG='{"statusLine":{"type":"command","command":"/home/vscode/.claude/statusline-command.sh"}}'
-    if [ -f "$SETTINGS_FILE" ]; then
-        jq -s '.[0] * .[1]' "$SETTINGS_FILE" <(echo "$STATUSLINE_CONFIG") > "${SETTINGS_FILE}.tmp" \
-            && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-        echo "✓ Statusline config merged into settings.json"
-    else
-        echo "$STATUSLINE_CONFIG" | jq '.' > "$SETTINGS_FILE"
-        echo "✓ Statusline config written to new settings.json"
-    fi
-else
-    echo "  No statusline script found in sandbox"
-fi
-
-# =======================================================
 # CLAUDE CODE SETTINGS
 # =======================================================
 
@@ -184,11 +161,11 @@ echo "AI Coding Sandbox"
 echo "======================================"
 echo ""
 echo "CLIs:     claude | codex | gemini"
-echo "Context:  All three read AGENTS.md. Claude Code also reads CLAUDE.md."
+echo "Context:  Claude/Gemini read repo instructions. Codex aliases load AGENTS.md via project docs."
 echo ""
 echo "Auth:"
 echo "  Claude — run 'claude auth login'"
-echo "  Codex  — export OPENAI_API_KEY or run 'codex login'"
+echo "  Codex  — export OPENAI_API_KEY or run 'codex login' (use codex for upstream defaults, codex-lean for lean defaults)"
 echo "  Gemini — export GEMINI_API_KEY or run 'gemini' to sign in"
 echo ""
 
