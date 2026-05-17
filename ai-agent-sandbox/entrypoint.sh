@@ -131,7 +131,6 @@ else
     echo "  No skills directory found"
 fi
 
-
 # =======================================================
 # CLAUDE CODE SETTINGS
 # =======================================================
@@ -153,7 +152,6 @@ else
     echo "  No settings overlay found"
 fi
 
-
 # =======================================================
 # BANNER
 # =======================================================
@@ -163,7 +161,7 @@ echo "AI Coding Sandbox"
 echo "======================================"
 echo ""
 echo "CLIs:     claude | codex | gemini"
-echo "Context:  Claude/Gemini read repo instructions. Codex aliases use codex-lean defaults."
+echo "Context:  Claude/Gemini read repo instructions. Codex aliases load AGENTS.md via project docs."
 echo ""
 echo "Auth:"
 echo "  Claude — run 'claude auth login'"

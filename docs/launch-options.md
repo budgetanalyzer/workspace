@@ -16,7 +16,7 @@ All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLA
 
 The sandbox installs `codex-lean` but leaves `codex` unaliased so the upstream Codex CLI can still run with its default behavior. The lean wrapper passes its defaults as command-line `-c` overrides on each launch:
 
-- no project instruction loading (`project_doc_max_bytes = 0`)
+- project instruction loading remains enabled (`AGENTS.md` via Codex project docs)
 - no web search
 - no MCP app/connectors
 - no subagents
@@ -26,7 +26,7 @@ The sandbox installs `codex-lean` but leaves `codex` unaliased so the upstream C
 - visible agent reasoning (`hide_agent_reasoning = false`)
 - `danger-full-access` with approval prompts disabled, relying on the external container sandbox
 
-Codex also supports persistent settings in `~/.codex/config.toml`. Those settings apply to every plain `codex` invocation, and command-line `-c key=value` options override them for that invocation. This sandbox does not install a Codex config file because doing so would also change vanilla `codex`; lean behavior lives in `codex-lean` and the aliases below.
+Codex also supports persistent settings in `~/.codex/config.toml`. Those settings apply to every plain `codex` invocation, and command-line `-c key=value` options override them for that invocation. This sandbox does not install a Codex config file because doing so would also change vanilla `codex`; lean behavior lives in `codex-lean` and the aliases below. The lean launcher does not override `project_doc_max_bytes`, so applicable `AGENTS.md` files are loaded using Codex's upstream project-doc defaults.
 
 Convenience aliases:
 

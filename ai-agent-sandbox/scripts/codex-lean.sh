@@ -14,7 +14,6 @@ args=(
     -c 'approval_policy="never"'
     -c 'sandbox_mode="danger-full-access"'
     -c 'web_search="disabled"'
-    -c 'project_doc_max_bytes=0'
     -c 'hide_agent_reasoning=false'
     -c 'include_environment_context=false'
     -c 'include_permissions_instructions=false'
