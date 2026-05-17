@@ -131,34 +131,6 @@ else
     echo "  No skills directory found"
 fi
 
-# =======================================================
-# CLAUDE CODE STATUSLINE
-# =======================================================
-
-echo ""
-echo "--- Installing Claude Code statusline ---"
-SANDBOX_SCRIPTS="/workspace/workspace/ai-agent-sandbox/scripts"
-CLAUDE_DIR="/home/vscode/.claude"
-SETTINGS_FILE="$CLAUDE_DIR/settings.json"
-
-if [ -f "$SANDBOX_SCRIPTS/statusline-command.sh" ]; then
-    cp "$SANDBOX_SCRIPTS/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
-    chmod +x "$CLAUDE_DIR/statusline-command.sh"
-    echo "✓ Statusline script installed"
-
-    # Merge statusLine config into settings.json without clobbering other settings
-    STATUSLINE_CONFIG='{"statusLine":{"type":"command","command":"/home/vscode/.claude/statusline-command.sh"}}'
-    if [ -f "$SETTINGS_FILE" ]; then
-        jq -s '.[0] * .[1]' "$SETTINGS_FILE" <(echo "$STATUSLINE_CONFIG") > "${SETTINGS_FILE}.tmp" \
-            && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-        echo "✓ Statusline config merged into settings.json"
-    else
-        echo "$STATUSLINE_CONFIG" | jq '.' > "$SETTINGS_FILE"
-        echo "✓ Statusline config written to new settings.json"
-    fi
-else
-    echo "  No statusline script found in sandbox"
-fi
 
 # =======================================================
 # CLAUDE CODE SETTINGS
@@ -181,14 +153,6 @@ else
     echo "  No settings overlay found"
 fi
 
-CODEX_DIR="/home/vscode/.codex"
-CODEX_CONFIG_FILE="$CODEX_DIR/config.toml"
-
-mkdir -p "$CODEX_DIR"
-if [ -f "$CODEX_CONFIG_FILE" ] && grep -Fq "Lean default Codex configuration for the sandbox image" "$CODEX_CONFIG_FILE"; then
-    rm "$CODEX_CONFIG_FILE"
-    echo "✓ Removed old generated Codex lean config so plain codex uses upstream defaults"
-fi
 
 # =======================================================
 # BANNER

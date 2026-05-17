@@ -8,5 +8,5 @@ if [ ! -x "$BASE_SCRIPT" ]; then
     BASE_SCRIPT="$SCRIPT_DIR/codex-with-proxy.sh"
 fi
 
-export CODEX_REASONING_EFFORT="${CODEX_REASONING_EFFORT:-xhigh}"
+export CODEX_REASONING_EFFORT="-xhigh"
 exec "$BASE_SCRIPT" "$@"
