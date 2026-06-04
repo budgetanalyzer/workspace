@@ -149,18 +149,19 @@ COPY bash_aliases.sh /home/$USERNAME/.bash_aliases
 RUN chown $USER_UID:$USER_GID /home/$USERNAME/.bash_aliases
 
 # =======================================================
-# AI CODING CLIs (all installed globally as root, cached in image layer)
+# AI CODING CLIs (installed globally as root)
 # =======================================================
+
+ARG CLI_CACHE_BUST=0
 
 # Claude Code (npm - deprecated but required for proxy support)
 # Native binary (Bun) ignores HTTP_PROXY for streaming: github.com/anthropics/claude-code/issues/14165
-RUN npm install -g @anthropic-ai/claude-code
-
-# Codex CLI (OpenAI terminal agent, Apache 2.0)
-RUN npm install -g @openai/codex
-
-# Gemini CLI (Google terminal agent)
-RUN npm install -g @google/gemini-cli
+RUN set -eux; \
+    echo "Refreshing AI coding CLIs with cache bust ${CLI_CACHE_BUST}"; \
+    npm install -g \
+        @anthropic-ai/claude-code@latest \
+        @openai/codex@latest \
+        @google/gemini-cli@latest
 
 # =======================================================
 # PLAYWRIGHT (headless browser for scraping / automation)
