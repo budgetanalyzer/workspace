@@ -50,7 +50,7 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 - Session-start hooks and AI context injection live in `ai-agent-sandbox/settings-overlay.json`. Read it before changing startup behavior or how agent context files are injected.
 - Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
 - Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
-- Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally. Treat `docs/plans/2026-04-30-*.md` as context for that work, not as the primary source of truth.
+- Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
@@ -98,5 +98,8 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Update active docs under `docs/` when operating procedures or staged helper behavior changes.
 - Update the nearest affected owner doc rather than duplicating the same detail across multiple docs.
 - Do not update `docs/plans/` unless the user explicitly asks to revise plan or history documents.
+
+## Plans
+- When creating an implementation or execution plan intended for AI Session Handler, follow the [AI Session Handler plan format](../ai-session-handler/docs/plan-format.md), use its canonical template, replace every placeholder, and retain the numbered `## Phase N: Title` headings.
 
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->
