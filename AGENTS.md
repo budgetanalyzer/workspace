@@ -102,4 +102,17 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 ## Plans
 - When creating an implementation or execution plan intended for AI Session Handler, follow the [AI Session Handler plan format](../ai-session-handler/docs/plan-format.md), use its canonical template, replace every placeholder, and retain the numbered `## Phase N: Title` headings.
 
+  Run a specific plan through the workspace wrapper with:
+
+  ```bash
+  ai-session-handler run \
+    --plan /workspace/REPOSITORY/docs/plans/PLAN.md \
+    --max-phases 999 \
+    --quiet \
+    --agent-cmd "/workspace/ai-session-handler/.venv/bin/ai-session-handler-codex-high --model MODEL"
+  ```
+
+  Omit `--model MODEL` from the quoted agent command to use the wrapper's
+  configured or default model.
+
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->
