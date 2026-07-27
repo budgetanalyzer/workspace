@@ -19,7 +19,8 @@ REPOS=(
   "session-gateway"
   "budget-analyzer-web"
   "checkstyle-config"
-  "claude-discovery"
+  "budget-analyzer-api-tests"
+  "ai-session-handler"
 )
 
 for repo in "${REPOS[@]}"; do
