@@ -11,6 +11,7 @@ ARG MITMPROXY_VERSION=12.2.2
 ARG ACTIONLINT_VERSION=1.7.12
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Install essential packages
 RUN apt-get update && apt-get install -y \
@@ -22,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     build-essential \
+    # Chromium uses the vscode user's NSS database for locally added roots
+    libnss3-tools \
     vim \
     poppler-utils \
     tree \
@@ -203,11 +206,14 @@ COPY scripts/mitmflow-render.py /usr/local/bin/mitmflow-render.py
 COPY scripts/codex-lean.sh /usr/local/bin/codex-lean
 COPY scripts/codex-with-proxy.sh /usr/local/bin/codex-with-proxy
 COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
+COPY scripts/ensure-budget-analyzer-local-ca-trust.sh /usr/local/bin/ensure-budget-analyzer-local-ca-trust
+COPY scripts/check-budget-analyzer-local-ca-trust.sh /usr/local/bin/check-budget-analyzer-local-ca-trust
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
-    /usr/local/bin/codex-lean /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy
+    /usr/local/bin/codex-lean /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy \
+    /usr/local/bin/ensure-budget-analyzer-local-ca-trust /usr/local/bin/check-budget-analyzer-local-ca-trust
 
 # Switch to non-root user
 USER $USERNAME

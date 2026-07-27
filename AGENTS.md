@@ -44,6 +44,7 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 
 - Workspace purpose and human-facing usage live in `README.md`. Read it before changing setup assumptions, launch guidance, or repository purpose.
 - Wider system startup and local environment expectations live in `../orchestration/docs/development/getting-started.md`. Read it before changing how this workspace relates to the rest of the ecosystem.
+- Local Budget Analyzer trust ownership and lazy command behavior live in `docs/local-budget-analyzer-tls.md`. Read it before changing container trust configuration or diagnosing verified HTTPS access to the exact local ingress.
 - Devcontainer settings live in `.devcontainer/devcontainer.json`. Read it before changing editor container behavior, remote environment variables, or installed extensions.
 - Sandbox mounts and isolation rules live in `ai-agent-sandbox/docker-compose.yml`. Read it before changing volume mounts, networking, or runtime write boundaries.
 - Installed CLIs and launcher provisioning live in `ai-agent-sandbox/Dockerfile` and `ai-agent-sandbox/entrypoint.sh`. Read them before changing what is installed in `PATH` or how helper commands are exposed.
@@ -69,11 +70,14 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 ## Operating Rules
 
-- Keep all work products inside this repository. Do not install, copy, or move files into system paths.
+- Keep all work products inside this repository. Do not install, copy, or move files into system paths except by explicitly invoking the workspace-owned `ensure-budget-analyzer-local-ca-trust` command for its exact local target.
 - When you need to test a file that originates in `ai-agent-sandbox/`, copy it into `tmp/` and test from there.
 - Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
 - Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
+- Before live work against exactly `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
+- If the host publication is missing, stop and ask the user to run orchestration `./setup.sh` on the host. Never generate or rotate browser-facing certificates in the container.
+- Never use HTTP, `--insecure`, `verify=False`, or `ignore_https_errors` to bypass a local trust failure. Do not run the lazy trust command for staging, production, arbitrary origins, or non-certificate failures.
 
 ## Development Workflow
 

@@ -30,6 +30,7 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - **Claude Code, Gemini CLI, Codex CLI** — pre-installed with convenience aliases and proxy launchers ([details](docs/launch-options.md))
 - **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
 - **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
+- **Lazy local TLS trust** — verified system, Python, and Chromium trust for the host-managed Budget Analyzer ingress ([details](docs/local-budget-analyzer-tls.md))
 - **actionlint** — GitHub Actions workflow linting available on `PATH`
 
 ## What's Here
@@ -39,6 +40,22 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - `scripts/` — workspace utilities (`sync-all.sh`)
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 - `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md)
+
+## Local Budget Analyzer HTTPS
+
+After rebuilding the workspace image with the lazy trust tooling, install or
+refresh the host-published public CA before live work against exactly
+`https://app.budgetanalyzer.localhost`:
+
+```bash
+ensure-budget-analyzer-local-ca-trust
+check-budget-analyzer-local-ca-trust
+```
+
+If publication is missing, run orchestration `./setup.sh` on the host. Do not
+generate certificates or bypass TLS verification in the container. See
+[Local Budget Analyzer TLS Trust](docs/local-budget-analyzer-tls.md) for the
+ownership flow and diagnostics.
 
 ## What's Not Here
 
