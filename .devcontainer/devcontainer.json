@@ -5,6 +5,13 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "none",
 
+  "portsAttributes": {
+    "8765": {
+      "label": "VIA Annotator",
+      "onAutoForward": "notify"
+    }
+  },
+
   "initializeCommand": "bash ${localWorkspaceFolder}/ai-agent-sandbox/setup-env.sh",
 
   "features": {

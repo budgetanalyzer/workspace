@@ -33,6 +33,9 @@ find ai-agent-sandbox/skills -maxdepth 2 -type f | sort
 # Staged mitmproxy helper work
 find tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
 
+# Staged Site Modeler image-tracing prerequisites
+find tmp/site-modeler-image-tracing/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+
 # Relevant config and hook surfaces
 rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
 
@@ -91,6 +94,7 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
 - Run `shellcheck <changed shell scripts>` after changing shell scripts.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
+- After rebuilding image-tracing prerequisites, verify `node --version`, `via-annotator --version`, `via-annotator --check`, `identify -version`, `convert -version`, `playwright --version`, and `playwright install --list`; confirm VIA binds only to `127.0.0.1` and stops cleanly.
 - If a touched file has pre-existing validation failures, report them explicitly and do not claim full verification.
 - If a required verifier cannot run because a tool or dependency is unavailable, report that explicitly and stop short of claiming the work is fully verified.
 

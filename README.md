@@ -30,6 +30,9 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - **Claude Code, Gemini CLI, Codex CLI** — pre-installed with convenience aliases and proxy launchers ([details](docs/launch-options.md))
 - **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
 - **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
+- **Node.js 22** — the default signed NodeSource major line, compatible with Site Modeler's `>=22` engine requirement
+- **VGG Image Annotator 3.0.13** — pinned standalone human annotation UI with a localhost-only foreground launcher
+- **ImageMagick** — deterministic image metadata, crop, and review-overlay tools (`identify` and `convert`)
 - **Lazy local TLS trust** — verified system, Python, and Chromium trust for the host-managed Budget Analyzer ingress ([details](docs/local-budget-analyzer-tls.md))
 - **actionlint** — GitHub Actions workflow linting available on `PATH`
 
@@ -56,6 +59,40 @@ If publication is missing, run orchestration `./setup.sh` on the host. Do not
 generate certificates or bypass TLS verification in the container. See
 [Local Budget Analyzer TLS Trust](docs/local-budget-analyzer-tls.md) for the
 ownership flow and diagnostics.
+
+## Human-Reviewed Image Tracing
+
+A rebuilt sandbox image provides [VGG Image Annotator (VIA) 3.0.13](https://www.robots.ox.ac.uk/~vgg/software/via/), an open-source BSD-2-Clause standalone application with ordered polygon, line, and polyline annotations. The build downloads VGG's [official versioned archive](https://www.robots.ox.ac.uk/~vgg/software/via/downloads/via3/via-3.0.13.zip), verifies archive SHA-256 `d16fac5ac83507587845c04644bdbe81896865f2cb963d570bf0f52d48e7d793`, verifies the standalone image annotator SHA-256 `44de1edcee45a0c442dcd028316cdce1647b4fb1a3ca3669b07cd77f39e5fc98`, and preserves the upstream license under `/opt/via-annotator`.
+
+VIA is a human-operated annotation tool. The human selects and orders every polygon vertex and every two-point line or polyline. ImageMagick may produce deterministic metadata, crops, and review overlays, but automatic edge detection or other automated tracing must never produce authoritative geometry.
+
+After changing the sandbox image, use **Dev Containers: Rebuild and Reopen in Container** from the VS Code Command Palette. Do not use a normal window reload: the Node.js, VIA, ImageMagick, and browser prerequisites are image contents and are available only after the rebuild completes.
+
+Verify the rebuilt environment:
+
+```bash
+node --version
+via-annotator --version
+via-annotator --check
+identify -version
+convert -version
+playwright --version
+playwright install --list
+```
+
+`node --version` must report major version 22 or newer, `via-annotator --check` must report a valid 3.0.13 installation without starting a server, and Playwright's list must include Chromium under `/opt/playwright-browsers`.
+
+Start VIA in a terminal:
+
+```bash
+via-annotator
+# Or choose another local port:
+via-annotator --port 8766
+```
+
+The default local URL is `http://localhost:8765/via_image_annotator.html`. The launcher remains in the foreground; press `Ctrl+C` in that terminal to stop it cleanly. VIA never starts as a service or background process.
+
+For private source images, choose **Add Local Files** in VIA and select the original image with the browser file picker. Create the ordered polygon and the required two-point line or polyline annotations manually, then save the VIA project and export its JSON for the reviewed import workflow. The launcher binds strictly to `127.0.0.1` and serves only immutable files in `/opt/via-annotator`; it neither serves `/workspace` nor provides a file-upload endpoint. Selected local files are read in the browser and are not sent to the static server. Do not use remote-file or project-sharing features for private images.
 
 ## What's Not Here
 

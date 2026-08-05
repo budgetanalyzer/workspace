@@ -3,12 +3,16 @@
 FROM docker.io/library/ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
 
 ARG TARGETARCH
-ARG NODE_MAJOR=20
+ARG NODE_MAJOR=22
 ARG KUBECTL_VERSION=v1.35.4
 ARG HELM_VERSION=v3.20.1
 ARG TILT_VERSION=0.37.3
 ARG MITMPROXY_VERSION=12.2.2
 ARG ACTIONLINT_VERSION=1.7.12
+ARG VIA_VERSION=3.0.13
+ARG VIA_URL=https://www.robots.ox.ac.uk/~vgg/software/via/downloads/via3/via-3.0.13.zip
+ARG VIA_ARCHIVE_SHA256=d16fac5ac83507587845c04644bdbe81896865f2cb963d570bf0f52d48e7d793
+ARG VIA_ASSET_SHA256=44de1edcee45a0c442dcd028316cdce1647b4fb1a3ca3669b07cd77f39e5fc98
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
@@ -27,6 +31,8 @@ RUN apt-get update && apt-get install -y \
     libnss3-tools \
     vim \
     poppler-utils \
+    # Deterministic image inspection, cropping, and review overlays
+    imagemagick \
     tree \
     # Networking tools for DNS/email debugging
     dnsutils \
@@ -37,6 +43,8 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     # Shell script linting
     shellcheck \
+    # Extract the pinned VIA standalone distribution
+    unzip \
     # mitmproxy install dependency
     pipx \
     bubblewrap \
@@ -54,6 +62,21 @@ RUN mkdir -p /etc/apt/keyrings \
     && apt-get update \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Install the official standalone VGG Image Annotator release. VIA is a
+# human-operated BSD-2-Clause annotation tool; it is not an automatic tracer.
+# Verify both the versioned upstream archive and the installed image annotator.
+RUN set -eux; \
+    curl -fsSLo /tmp/via-annotator.zip "${VIA_URL}"; \
+    echo "${VIA_ARCHIVE_SHA256}  /tmp/via-annotator.zip" | sha256sum -c -; \
+    mkdir -p /tmp/via-annotator-extracted /opt/via-annotator; \
+    unzip -q /tmp/via-annotator.zip -d /tmp/via-annotator-extracted; \
+    echo "${VIA_ASSET_SHA256}  /tmp/via-annotator-extracted/via-${VIA_VERSION}/via_image_annotator.html" | sha256sum -c -; \
+    install -m 0444 "/tmp/via-annotator-extracted/via-${VIA_VERSION}/via_image_annotator.html" /opt/via-annotator/via_image_annotator.html; \
+    install -m 0444 "/tmp/via-annotator-extracted/via-${VIA_VERSION}/LICENSE" /opt/via-annotator/LICENSE; \
+    install -m 0444 "/tmp/via-annotator-extracted/via-${VIA_VERSION}/README.md" /opt/via-annotator/README.md; \
+    chmod 0555 /opt/via-annotator; \
+    rm -rf /tmp/via-annotator.zip /tmp/via-annotator-extracted
 
 # Install Azul Zulu OpenJDK 25
 RUN apt-get update && apt-get install -y gnupg ca-certificates curl \
@@ -208,12 +231,14 @@ COPY scripts/codex-with-proxy.sh /usr/local/bin/codex-with-proxy
 COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
 COPY scripts/ensure-budget-analyzer-local-ca-trust.sh /usr/local/bin/ensure-budget-analyzer-local-ca-trust
 COPY scripts/check-budget-analyzer-local-ca-trust.sh /usr/local/bin/check-budget-analyzer-local-ca-trust
+COPY scripts/via-annotator.sh /usr/local/bin/via-annotator
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
     /usr/local/bin/codex-lean /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy \
-    /usr/local/bin/ensure-budget-analyzer-local-ca-trust /usr/local/bin/check-budget-analyzer-local-ca-trust
+    /usr/local/bin/ensure-budget-analyzer-local-ca-trust /usr/local/bin/check-budget-analyzer-local-ca-trust \
+    /usr/local/bin/via-annotator
 
 # Switch to non-root user
 USER $USERNAME
