@@ -58,6 +58,73 @@ done
 echo ""
 
 # =======================================================
+# AI SESSION HANDLER
+# =======================================================
+
+echo "--- Installing AI Session Handler ---"
+
+AI_SESSION_HANDLER_DIR="/workspace/ai-session-handler"
+AI_SESSION_HANDLER_PROJECT="$AI_SESSION_HANDLER_DIR/pyproject.toml"
+AI_SESSION_HANDLER_SOURCE="$AI_SESSION_HANDLER_DIR/src/ai_session_handler"
+
+if [ ! -d "$AI_SESSION_HANDLER_DIR" ]; then
+    echo "✗ AI Session Handler checkout missing at $AI_SESSION_HANDLER_DIR" >&2
+    exit 1
+elif [ ! -f "$AI_SESSION_HANDLER_PROJECT" ]; then
+    echo "✗ AI Session Handler package metadata missing at $AI_SESSION_HANDLER_PROJECT" >&2
+    exit 1
+elif ! command -v pipx &> /dev/null; then
+    echo "✗ pipx is required to install AI Session Handler" >&2
+    exit 1
+elif ! pipx install --force --editable "$AI_SESSION_HANDLER_DIR"; then
+    echo "✗ Failed to install AI Session Handler with: pipx install --force --editable $AI_SESSION_HANDLER_DIR" >&2
+    exit 1
+fi
+
+if ! command -v ai-session-handler &> /dev/null; then
+    echo "✗ pipx installed AI Session Handler, but ai-session-handler is not available on PATH" >&2
+    exit 1
+elif ! command -v ai-session-handler-codex-high &> /dev/null; then
+    echo "✗ pipx installed AI Session Handler, but ai-session-handler-codex-high is not available on PATH" >&2
+    exit 1
+elif ! ai-session-handler --version &> /dev/null; then
+    echo "✗ The installed ai-session-handler command is unusable" >&2
+    exit 1
+elif ! ai-session-handler-codex-high --help &> /dev/null; then
+    echo "✗ The installed ai-session-handler-codex-high command is unusable" >&2
+    exit 1
+fi
+
+if ! pipx_local_venvs=$(pipx environment --value PIPX_LOCAL_VENVS) || [ -z "$pipx_local_venvs" ]; then
+    echo "✗ Could not locate the pipx virtual environment for AI Session Handler" >&2
+    exit 1
+fi
+
+ai_session_handler_python="$pipx_local_venvs/ai-session-handler/bin/python"
+if [ ! -x "$ai_session_handler_python" ]; then
+    echo "✗ AI Session Handler pipx Python is missing at $ai_session_handler_python" >&2
+    exit 1
+elif ! ai_session_handler_module=$(
+    "$ai_session_handler_python" -c \
+        'from pathlib import Path; import ai_session_handler; print(Path(ai_session_handler.__file__).resolve())'
+); then
+    echo "✗ The pipx environment cannot import ai_session_handler" >&2
+    exit 1
+fi
+
+case "$ai_session_handler_module" in
+    "$AI_SESSION_HANDLER_SOURCE"/*)
+        echo "✓ AI Session Handler installed editably from $AI_SESSION_HANDLER_DIR"
+        ;;
+    *)
+        echo "✗ AI Session Handler import is not linked to $AI_SESSION_HANDLER_SOURCE: $ai_session_handler_module" >&2
+        exit 1
+        ;;
+esac
+
+echo ""
+
+# =======================================================
 # VERIFY AI CODING CLIs
 # =======================================================
 
@@ -86,6 +153,9 @@ if command -v gemini &> /dev/null; then
 else
     echo "✗ Gemini CLI not available"
 fi
+
+echo "✓ $(ai-session-handler --version)"
+echo "✓ AI Session Handler Codex high launcher installed"
 
 # =======================================================
 # VERIFY DEV TOOLS
@@ -139,7 +209,6 @@ fi
 echo ""
 echo "--- Applying Claude Code settings ---"
 
-SANDBOX_SCRIPTS="/workspace/workspace/ai-agent-sandbox/scripts"
 CLAUDE_DIR="/home/vscode/.claude"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 OVERLAY_FILE="/workspace/workspace/ai-agent-sandbox/settings-overlay.json"
@@ -164,8 +233,9 @@ echo ""
 echo "AI Coding Sandbox"
 echo "======================================"
 echo ""
-echo "CLIs:     claude | codex | gemini"
+echo "CLIs:     claude | codex | gemini | ai-session-handler | ai-run"
 echo "Context:  Claude/Gemini read repo instructions. Codex aliases load AGENTS.md via project docs."
+echo "Plans:    cd /workspace/REPOSITORY && ai-run PLAN_NAME"
 echo ""
 echo "Auth:"
 echo "  Claude — run 'claude auth login'"

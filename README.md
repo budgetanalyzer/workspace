@@ -27,7 +27,7 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 
 ## What's Inside
 
-- **Claude Code, Gemini CLI, Codex CLI** — pre-installed with convenience aliases and proxy launchers ([details](docs/launch-options.md))
+- **Claude Code, Gemini CLI, Codex CLI, and AI Session Handler** — globally available with convenience launchers ([details](docs/launch-options.md))
 - **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
 - **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
 - **Node.js 22** — the default signed NodeSource major line, compatible with Site Modeler's `>=22` engine requirement
@@ -43,6 +43,23 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - `scripts/` — workspace utilities (`sync-all.sh`)
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 - `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md)
+
+## Run An AI Session Handler Plan
+
+A fresh container installs `/workspace/ai-session-handler` globally through an editable pipx
+environment. From any repository root, run a plan in that repository's `docs/plans/` directory by
+its filename stem:
+
+```bash
+cd /workspace/REPOSITORY
+ai-run PLAN_NAME
+```
+
+For example, `ai-run improve-imports --max-phases 1` runs
+`./docs/plans/improve-imports.md` quietly with `ai-session-handler-codex-high` and forwards the
+phase limit unchanged. Set `CODEX_MODEL` when an explicit Codex model is needed. Ordinary Python
+source changes under `/workspace/ai-session-handler/src/` are visible to the global commands
+without a reinstall or image rebuild.
 
 ## Local Budget Analyzer HTTPS
 

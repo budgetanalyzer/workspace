@@ -39,6 +39,32 @@ Convenience aliases:
 | `codex-high-proxy` | `codex-with-proxy` with high reasoning effort |
 | `codex-max-proxy` | `codex-max-with-proxy` |
 
+## AI Session Handler Plans
+
+Container startup installs `/workspace/ai-session-handler` into pipx with `--force --editable`, so
+both `ai-session-handler` and `ai-session-handler-codex-high` are available globally and current
+Python source changes are used immediately.
+
+Run the sandbox's normal plan workflow from the repository that owns the plan:
+
+```bash
+cd /workspace/REPOSITORY
+ai-run PLAN_NAME
+```
+
+`PLAN_NAME` is a bare filename stem. `ai-run improve-imports` resolves only
+`$PWD/docs/plans/improve-imports.md`; do not pass a path or the `.md` suffix. The launcher runs the
+plan quietly with the global high-reasoning Codex wrapper. Any later arguments are passed unchanged
+to `ai-session-handler run`:
+
+```bash
+ai-run improve-imports --max-phases 1
+ai-run improve-imports --retry-stopped
+```
+
+Use `ai-run --help` for the command summary. `CODEX_MODEL` remains the optional model-selection
+environment variable; the launcher does not hard-code a model.
+
 ## Proxy Launchers
 
 - `claude-with-proxy` — traffic inspection only
