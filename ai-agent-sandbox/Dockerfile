@@ -243,6 +243,7 @@ RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
 
 # Switch to non-root user
 USER $USERNAME
+ENV PATH=/home/${USERNAME}/.local/bin:${PATH}
 
 # =======================================================
 # MITMPROXY for HTTPS traffic inspection
