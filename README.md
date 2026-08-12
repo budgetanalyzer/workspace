@@ -56,10 +56,11 @@ ai-run PLAN_NAME
 ```
 
 For example, `ai-run improve-imports --max-phases 1` runs
-`./docs/plans/improve-imports.md` quietly with `ai-session-handler-codex-high` and forwards the
-phase limit unchanged. Set `CODEX_MODEL` when an explicit Codex model is needed. Ordinary Python
-source changes under `/workspace/ai-session-handler/src/` are visible to the global commands
-without a reinstall or image rebuild.
+`./docs/plans/improve-imports.md` with `ai-session-handler-codex-high`, streams the worker's
+progress, and forwards the phase limit unchanged. Pass `--quiet` explicitly to suppress live worker
+output while retaining the transcript. Set `CODEX_MODEL` when an explicit Codex model is needed.
+Ordinary Python source changes under `/workspace/ai-session-handler/src/` are visible to the global
+commands without a reinstall or image rebuild.
 
 ## Local Budget Analyzer HTTPS
 

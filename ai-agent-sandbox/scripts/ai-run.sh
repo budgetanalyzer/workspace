@@ -15,6 +15,7 @@ unchanged to `ai-session-handler run`.
 Examples:
   ai-run improve-imports
   ai-run improve-imports --max-phases 1
+  ai-run improve-imports --quiet
   ai-run improve-imports --retry-stopped
 
 Set CODEX_MODEL to select a Codex model without changing the plan command.
@@ -65,6 +66,5 @@ fi
 
 exec ai-session-handler run \
     --plan "$plan_path" \
-    --quiet \
     --agent-cmd "ai-session-handler-codex-high" \
     "$@"

@@ -54,13 +54,17 @@ ai-run PLAN_NAME
 
 `PLAN_NAME` is a bare filename stem. `ai-run improve-imports` resolves only
 `$PWD/docs/plans/improve-imports.md`; do not pass a path or the `.md` suffix. The launcher runs the
-plan quietly with the global high-reasoning Codex wrapper. Any later arguments are passed unchanged
-to `ai-session-handler run`:
+plan with the global high-reasoning Codex wrapper and streams worker progress by default. Any later
+arguments are passed unchanged to `ai-session-handler run`:
 
 ```bash
 ai-run improve-imports --max-phases 1
+ai-run improve-imports --quiet
 ai-run improve-imports --retry-stopped
 ```
+
+Pass `--quiet` explicitly when live worker output is undesirable; the complete transcript is still
+captured.
 
 Use `ai-run --help` for the command summary. `CODEX_MODEL` remains the optional model-selection
 environment variable; the launcher does not hard-code a model.
