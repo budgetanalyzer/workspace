@@ -36,6 +36,9 @@ find tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox -maxdepth 3 -type
 # Staged Site Modeler image-tracing prerequisites
 find tmp/site-modeler-image-tracing/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
 
+# Staged AI Session Handler global commands
+find tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+
 # Relevant config and hook surfaces
 rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
 
@@ -55,6 +58,7 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 - Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
 - Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
 - Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
+- Staged AI Session Handler global installation and `ai-run` launcher work lives in `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
@@ -86,7 +90,7 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 - Read the relevant source-of-truth file before changing setup assumptions, sandbox configuration, launchers, hooks, or staged mitmproxy helpers.
 - Prefer checked-in scripts and config files over reconstructing commands from memory.
-- When continuing staged mitmproxy work, make and test changes under `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`.
+- When continuing staged sandbox work, make and test changes in that proposal's tree under `tmp/`; for AI Session Handler global commands, use `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
 - Keep documentation updates in the same change set as the behavior or workflow change that required them.
 
 ## Validation
@@ -110,17 +114,15 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 ## Plans
 - When creating an implementation or execution plan intended for AI Session Handler, follow the [AI Session Handler plan format](../ai-session-handler/docs/plan-format.md), use its canonical template, replace every placeholder, and retain the numbered `## Phase N: Title` headings.
 
-  Run a specific plan through the workspace wrapper with:
+  Run a specific plan from the repository that owns it with:
 
   ```bash
-  ai-session-handler run \
-    --plan /workspace/REPOSITORY/docs/plans/PLAN.md \
-    --max-phases 999 \
-    --quiet \
-    --agent-cmd "/workspace/ai-session-handler/.venv/bin/ai-session-handler-codex-high --model MODEL"
+  cd /workspace/REPOSITORY
+  ai-run PLAN_NAME
   ```
 
-  Omit `--model MODEL` from the quoted agent command to use the wrapper's
-  configured or default model.
+  `PLAN_NAME` is the bare filename stem for `./docs/plans/PLAN_NAME.md`. Append runner options such
+  as `--max-phases 1` or `--retry-stopped` after the name. Set `CODEX_MODEL` only when an explicit
+  model is needed.
 
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->

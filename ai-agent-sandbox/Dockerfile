@@ -232,16 +232,18 @@ COPY scripts/codex-max-with-proxy.sh /usr/local/bin/codex-max-with-proxy
 COPY scripts/ensure-budget-analyzer-local-ca-trust.sh /usr/local/bin/ensure-budget-analyzer-local-ca-trust
 COPY scripts/check-budget-analyzer-local-ca-trust.sh /usr/local/bin/check-budget-analyzer-local-ca-trust
 COPY scripts/via-annotator.sh /usr/local/bin/via-annotator
+COPY scripts/ai-run.sh /usr/local/bin/ai-run
 RUN chmod +x /usr/local/bin/start-proxy /usr/local/bin/claude-with-proxy \
     /usr/local/bin/mitmflows /usr/local/bin/mitmflow-detail /usr/local/bin/mitmflow-body \
     /usr/local/bin/mitmflow-render.py /usr/local/bin/claude-with-custom-system-prompt \
     /usr/local/bin/claude-45-custom-system-prompt /usr/local/bin/claude-46-custom-system-prompt \
     /usr/local/bin/codex-lean /usr/local/bin/codex-with-proxy /usr/local/bin/codex-max-with-proxy \
     /usr/local/bin/ensure-budget-analyzer-local-ca-trust /usr/local/bin/check-budget-analyzer-local-ca-trust \
-    /usr/local/bin/via-annotator
+    /usr/local/bin/via-annotator /usr/local/bin/ai-run
 
 # Switch to non-root user
 USER $USERNAME
+ENV PATH=/home/${USERNAME}/.local/bin:${PATH}
 
 # =======================================================
 # MITMPROXY for HTTPS traffic inspection
