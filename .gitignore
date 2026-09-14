@@ -328,3 +328,6 @@ scratch/
 
 #Python cache
 __pycache__
+
+# AI Session Handler configuration
+.ai-session-handler/
