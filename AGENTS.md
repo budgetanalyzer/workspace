@@ -42,6 +42,10 @@ find tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox -m
 # Relevant config and hook surfaces
 rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
 
+# Dependency automation configuration and evidence workflow
+find .github/workflows -maxdepth 1 -type f | sort
+find tmp/dependency-automation/proposed -maxdepth 2 -type f | sort
+
 # Sandbox compose services
 docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 ```
@@ -57,6 +61,7 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 - Session-start hooks and AI context injection live in `ai-agent-sandbox/settings-overlay.json`. Read it before changing startup behavior or how agent context files are injected.
 - Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
 - Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
+- Dependency update discovery and the no-start workspace image scan live in `renovate.json`, `.github/workflows/workspace-image-security-evidence.yml`, and `docs/dependency-automation.md`. Read them before changing dependency extraction, image builds, scan evidence, or activation handoffs.
 - Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
 - Staged AI Session Handler global installation and `ai-run` launcher work lives in `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
@@ -106,6 +111,8 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 - Keep documentation updates in the same change set as the behavior or workflow change that required them. Do not leave doc updates as follow-up work.
 - Update `AGENTS.md` when repository instructions, guardrails, workflows, or discovery commands change.
+- Before updating `AGENTS.md`, read and apply the
+  [AGENTS.md checkstyle](https://github.com/budgetanalyzer/orchestration/blob/main/docs/agents-md-checkstyle.md).
 - Update `README.md` when setup, launch usage, or repository purpose changes.
 - Update active docs under `docs/` when operating procedures or staged helper behavior changes.
 - Update the nearest affected owner doc rather than duplicating the same detail across multiple docs.

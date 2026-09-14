@@ -1,0 +1,209 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>budgetanalyzer/orchestration//renovate-presets/default"
+  ],
+  "dockerfile": {
+    "managerFilePatterns": [
+      "/^ai-agent-sandbox\\/Dockerfile$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the digest-only Ubuntu base tied to its declared release family",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# Use the pinned Ubuntu (?<currentValue>\\d+\\.\\d+) digest\\. Keep this digest-only because the\\n# Dev Containers image resolver rejects tag\\+digest base references\\.\\nFROM docker\\.io/library/ubuntu@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ubuntu",
+      "packageNameTemplate": "docker.io/library/ubuntu",
+      "versioningTemplate": "docker",
+      "autoReplaceStringTemplate": "# Use the pinned Ubuntu {{{newValue}}} digest. Keep this digest-only because the\n# Dev Containers image resolver rejects tag+digest base references.\nFROM docker.io/library/ubuntu@{{{newDigest}}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the Node.js major supplied by NodeSource",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG NODE_MAJOR=(?<currentValue>\\d+)"
+      ],
+      "datasourceTemplate": "node-version",
+      "depNameTemplate": "node"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the checksum-coupled kubectl release",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG KUBECTL_VERSION=(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "kubernetes/kubernetes",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the checksum-coupled Helm release",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG HELM_VERSION=(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "helm/helm",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the checksum-coupled Tilt release",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG TILT_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "tilt-dev/tilt",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the mitmproxy Python package",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG MITMPROXY_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "pypi",
+      "depNameTemplate": "mitmproxy"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the checksum-coupled actionlint release",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG ACTIONLINT_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "rhysd/actionlint",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the fixed-architecture Go archive",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "https://go\\.dev/dl/go(?<currentValue>\\d+\\.\\d+\\.\\d+)\\.linux-amd64\\.tar\\.gz"
+      ],
+      "datasourceTemplate": "golang-version",
+      "depNameTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the Kind binary download",
+      "managerFilePatterns": [
+        "/^ai-agent-sandbox\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "https://kind\\.sigs\\.k8s\\.io/dl/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/kind-linux-\\$\\{TARGETARCH\\}"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "kubernetes-sigs/kind",
+      "versioningTemplate": "semver-coerced"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Disable unsafe native latest-tag lookup for the digest-only Ubuntu base",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "docker.io/library/ubuntu"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Require explicit review of digest-only Ubuntu release-family changes",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchPackageNames": [
+        "docker.io/library/ubuntu"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "dependencies",
+        "platform-migration"
+      ],
+      "prBodyNotes": [
+        "The base must remain digest-only because the Dev Containers resolver rejects tag+digest. Confirm the proposal stays on Ubuntu 24.04 unless a separately approved release-family migration is intended, and verify both linux/amd64 and linux/arm64 manifests."
+      ]
+    },
+    {
+      "description": "Keep tool releases coupled to complete architecture checksum tables",
+      "matchFileNames": [
+        "ai-agent-sandbox/Dockerfile"
+      ],
+      "matchPackageNames": [
+        "kubernetes/kubernetes",
+        "helm/helm",
+        "tilt-dev/tilt",
+        "rhysd/actionlint"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "dependencies",
+        "checksum-required"
+      ],
+      "prBodyNotes": [
+        "Update and verify every supported architecture checksum in the Dockerfile with the version. Renovate does not calculate this repository's arbitrary checksum table."
+      ]
+    },
+    {
+      "description": "Require architecture review for the hard-coded linux-amd64 Go archive",
+      "matchFileNames": [
+        "ai-agent-sandbox/Dockerfile"
+      ],
+      "matchPackageNames": [
+        "go"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "dependencies",
+        "platform-migration"
+      ],
+      "prBodyNotes": [
+        "The current download is hard-coded to linux-amd64 even though the image has other TARGETARCH-aware tools. Do not treat an amd64 build or scan as ARM64 support."
+      ]
+    },
+    {
+      "description": "Require architecture review for Kind binary updates",
+      "matchFileNames": [
+        "ai-agent-sandbox/Dockerfile"
+      ],
+      "matchPackageNames": [
+        "kubernetes-sigs/kind"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "dependencies",
+        "platform-migration"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+name: Workspace Image Security Evidence
+
+on:
+  schedule:
+    - cron: '41 4 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-image-security-evidence
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  TRIVY_CACHE_DIR: ${{ github.workspace }}/.trivy-cache
+  TRIVY_NO_PROGRESS: 'true'
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Prepare evidence directory
+        run: mkdir -p workspace-image-scan/base workspace-image-scan/build workspace-image-scan/scanner
+
+      - name: Verify the exact Ubuntu base index
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dockerfile=ai-agent-sandbox/Dockerfile
+          base_ref="$(sed -nE 's/^FROM ([^[:space:]]+)$/\1/p' "${dockerfile}")"
+          expected_release="$(sed -nE 's/^# Use the pinned Ubuntu ([0-9]+\.[0-9]+) digest\..*/\1/p' "${dockerfile}")"
+          declared_digest="${base_ref##*@}"
+
+          [[ "${base_ref}" == docker.io/library/ubuntu@sha256:* ]]
+          [[ -n "${expected_release}" ]]
+          [[ "${base_ref}" != *:*@sha256:* ]]
+
+          docker buildx imagetools inspect "${base_ref}" \
+            > workspace-image-scan/base/imagetools-inspect.txt
+          docker buildx imagetools inspect --raw "${base_ref}" \
+            > workspace-image-scan/base/index.json
+
+          grep -Eq "^Digest:[[:space:]]+${declared_digest}$" \
+            workspace-image-scan/base/imagetools-inspect.txt
+          grep -Eq '^[[:space:]]*Platform:[[:space:]]+linux/amd64$' \
+            workspace-image-scan/base/imagetools-inspect.txt
+          grep -Eq '^[[:space:]]*Platform:[[:space:]]+linux/arm64(/v8)?$' \
+            workspace-image-scan/base/imagetools-inspect.txt
+          grep -Eq "org.opencontainers.image.version:[[:space:]]+${expected_release}$" \
+            workspace-image-scan/base/imagetools-inspect.txt
+
+          jq -n \
+            --arg source_ref "${base_ref}" \
+            --arg digest "${declared_digest}" \
+            --arg release_family "${expected_release}" \
+            '{source_ref: $source_ref, digest: $digest, release_family: $release_family, required_platforms: ["linux/amd64", "linux/arm64"]}' \
+            > workspace-image-scan/base/selection.json
+
+      - name: Build a fresh local workspace image without starting it
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_ref="workspace-dependency-scan:${GITHUB_SHA}"
+          docker buildx build \
+            --no-cache \
+            --platform linux/amd64 \
+            --file ai-agent-sandbox/Dockerfile \
+            --build-arg USER_UID=10001 \
+            --build-arg USER_GID=10001 \
+            --tag "${image_ref}" \
+            --load \
+            ai-agent-sandbox \
+            2>&1 | tee workspace-image-scan/build/build.log
+          docker image inspect "${image_ref}" \
+            > workspace-image-scan/build/image-inspect.json
+          printf '%s\n' "${image_ref}" > workspace-image-scan/build/image-ref.txt
+
+      - name: Set up pinned Trivy CLI
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+          cache: true
+
+      - name: Inventory and scan the built image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_ref="$(cat workspace-image-scan/build/image-ref.txt)"
+          trivy image --download-db-only \
+            > workspace-image-scan/scanner/database-download.log 2>&1
+          trivy --version \
+            > workspace-image-scan/scanner/version-and-database.txt 2>&1
+
+          trivy image \
+            --image-src docker \
+            --scanners vuln \
+            --list-all-pkgs \
+            --format json \
+            --output workspace-image-scan/package-inventory.json \
+            "${image_ref}" \
+            2> workspace-image-scan/package-inventory.stderr
+          trivy image \
+            --image-src docker \
+            --scanners vuln \
+            --format json \
+            --output workspace-image-scan/vulnerabilities.json \
+            "${image_ref}" \
+            2> workspace-image-scan/vulnerabilities.stderr
+
+          scanned_os="$(jq -r '.Metadata.ImageConfig.os // empty' workspace-image-scan/package-inventory.json)"
+          scanned_arch="$(jq -r '.Metadata.ImageConfig.architecture // empty' workspace-image-scan/package-inventory.json)"
+          [[ "${scanned_os}/${scanned_arch}" == linux/amd64 ]]
+
+          # shellcheck disable=SC2016
+          jq '
+            [
+              .Results[]? as $result |
+              $result.Packages[]? |
+              {
+                class: $result.Class,
+                type: $result.Type,
+                target: ($result.Target // ""),
+                name: (.Name // .PkgName // ""),
+                version: (.Version // ""),
+                path: (.FilePath // "")
+              } |
+              select(
+                .name == "nodejs" or
+                (.name | startswith("zulu25")) or
+                (.target | startswith("usr/local/go")) or
+                (.path | startswith("/usr/local/go"))
+              )
+            ]
+          ' workspace-image-scan/package-inventory.json \
+            > workspace-image-scan/installed-tool-packages.json
+
+          node_major="$(sed -nE 's/^ARG NODE_MAJOR=([^[:space:]]+)$/\1/p' ai-agent-sandbox/Dockerfile)"
+          go_archive_version="$(sed -nE 's#.*https://go.dev/dl/go([^[:space:]]+)\.linux-amd64\.tar\.gz.*#\1#p' ai-agent-sandbox/Dockerfile)"
+          # shellcheck disable=SC2016
+          jq -n \
+            --arg node_declared_major "${node_major}" \
+            --arg go_declared_archive "${go_archive_version}" \
+            --arg zulu_declared_package "zulu25-jdk" \
+            --slurpfile discovered workspace-image-scan/installed-tool-packages.json \
+            '{declared: {node_major: $node_declared_major, go_archive: $go_declared_archive, zulu_package: $zulu_declared_package}, discovered: $discovered[0]}' \
+            > workspace-image-scan/installed-tool-versions.json
+
+          jq -e 'any(.discovered[]; .name == "nodejs")' \
+            workspace-image-scan/installed-tool-versions.json > /dev/null
+          jq -e 'any(.discovered[]; .name | startswith("zulu25"))' \
+            workspace-image-scan/installed-tool-versions.json > /dev/null
+          # shellcheck disable=SC2016
+          jq -e '.declared.go_archive as $go | any(.discovered[]; (.target | startswith("usr/local/go")) and ((.version | ltrimstr("v")) == $go))' \
+            workspace-image-scan/installed-tool-versions.json > /dev/null
+
+          os_id="$(jq -r '(.Metadata.OS.Family // "unidentified") + ":" + (.Metadata.OS.Name // "unidentified")' workspace-image-scan/package-inventory.json)"
+          os_packages="$(jq '[.Results[]? | select(.Class == "os-pkgs") | .Packages[]?] | length' workspace-image-scan/package-inventory.json)"
+          application_packages="$(jq '[.Results[]? | select(.Class != "os-pkgs") | .Packages[]?] | length' workspace-image-scan/package-inventory.json)"
+          critical="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' workspace-image-scan/vulnerabilities.json)"
+          high="$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' workspace-image-scan/vulnerabilities.json)"
+
+          {
+            echo '## Workspace image security evidence'
+            echo
+            echo 'The image was rebuilt without cache for linux/amd64 and was not started or pushed.'
+            echo 'The exact Ubuntu base index was separately verified for linux/amd64 and linux/arm64.'
+            echo
+            echo '| Scanned platform | OS | OS packages | Application packages | Critical | High |'
+            echo '| --- | --- | ---: | ---: | ---: | ---: |'
+            # shellcheck disable=SC2016
+            printf '| `linux/amd64` | `%s` | %s | %s | %s | %s |\n' \
+              "${os_id}" "${os_packages}" "${application_packages}" "${critical}" "${high}"
+            echo
+            echo 'An amd64 build and scan is not evidence that the complete workspace image supports ARM64; the Dockerfile currently downloads the Go archive for linux-amd64 only.'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload short-lived workspace image evidence
+        id: evidence-artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: workspace-image-security-evidence-${{ github.run_id }}
+          path: workspace-image-scan/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+
+      - name: Link the retained evidence
+        if: ${{ always() && steps.evidence-artifact.outputs.artifact-url != '' }}
+        env:
+          ARTIFACT_URL: ${{ steps.evidence-artifact.outputs.artifact-url }}
+        run: |
+          echo >> "${GITHUB_STEP_SUMMARY}"
+          printf '[Download the seven-day evidence artifact](%s)\n' "${ARTIFACT_URL}" \
+            >> "${GITHUB_STEP_SUMMARY}"
