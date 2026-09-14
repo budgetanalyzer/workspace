@@ -1,6 +1,8 @@
 name: Workspace Image Security Evidence
 
 on:
+  push:
+    branches: [dependency-automation-trial]
   schedule:
     - cron: '41 4 * * 6'
   workflow_dispatch:
@@ -19,6 +21,14 @@ env:
 
 jobs:
   build-and-scan:
+    if: >-
+      ${{
+        (github.ref == 'refs/heads/main' &&
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) ||
+        (github.ref == 'refs/heads/dependency-automation-trial' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'schedule' && vars.DEPENDENCY_AUTOMATION_TRIAL_SCHEDULES_ENABLED == 'true')))
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
@@ -88,7 +98,7 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.74.0
-          cache: true
+          cache: ${{ github.ref != 'refs/heads/dependency-automation-trial' || vars.DEPENDENCY_AUTOMATION_TRIAL_CACHES_ENABLED == 'true' }}
 
       - name: Inventory and scan the built image
         shell: bash
@@ -186,7 +196,7 @@ jobs:
 
       - name: Upload short-lived workspace image evidence
         id: evidence-artifact
-        if: ${{ always() }}
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: workspace-image-security-evidence-${{ github.run_id }}
@@ -195,6 +205,40 @@ jobs:
           retention-days: 7
           compression-level: 9
 
+      - name: Measure complete trial workspace image evidence
+        id: trial-evidence
+        if: ${{ always() && github.ref == 'refs/heads/dependency-automation-trial' }}
+        run: >-
+          bash .github/scripts/prepare-trial-evidence.sh
+          dependency-automation-evidence/workspace-image-evidence.tar.gz
+          'Trial workspace image scan'
+          workspace-image-scan
+
+      - name: Upload capped trial workspace image evidence
+        id: trial-evidence-artifact
+        if: >-
+          ${{
+            always() && vars.DEPENDENCY_AUTOMATION_TRIAL_UPLOADS_ENABLED == 'true' &&
+            steps.trial-evidence.outputs.upload_allowed == 'true'
+          }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trial-workspace-image-evidence-${{ github.run_id }}
+          path: dependency-automation-evidence/workspace-image-evidence.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Enforce complete trial workspace image evidence delivery
+        if: >-
+          ${{
+            always() && vars.DEPENDENCY_AUTOMATION_TRIAL_UPLOADS_ENABLED == 'true' &&
+            steps.trial-evidence.outputs.upload_allowed != 'true'
+          }}
+        run: |
+          echo 'The complete trial workspace image evidence exceeds the capped upload allowance.' >&2
+          exit 1
+
       - name: Link the retained evidence
         if: ${{ always() && steps.evidence-artifact.outputs.artifact-url != '' }}
         env:
@@ -202,4 +246,13 @@ jobs:
         run: |
           echo >> "${GITHUB_STEP_SUMMARY}"
           printf '[Download the seven-day evidence artifact](%s)\n' "${ARTIFACT_URL}" \
+            >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Link the retained trial evidence
+        if: ${{ always() && steps.trial-evidence-artifact.outputs.artifact-url != '' }}
+        env:
+          ARTIFACT_URL: ${{ steps.trial-evidence-artifact.outputs.artifact-url }}
+        run: |
+          echo >> "${GITHUB_STEP_SUMMARY}"
+          printf '[Download the one-day capped trial evidence artifact](%s)\n' "${ARTIFACT_URL}" \
             >> "${GITHUB_STEP_SUMMARY}"

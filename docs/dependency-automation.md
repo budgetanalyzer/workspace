@@ -1,7 +1,8 @@
 # Dependency Automation
 
-**Status:** Local configuration and image-scan workflow prepared; automation is
-not installed or active. Hosted acceptance is pending Phase 12.
+**Status:** Local configuration and branch-trial image-scan controls are
+prepared; automation is not installed or active. Hosted acceptance is pending
+Phase 12.
 
 The shared
 [Budget Analyzer dependency-automation policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md)
@@ -60,8 +61,9 @@ depend on those comments, so local validation covers the current checkout.
 
 ## Workspace image evidence
 
-`.github/workflows/workspace-image-security-evidence.yml` runs weekly and by
-manual dispatch only. It does not run on pull requests. The job:
+`.github/workflows/workspace-image-security-evidence.yml` preserves weekly and
+manual operation on `main` and also accepts direct runs of the exact trial ref.
+It does not run on pull requests. The job:
 
 1. Reads the exact digest-only base from the Dockerfile and verifies that its
    registry index is the declared Ubuntu release family with amd64 and arm64
@@ -81,6 +83,17 @@ base-resolution, database-download, inventory, scan, platform, required-package,
 or artifact-upload failures do fail it. The image is never pushed, no live
 workspace or host credential mount is used, and the built image's entrypoint is
 never started.
+
+Trial runs start with schedules, the optional Trivy Actions cache, and uploads
+disabled. They still perform the complete no-cache Docker build and scan, then
+measure a sealed allowlist containing reports and build logs but not the Docker
+image, layers, Trivy database, or dependency caches. After the operator enables
+the repository upload variable, one complete archive beneath the 25 MiB cap may
+be retained for one day. The exact schedule, cache, and upload variables are
+owned by the
+[orchestration trial workflow policy](../../orchestration/docs/dependency-automation.md#trial-workflow-controls).
+If the complete bundle exceeds the cap, evidence delivery fails without trimming
+the reports.
 
 The safe local build equivalent is:
 
