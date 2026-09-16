@@ -11,6 +11,21 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "Track the commit-pinned setup-trivy action through public Git refs",
+      "managerFilePatterns": [
+        "/^\\.github\/workflows\/workspace-image-security-evidence\\.yml$/"
+      ],
+      "matchStrings": [
+        "uses: aquasecurity/setup-trivy@(?<currentDigest>[a-f0-9]{40}) # (?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "git-tags",
+      "depNameTemplate": "aquasecurity/setup-trivy",
+      "packageNameTemplate": "https://github.com/aquasecurity/setup-trivy.git",
+      "versioningTemplate": "semver-coerced",
+      "autoReplaceStringTemplate": "uses: aquasecurity/setup-trivy@{{{newDigest}}} # {{{newValue}}}"
+    },
+    {
+      "customType": "regex",
       "description": "Keep the digest-only Ubuntu base tied to its declared release family",
       "managerFilePatterns": [
         "/^ai-agent-sandbox\\/Dockerfile$/"
@@ -127,6 +142,16 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Replace the blocked native setup-trivy lookup with the public Git-ref manager",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "aquasecurity/setup-trivy"
+      ],
+      "enabled": false
+    },
     {
       "description": "Disable unsafe native latest-tag lookup for the digest-only Ubuntu base",
       "matchManagers": [
