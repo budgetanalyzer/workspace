@@ -91,6 +91,9 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
 - Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
+- Keep workspace image-evidence pull-request execution limited to
+  same-repository PRs targeting `dependency-automation-trial`. Preserve
+  read-only permissions and the trial cache and upload gates.
 - Before live work against exactly `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
 - If the host publication is missing, stop and ask the user to run orchestration `./setup.sh` on the host. Never generate or rotate browser-facing certificates in the container.
 - Never use HTTP, `--insecure`, `verify=False`, or `ignore_https_errors` to bypass a local trust failure. Do not run the lazy trust command for staging, production, arbitrary origins, or non-certificate failures.

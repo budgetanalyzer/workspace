@@ -1,10 +1,11 @@
 # Dependency Automation
 
-**Status:** The protected branch trial is active. Initial hosted onboarding and
-the image-evidence run passed, but the first Batch B second cycle reported a
-package lookup warning for `aquasecurity/setup-trivy`. A narrow public-Git-tag
-fallback is prepared; publication and one corrective workspace cycle remain
-pending.
+**Status:** The protected branch trial is active and Batch B is complete. The
+public-Git-tag fallback for `aquasecurity/setup-trivy` passed its automatic
+corrective Renovate cycle, and the resulting image-evidence run passed with
+uploads skipped and zero artifacts. The workflow also accepts trusted
+same-repository pull requests targeting `dependency-automation-trial` so the
+Batch C representative bot PR receives the complete image check.
 
 The shared
 [Budget Analyzer dependency-automation policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md)
@@ -82,8 +83,10 @@ action version.
 ## Workspace image evidence
 
 `.github/workflows/workspace-image-security-evidence.yml` preserves weekly and
-manual operation on `main` and also accepts direct runs of the exact trial ref.
-It does not run on pull requests. The job:
+manual operation on `main`, accepts direct runs of the exact trial ref, and runs
+for same-repository pull requests targeting `dependency-automation-trial`.
+Fork pull requests and pull requests targeting other branches are rejected. The
+job uses read-only repository permissions and:
 
 1. Reads the exact digest-only base from the Dockerfile and verifies that its
    registry index is the declared Ubuntu release family with amd64 and arm64
@@ -95,8 +98,10 @@ It does not run on pull requests. The job:
    Trivy exposes them. The job requires Trivy's Go binary record to agree with
    the declared archive version; declaration alone does not prove the installed
    binary.
-4. Uploads raw build, base-index, package, vulnerability, and scanner evidence
-   for seven days even if an earlier step fails.
+4. On `main`, uploads raw build, base-index, package, vulnerability, and scanner
+   evidence for seven days even if an earlier step fails. On the trial branch
+   and its trusted pull requests, measures the complete sealed evidence bundle
+   and retains it for one day only when the trial upload variable is enabled.
 
 Vulnerability findings do not fail the scheduled evidence job. Build,
 base-resolution, database-download, inventory, scan, platform, required-package,
@@ -198,24 +203,23 @@ Phase 12 rather than being reported as successful.
 After the hosted `setup-trivy` warning, Renovate 44.65.5 strict configuration
 validation passed for the fallback. A credential-free local extraction using
 the new manager resolved `v0.3.1` and its exact current commit through public Git
-refs with no warning and no available update. The hosted corrective cycle is
-still required to prove the native record is suppressed and the replacement
-path works in Mend.
+refs with no warning and no available update. Workspace PR #9 then published the
+fallback at `110e5f78fd995ed281d425f9da90bc81079f651d`. The automatic corrective
+cycle refreshed Dashboard #8 with the exact setup-trivy tag and commit and no
+repository problem. Image-evidence run 35098592885 passed at the same revision
+with the optional cache and uploads disabled and zero artifacts.
 
 ## Phase 12 operator handoff
 
 The following remains pending or requires retained Phase 12 evidence:
 
-- Repository: `budgetanalyzer/workspace`. Check: corrective hosted Renovate
-  cycle after publishing this consumer correction to the protected
-  `dependency-automation-trial` branch. Scope: the setup-trivy native-record
-  disable and public `git-tags` replacement, plus the existing Ubuntu, Node, Go,
-  kubectl, Helm, Tilt, mitmproxy, actionlint, Kind, Dockerfile, and workflow
-  records. Action: accept the automatic post-merge Mend cycle, or trigger only
-  the manual-run checkbox in Dependency Dashboard #8 if no cycle starts. Proof:
-  retain a green result with no setup-trivy repository problem, while the
-  workflow line remains commit-pinned with its version comment. Do not rerun the
-  six repositories whose Batch B cycles already passed.
+- Repository: `budgetanalyzer/workspace`. Check: Batch C representative
+  Renovate PR for `mitmproxy` 12.2.3. Action: after the same-repository
+  trial-targeted pull-request trigger is published, select only that exact
+  Dashboard proposal and leave the resulting PR open and unmerged. Proof:
+  retain the expected one-version Dockerfile diff, trial base, no-automerge
+  state, and successful no-cache image-evidence workflow with caches and uploads
+  disabled and zero artifacts.
 - Repository: `budgetanalyzer/workspace`. Check: Actions cost and hosted image
   evidence. Scope: the three-hour-capable no-cache development-image build,
   public image/package downloads, Trivy database, seven-day artifact, and

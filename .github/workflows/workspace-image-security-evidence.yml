@@ -3,6 +3,8 @@ name: Workspace Image Security Evidence
 on:
   push:
     branches: [dependency-automation-trial]
+  pull_request:
+    branches: [dependency-automation-trial]
   schedule:
     - cron: '41 4 * * 6'
   workflow_dispatch:
@@ -27,7 +29,10 @@ jobs:
           (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) ||
         (github.ref == 'refs/heads/dependency-automation-trial' &&
           (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
-            (github.event_name == 'schedule' && vars.DEPENDENCY_AUTOMATION_TRIAL_SCHEDULES_ENABLED == 'true')))
+            (github.event_name == 'schedule' && vars.DEPENDENCY_AUTOMATION_TRIAL_SCHEDULES_ENABLED == 'true'))) ||
+        (github.event_name == 'pull_request' &&
+          github.base_ref == 'dependency-automation-trial' &&
+          github.event.pull_request.head.repo.full_name == github.repository)
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -98,7 +103,12 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.74.0
-          cache: ${{ github.ref != 'refs/heads/dependency-automation-trial' || vars.DEPENDENCY_AUTOMATION_TRIAL_CACHES_ENABLED == 'true' }}
+          cache: >-
+            ${{
+              (github.ref != 'refs/heads/dependency-automation-trial' &&
+                github.base_ref != 'dependency-automation-trial') ||
+              vars.DEPENDENCY_AUTOMATION_TRIAL_CACHES_ENABLED == 'true'
+            }}
 
       - name: Inventory and scan the built image
         shell: bash
@@ -207,7 +217,13 @@ jobs:
 
       - name: Measure complete trial workspace image evidence
         id: trial-evidence
-        if: ${{ always() && github.ref == 'refs/heads/dependency-automation-trial' }}
+        if: >-
+          ${{
+            always() &&
+            (github.ref == 'refs/heads/dependency-automation-trial' ||
+              (github.event_name == 'pull_request' &&
+                github.base_ref == 'dependency-automation-trial'))
+          }}
         run: >-
           bash .github/scripts/prepare-trial-evidence.sh
           dependency-automation-evidence/workspace-image-evidence.tar.gz
