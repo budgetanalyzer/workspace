@@ -1,8 +1,10 @@
 # Dependency Automation
 
-**Status:** Local configuration and branch-trial image-scan controls are
-prepared; automation is not installed or active. Hosted acceptance is pending
-Phase 12.
+**Status:** The protected branch trial is active. Initial hosted onboarding and
+the image-evidence run passed, but the first Batch B second cycle reported a
+package lookup warning for `aquasecurity/setup-trivy`. A narrow public-Git-tag
+fallback is prepared; publication and one corrective workspace cycle remain
+pending.
 
 The shared
 [Budget Analyzer dependency-automation policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md)
@@ -29,7 +31,8 @@ URLs:
 | Kind download URL | `kubernetes-sigs/kind` | Exact release and TARGETARCH-aware URL, but the existing download has no checksum verification. |
 
 Native managers also cover the Docker-in-Docker Dev Container feature and the
-Actions, runner, and Trivy inputs in the evidence workflow.
+Actions and runner inputs in the evidence workflow, except for the
+`aquasecurity/setup-trivy` action handled below.
 
 The checksum-coupled and platform-sensitive records require Dependency
 Dashboard approval. Renovate may propose a version, but reviewers must update
@@ -58,6 +61,23 @@ container. The adjacent datasource comments requested during onboarding are
 staged in `tmp/dependency-automation/proposed/ai-agent-sandbox.patch` for the
 workspace owner to apply from the host. The functional extraction rules do not
 depend on those comments, so local validation covers the current checkout.
+
+### Commit-pinned setup-trivy action
+
+The first hosted Batch B second cycle reported `no-result` for Renovate's native
+`github-tags` lookup of `aquasecurity/setup-trivy`. The dependency is public and
+valid: tag `v0.3.1` resolves to the exact checked-in commit
+`81e514348e19b6112ce2a7e3ecbafe19c1e1f567`. Adding a broad GitHub credential or
+ignoring the dependency would expand access or hide future updates without
+fixing the failed lookup path.
+
+`renovate.json` therefore disables only the native `github-actions` record for
+this package. A repository-specific regex manager matches the same
+commit-pinned workflow line and uses Renovate's `git-tags` datasource against
+the public Git repository. Its replacement template updates the tag comment and
+40-character commit together, preserving the supply-chain pin. This is a lookup
+transport correction, not an ignore rule or a request to change the current
+action version.
 
 ## Workspace image evidence
 
@@ -175,20 +195,27 @@ mitmproxy patch. The safe Ubuntu Docker lookup succeeded. GitHub-backed identiti
 were extracted but reported `github-token-required`; those lookups remain pending
 Phase 12 rather than being reported as successful.
 
+After the hosted `setup-trivy` warning, Renovate 44.65.5 strict configuration
+validation passed for the fallback. A credential-free local extraction using
+the new manager resolved `v0.3.1` and its exact current commit through public Git
+refs with no warning and no available update. The hosted corrective cycle is
+still required to prove the native record is suppressed and the replacement
+path works in Mend.
+
 ## Phase 12 operator handoff
 
-The following remains pending because preparation neither publishes files nor
-uses credentials or account settings:
+The following remains pending or requires retained Phase 12 evidence:
 
-- Repository: `budgetanalyzer/workspace`. Check: hosted Renovate full dry run
-  after the shared preset and this consumer are published. Scope: the Ubuntu
-  digest-only mapping, Node, Go, kubectl, Helm, Tilt, mitmproxy, actionlint,
-  Kind, Dockerfile, and workflow Actions. Action: run the trusted read-only
-  hosted validation and then onboard the free Renovate App. Proof: retain the
-  run URL and logs showing the preset resolved, every declared identity was
-  extracted, Ubuntu 24.04 digest proposals preserve digest-only syntax, and no
-  fatal/error output occurred. GitHub-backed release lookups are expected to
-  need that hosted context.
+- Repository: `budgetanalyzer/workspace`. Check: corrective hosted Renovate
+  cycle after publishing this consumer correction to the protected
+  `dependency-automation-trial` branch. Scope: the setup-trivy native-record
+  disable and public `git-tags` replacement, plus the existing Ubuntu, Node, Go,
+  kubectl, Helm, Tilt, mitmproxy, actionlint, Kind, Dockerfile, and workflow
+  records. Action: accept the automatic post-merge Mend cycle, or trigger only
+  the manual-run checkbox in Dependency Dashboard #8 if no cycle starts. Proof:
+  retain a green result with no setup-trivy repository problem, while the
+  workflow line remains commit-pinned with its version comment. Do not rerun the
+  six repositories whose Batch B cycles already passed.
 - Repository: `budgetanalyzer/workspace`. Check: Actions cost and hosted image
   evidence. Scope: the three-hour-capable no-cache development-image build,
   public image/package downloads, Trivy database, seven-day artifact, and
@@ -207,10 +234,10 @@ uses credentials or account settings:
   and scan completes without hidden authentication, rate-limit, or partial-data
   failure; retain failures as gaps rather than adding credentials or bypasses.
 - Repository: `budgetanalyzer/workspace`. Check: GitHub dependency graph and
-  Dependabot alert settings. Action: enable the graph and alerts while keeping
-  Dependabot version and overlapping security-update PRs disabled. Proof:
-  preserve sanitized settings and alert evidence for the final cross-repository
-  coverage report.
+  Dependabot alert settings. The operator enabled the graph and alerts during
+  Batch A while keeping Dependabot version and overlapping security-update PRs
+  disabled. Proof: preserve sanitized settings and alert evidence for the final
+  cross-repository coverage report.
 
 Renovate and Trivy do not establish lifecycle support. Node, Go, Java, Ubuntu,
 Kubernetes, Helm, Kind, and other installed tools remain subject to the
