@@ -93,7 +93,10 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
 - Keep workspace image-evidence pull-request execution limited to
   same-repository PRs targeting `dependency-automation-trial`. Preserve
-  read-only permissions and the trial cache and upload gates.
+  read-only permissions, the complete `workspace-image-scan` allowlist, the
+  trial cache and upload gates, the 24 MiB final-payload ceiling, and the 25 MiB
+  exact retained-artifact ceiling. Read `docs/dependency-automation.md` before
+  changing any of these controls.
 - Before live work against exactly `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
 - If the host publication is missing, stop and ask the user to run orchestration `./setup.sh` on the host. Never generate or rotate browser-facing certificates in the container.
 - Never use HTTP, `--insecure`, `verify=False`, or `ignore_https_errors` to bypass a local trust failure. Do not run the lazy trust command for staging, production, arbitrary origins, or non-certificate failures.
@@ -109,6 +112,9 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 - Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
 - Run `shellcheck <changed shell scripts>` after changing shell scripts.
+- After changing the dependency-automation evidence helper or workflow, run
+  `bash .github/scripts/test-prepare-trial-evidence.sh` and
+  `actionlint .github/workflows/workspace-image-security-evidence.yml`.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
 - After rebuilding image-tracing prerequisites, verify `node --version`, `via-annotator --version`, `via-annotator --check`, `identify -version`, `convert -version`, `playwright --version`, and `playwright install --list`; confirm VIA binds only to `127.0.0.1` and stops cleanly.
 - If a touched file has pre-existing validation failures, report them explicitly and do not claim full verification.
