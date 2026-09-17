@@ -18,9 +18,10 @@ if [[ "${output_archive}" != *.tar.gz ]] \
   exit 2
 fi
 
-# Keep one MiB of headroom beneath the operator-approved 25 MiB artifact cap
-# for the upload service's archive wrapper and metadata.
-max_bytes=25165824
+# The final gzip payload must leave one MiB of headroom beneath the
+# operator-approved 25 MiB retained-artifact cap. The temporary tar is measured
+# for audit evidence, but it is compressor input and is never uploaded.
+max_payload_bytes=25165824
 
 mkdir -p "$(dirname "${output_archive}")"
 rm -f "${output_archive}"
@@ -34,7 +35,7 @@ trap 'rm -f "${path_list}" "${tar_file}"' EXIT
 total_source_bytes=0
 {
   printf 'label=%s\n' "${label}"
-  printf 'cap_bytes=%s\n' "${max_bytes}"
+  printf 'payload_cap_bytes=%s\n' "${max_payload_bytes}"
   echo 'allowlisted_paths:'
 } > "${measurement_file}"
 
@@ -51,6 +52,8 @@ for candidate in "$@"; do
     printf '  - %s (%s bytes)\n' "${candidate}" "${candidate_bytes}" >> "${measurement_file}"
   else
     printf '  - %s (missing)\n' "${candidate}" >> "${measurement_file}"
+    echo "Required evidence path does not exist: ${candidate}" >&2
+    exit 1
   fi
 done
 
@@ -61,7 +64,7 @@ gzip --best --stdout "${tar_file}" > "${output_archive}"
 compressed_bytes="$(stat --format='%s' "${output_archive}")"
 
 upload_allowed=false
-if [[ "${uncompressed_bytes}" -le "${max_bytes}" && "${compressed_bytes}" -le "${max_bytes}" ]]; then
+if [[ "${compressed_bytes}" -le "${max_payload_bytes}" ]]; then
   upload_allowed=true
 fi
 
@@ -86,15 +89,15 @@ fi
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
     printf '## %s evidence measurement\n\n' "${label}"
-    echo '| Source bytes | Tar bytes (includes archive overhead) | Compressed bytes | Cap bytes | Upload allowed |'
+    echo '| Source bytes | Tar bytes (compressor input) | Compressed payload bytes | Payload cap bytes | Upload allowed |'
     echo '| ---: | ---: | ---: | ---: | --- |'
     printf '| %s | %s | %s | %s | %s |\n' \
-      "${total_source_bytes}" "${uncompressed_bytes}" "${compressed_bytes}" "${max_bytes}" "${upload_allowed}"
+      "${total_source_bytes}" "${uncompressed_bytes}" "${compressed_bytes}" "${max_payload_bytes}" "${upload_allowed}"
     echo
     printf 'The sealed archive contains only the explicit paths listed in %s.\n' "${measurement_file}"
     if [[ "${upload_allowed}" != true ]]; then
       echo
-      echo '**Evidence delivery failure:** the complete bundle exceeds the trial cap; upload is blocked without trimming.'
+      echo '**Evidence delivery failure:** the complete compressed payload exceeds the trial cap; upload is blocked without trimming.'
     fi
   } >> "${GITHUB_STEP_SUMMARY}"
 fi

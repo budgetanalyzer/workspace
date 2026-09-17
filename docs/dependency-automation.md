@@ -5,7 +5,10 @@ public-Git-tag fallback for `aquasecurity/setup-trivy` passed its automatic
 corrective Renovate cycle, and the resulting image-evidence run passed with
 uploads skipped and zero artifacts. The workflow also accepts trusted
 same-repository pull requests targeting `dependency-automation-trial` so the
-Batch C representative bot PR receives the complete image check.
+Batch C representative bot PR receives the complete image check. The Phase 12
+workspace correction is prepared from trial SHA
+`09ee0a2afecc2af6c3a216b225537c680ef68848`; the unchanged `main` rollback
+baseline is `383efc840832d474cd9d60e0368ed2ded828e03c`.
 
 The shared
 [Budget Analyzer dependency-automation policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md)
@@ -113,12 +116,20 @@ Trial runs start with schedules, the optional Trivy Actions cache, and uploads
 disabled. They still perform the complete no-cache Docker build and scan, then
 measure a sealed allowlist containing reports and build logs but not the Docker
 image, layers, Trivy database, or dependency caches. After the operator enables
-the repository upload variable, one complete archive beneath the 25 MiB cap may
-be retained for one day. The exact schedule, cache, and upload variables are
-owned by the
+the repository upload variable, the complete final `.tar.gz` payload must be at
+most 24 MiB (25,165,824 bytes). The temporary tar size is recorded only as a
+measurement and does not determine upload eligibility. The upload action keeps
+compression disabled because the payload is already gzip-compressed, and an
+exact-ID API check fails the job if GitHub reports a retained artifact above 25
+MiB (26,214,400 bytes). Missing allowlisted inputs, unsafe traversal paths,
+archive failures, compressed-payload overflow, upload failures, and retained
+size overflow all fail closed without trimming `workspace-image-scan`. The
+exact schedule, cache, and upload variables are owned by the
 [orchestration trial workflow policy](../../orchestration/docs/dependency-automation.md#trial-workflow-controls).
-If the complete bundle exceeds the cap, evidence delivery fails without trimming
-the reports.
+The known hosted measurement—42,276,809 source bytes, a 42,301,440-byte
+temporary tar, and a 5,754,918-byte final gzip—is eligible under the payload cap
+without changing archive contents; uploads remain disabled until the operator
+checkpoint authorizes one.
 
 The safe local build equivalent is:
 
