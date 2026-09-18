@@ -50,8 +50,7 @@ Renovate extends the shared Budget Analyzer preset on `main`. The workspace
 image security workflow runs for pushes to `main`, trusted same-repository pull
 requests targeting `main`, a weekly schedule, and manual dispatches. It rebuilds
 the image without cache, starting, or pushing it; scans the exact local image;
-and retains one precompressed evidence archive for seven days only after its
-complete payload passes the 24 MiB pre-upload cap. See
+and retains the declared evidence paths in one artifact for seven days. See
 [Dependency Automation](docs/dependency-automation.md) for extraction boundaries,
 image-scan limits, and validation commands.
 

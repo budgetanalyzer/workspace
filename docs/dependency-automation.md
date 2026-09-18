@@ -94,8 +94,8 @@ caching, and it:
    Trivy exposes them. The job requires Trivy's Go binary record to agree with
    the declared archive version; declaration alone does not prove the installed
    binary.
-4. Packages the complete `workspace-image-scan` allowlist as one gzip archive
-   and retains it for seven days even if an earlier step fails.
+4. Uploads the complete `workspace-image-scan` allowlist as one artifact and
+   retains it for seven days even if an earlier step fails.
 
 Vulnerability findings do not fail the scheduled evidence job. Build,
 base-resolution, database-download, inventory, scan, platform, required-package,
@@ -106,15 +106,13 @@ never started.
 The allowlist contains the base-index reports, complete build log, image
 inspection, package inventory, vulnerability report, required-tool inventory,
 and scanner logs. It does not contain the Docker image, layers, Trivy database,
-or dependency caches. `.github/scripts/prepare-dependency-evidence.sh` requires
-the final `.tar.gz` payload to be at most 24 MiB (25,165,824 bytes) before
-upload. The temporary tar size is recorded only as a measurement and does not
-determine upload eligibility. The upload action disables its own compression
-because the payload is already gzip-compressed. This pre-upload payload cap
-leaves one MiB of headroom below the former 25 MiB retained-size threshold; no
-post-upload API measurement is performed. Missing allowlisted inputs, unsafe
-traversal paths, archive failures, compressed-payload overflow, and upload
-failures all fail closed without trimming `workspace-image-scan`.
+or dependency caches. The workflow uploads `workspace-image-scan` directly as
+the single `workspace-image-security-evidence-<run-id>` artifact. A successful
+run must contain the complete allowlist; missing successful-run evidence and
+upload failures fail closed without trimming `workspace-image-scan`. The
+always-run upload step retains diagnostics produced before an earlier failure,
+while the original error keeps the workflow failed. The shared artifact policy
+is owned by the orchestration dependency-automation guide linked above.
 
 The safe local build equivalent is:
 
@@ -205,11 +203,6 @@ current commit through public Git refs with no warning and no available update.
 Run the focused checks after changing dependency discovery or image evidence:
 
 ```bash
-bash .github/scripts/test-prepare-dependency-evidence.sh
-bash -n .github/scripts/prepare-dependency-evidence.sh \
-  .github/scripts/test-prepare-dependency-evidence.sh
-shellcheck .github/scripts/prepare-dependency-evidence.sh \
-  .github/scripts/test-prepare-dependency-evidence.sh
 actionlint .github/workflows/workspace-image-security-evidence.yml
 npx --yes --package renovate@44.65.5 renovate-config-validator --strict renovate.json
 git diff --check
