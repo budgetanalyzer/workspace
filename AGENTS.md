@@ -44,7 +44,6 @@ rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontain
 
 # Dependency automation configuration and evidence workflow
 find .github/workflows -maxdepth 1 -type f | sort
-find tmp/dependency-automation/proposed -maxdepth 2 -type f | sort
 
 # Sandbox compose services
 docker compose -f ai-agent-sandbox/docker-compose.yml config --services

@@ -55,10 +55,8 @@ inspect the index and prove both `linux/amd64` and `linux/arm64` children before
 accepting either kind of proposal.
 
 The sandbox source is a read-only bind mount in a running development
-container. The adjacent datasource comments requested during onboarding are
-staged in `tmp/dependency-automation/proposed/ai-agent-sandbox.patch` for the
-workspace owner to apply from the host. The functional extraction rules do not
-depend on those comments, so local validation covers the current checkout.
+container. The functional extraction rules do not depend on adjacent datasource
+comments in that source, so local validation covers the current checkout.
 
 ### Commit-pinned setup-trivy action
 
@@ -162,41 +160,6 @@ The exact Ubuntu base index supports ARM64, and several binary downloads use
 `TARGETARCH`, but the Go URL is fixed to `linux-amd64`. Consequently, the
 workflow's amd64 build and scan is not proof that the complete image works on
 ARM64. Changing that architecture behavior is separate work.
-
-## Local baseline evidence
-
-On 2026-09-07, the rebuilt active container reported Node `v24.20.0`, npm
-`11.19.0`, Go `1.24.1 linux/amd64`, and Zulu OpenJDK `25.0.4.1+1-LTS`. The
-installed apt inventory included `nodejs 24.20.0-1nodesource1` and Zulu 25
-packages at `25.0.4.1-1`. These are observations, not desired-version inputs.
-The Dockerfile and README both select Node major 24.
-
-The checked-in Ubuntu digest is a multi-platform Ubuntu 24.04 index with both
-linux/amd64 and linux/arm64 children. A no-cache local `linux/amd64` build from
-the Compose context completed on 2026-09-07 without starting or pushing the
-image. Trivy 0.74.0 identified Ubuntu 24.04, 481 OS packages, Node
-`24.20.0`, Zulu `25.0.4.1`, and the Go `1.24.1` binary package. The raw local
-evidence is staged under `tmp/dependency-automation/local-image-scan/`; it is
-temporary validation output rather than a checked-in report. Vulnerability
-scanning reported 4,381 result rows, including 29 critical and 767 high rows,
-while scanner and database operations completed. Counts include repeated Go
-standard-library findings across installed binaries and are not unique-advisory
-or review-parity totals. The existing backlog remains non-gating under the
-shared policy.
-
-A credential-free Renovate 44.65.5 lookup under Node 24 extracted 16 records
-from 13 files: one Dev Container feature, one native digest-only Dockerfile
-record, five workflow records, and nine regex-managed Dockerfile records. The
-safe Ubuntu manager separately proposed the current 24.04 digest and a visible
-  26.04 major; its replacement preserves the digest-only form. Node 24 was current,
-  the Go source exposed maintained-line 1.24 and later lines, and PyPI exposed a
-  mitmproxy patch. The safe Ubuntu Docker lookup succeeded. GitHub-backed
-  identities require hosted Renovate credentials and must not be reported as
-  locally resolved when credential-free validation cannot query them.
-
-Strict Renovate validation passed for the public `git-tags` fallback. A
-credential-free local extraction resolved the setup-trivy version and exact
-current commit through public Git refs with no warning and no available update.
 
 ## Validation
 
