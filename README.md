@@ -44,6 +44,17 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 - `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
 
+## Dependency Automation
+
+Renovate extends the shared Budget Analyzer preset on `main`. The workspace
+image security workflow runs for pushes to `main`, trusted same-repository pull
+requests targeting `main`, a weekly schedule, and manual dispatches. It rebuilds
+the image without cache, starting, or pushing it; scans the exact local image;
+and retains one precompressed evidence archive for seven days only after its
+complete payload passes the 24 MiB pre-upload cap. See
+[Dependency Automation](docs/dependency-automation.md) for extraction boundaries,
+image-scan limits, and validation commands.
+
 ## Run An AI Session Handler Plan
 
 A fresh container installs `/workspace/ai-session-handler` globally through an editable pipx

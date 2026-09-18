@@ -18,9 +18,9 @@ if [[ "${output_archive}" != *.tar.gz ]] \
   exit 2
 fi
 
-# The final gzip payload must leave one MiB of headroom beneath the
-# operator-approved 25 MiB retained-artifact cap. The temporary tar is measured
-# for audit evidence, but it is compressor input and is never uploaded.
+# The final gzip payload must leave one MiB of headroom beneath the former
+# 25 MiB retained-artifact threshold. The temporary tar is measured for audit
+# evidence, but it is compressor input and is never uploaded.
 max_payload_bytes=25165824
 
 mkdir -p "$(dirname "${output_archive}")"
@@ -97,7 +97,12 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     printf 'The sealed archive contains only the explicit paths listed in %s.\n' "${measurement_file}"
     if [[ "${upload_allowed}" != true ]]; then
       echo
-      echo '**Evidence delivery failure:** the complete compressed payload exceeds the trial cap; upload is blocked without trimming.'
+      echo '**Evidence delivery failure:** the complete compressed payload exceeds the production cap; upload is blocked without trimming.'
     fi
   } >> "${GITHUB_STEP_SUMMARY}"
+fi
+
+if [[ "${upload_allowed}" != true ]]; then
+  echo "Compressed evidence payload is ${compressed_bytes} bytes; cap is ${max_payload_bytes} bytes." >&2
+  exit 1
 fi

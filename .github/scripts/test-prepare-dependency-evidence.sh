@@ -3,7 +3,7 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-helper="${script_dir}/prepare-trial-evidence.sh"
+helper="${script_dir}/prepare-dependency-evidence.sh"
 payload_cap_bytes=25165824
 test_root="$(mktemp -d)"
 trap 'rm -rf "${test_root}"' EXIT
@@ -43,12 +43,15 @@ overflow_case="${test_root}/overflow"
 mkdir -p "${overflow_case}/workspace-image-scan"
 head -c "$((payload_cap_bytes + 1048576))" /dev/urandom \
   > "${overflow_case}/workspace-image-scan/complete-evidence.bin"
-(
+if (
   cd "${overflow_case}"
   GITHUB_OUTPUT=outputs.txt \
     GITHUB_STEP_SUMMARY=summary.md \
     bash "${helper}" evidence/archive.tar.gz 'Overflow evidence' workspace-image-scan
-)
+); then
+  echo 'Expected an oversized compressed payload to fail.' >&2
+  exit 1
+fi
 
 overflow_gzip_bytes="$(output_value "${overflow_case}/outputs.txt" compressed_bytes)"
 [[ "${overflow_gzip_bytes}" -gt "${payload_cap_bytes}" ]]
@@ -74,4 +77,4 @@ if (
   exit 1
 fi
 
-echo 'prepare-trial-evidence tests passed'
+echo 'prepare-dependency-evidence tests passed'
