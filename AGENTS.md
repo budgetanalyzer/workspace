@@ -42,6 +42,9 @@ find tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox -m
 # Relevant config and hook surfaces
 rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
 
+# Dependency automation configuration and evidence workflow
+find .github/workflows -maxdepth 1 -type f | sort
+
 # Sandbox compose services
 docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 ```
@@ -57,6 +60,11 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 - Session-start hooks and AI context injection live in `ai-agent-sandbox/settings-overlay.json`. Read it before changing startup behavior or how agent context files are injected.
 - Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
 - Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
+- Dependency update discovery and the no-start workspace image scan live in
+  `renovate.json`, `.github/workflows/workspace-image-security-evidence.yml`, and
+  `docs/dependency-automation.md`. Read them before changing dependency
+  extraction, image builds, scan evidence, production events, caches, uploads,
+  or artifact limits.
 - Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
 - Staged AI Session Handler global installation and `ai-run` launcher work lives in `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
@@ -82,6 +90,11 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
 - Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
+- Keep workspace image-evidence pull-request execution limited to
+  same-repository PRs targeting `main`. Preserve read-only permissions, normal
+  Trivy caching, the complete `workspace-image-scan` allowlist, and the single
+  seven-day evidence artifact.
+  Read `docs/dependency-automation.md` before changing any of these controls.
 - Before live work against exactly `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
 - If the host publication is missing, stop and ask the user to run orchestration `./setup.sh` on the host. Never generate or rotate browser-facing certificates in the container.
 - Never use HTTP, `--insecure`, `verify=False`, or `ignore_https_errors` to bypass a local trust failure. Do not run the lazy trust command for staging, production, arbitrary origins, or non-certificate failures.
@@ -97,6 +110,8 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 - Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
 - Run `shellcheck <changed shell scripts>` after changing shell scripts.
+- After changing the dependency-automation evidence workflow, run
+  `actionlint .github/workflows/workspace-image-security-evidence.yml`.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
 - After rebuilding image-tracing prerequisites, verify `node --version`, `via-annotator --version`, `via-annotator --check`, `identify -version`, `convert -version`, `playwright --version`, and `playwright install --list`; confirm VIA binds only to `127.0.0.1` and stops cleanly.
 - If a touched file has pre-existing validation failures, report them explicitly and do not claim full verification.
@@ -106,6 +121,8 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 - Keep documentation updates in the same change set as the behavior or workflow change that required them. Do not leave doc updates as follow-up work.
 - Update `AGENTS.md` when repository instructions, guardrails, workflows, or discovery commands change.
+- Before updating `AGENTS.md`, read and apply the
+  [AGENTS.md checkstyle](https://github.com/budgetanalyzer/orchestration/blob/main/docs/agents-md-checkstyle.md).
 - Update `README.md` when setup, launch usage, or repository purpose changes.
 - Update active docs under `docs/` when operating procedures or staged helper behavior changes.
 - Update the nearest affected owner doc rather than duplicating the same detail across multiple docs.

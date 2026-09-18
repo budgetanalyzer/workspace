@@ -30,7 +30,7 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - **Claude Code, Gemini CLI, Codex CLI, and AI Session Handler** — globally available with convenience launchers ([details](docs/launch-options.md))
 - **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
 - **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
-- **Node.js 22** — the default signed NodeSource major line, compatible with Site Modeler's `>=22` engine requirement
+- **Node.js 24** — the latest LTS major line from the signed NodeSource repository, compatible with Site Modeler's `>=22` engine requirement
 - **VGG Image Annotator 3.0.13** — pinned standalone human annotation UI with a localhost-only foreground launcher
 - **ImageMagick** — deterministic image metadata, crop, and review-overlay tools (`identify` and `convert`)
 - **Lazy local TLS trust** — verified system, Python, and Chromium trust for the host-managed Budget Analyzer ingress ([details](docs/local-budget-analyzer-tls.md))
@@ -42,7 +42,17 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - `ai-agent-sandbox/` — Docker sandbox: Dockerfile, compose, entrypoint, scripts, skills, settings overlay (**read-only at runtime**)
 - `scripts/` — workspace utilities (`sync-all.sh`)
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
-- `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md)
+- `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
+
+## Dependency Automation
+
+Renovate extends the shared Budget Analyzer preset on `main`. The workspace
+image security workflow runs for pushes to `main`, trusted same-repository pull
+requests targeting `main`, a weekly schedule, and manual dispatches. It rebuilds
+the image without cache, starting, or pushing it; scans the exact local image;
+and retains the declared evidence paths in one artifact for seven days. See
+[Dependency Automation](docs/dependency-automation.md) for extraction boundaries,
+image-scan limits, and validation commands.
 
 ## Run An AI Session Handler Plan
 
@@ -98,7 +108,7 @@ playwright --version
 playwright install --list
 ```
 
-`node --version` must report major version 22 or newer, `via-annotator --check` must report a valid 3.0.13 installation without starting a server, and Playwright's list must include Chromium under `/opt/playwright-browsers`.
+`node --version` must report major version 24, `via-annotator --check` must report a valid 3.0.13 installation without starting a server, and Playwright's list must include Chromium under `/opt/playwright-browsers`.
 
 Start VIA in a terminal:
 
