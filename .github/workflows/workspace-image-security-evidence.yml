@@ -194,25 +194,15 @@ jobs:
             echo 'An amd64 build and scan is not evidence that the complete workspace image supports ARM64; the Dockerfile currently downloads the Go archive for linux-amd64 only.'
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Prepare capped workspace image evidence
-        id: evidence
-        if: ${{ always() }}
-        run: >-
-          bash .github/scripts/prepare-dependency-evidence.sh
-          dependency-automation-evidence/workspace-image-evidence.tar.gz
-          'Workspace image scan'
-          workspace-image-scan
-
       - name: Upload short-lived workspace image evidence
         id: evidence-artifact
-        if: ${{ always() && steps.evidence.outputs.upload_allowed == 'true' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: workspace-image-security-evidence-${{ github.run_id }}
-          path: dependency-automation-evidence/workspace-image-evidence.tar.gz
+          path: workspace-image-scan
           if-no-files-found: error
           retention-days: 7
-          compression-level: 0
 
       - name: Link the retained evidence
         if: ${{ always() && steps.evidence-artifact.outputs.artifact-url != '' }}
