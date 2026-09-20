@@ -17,7 +17,8 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:4": {
       "version": "latest",
-      "moby": true
+      "moby": true,
+      "iptablesSwitchAtRuntime": false
     }
   },
 

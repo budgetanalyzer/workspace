@@ -32,6 +32,13 @@ Native managers also cover the Docker-in-Docker Dev Container feature and the
 Actions and runner inputs in the evidence workflow, except for the
 `aquasecurity/setup-trivy` action handled below.
 
+Docker-in-Docker updates must preserve `iptablesSwitchAtRuntime: false` while
+the privileged sandbox uses host networking. Review feature major-version
+proposals for iptables/backend startup changes: the nested daemon must not
+select the host Docker daemon's nftables ruleset at container startup. See the
+[Docker-in-Docker iptables decision](design-decisions.md#docker-in-docker-iptables-backend)
+for the isolation constraint and the acceptance boundary for changing it.
+
 The checksum-coupled and platform-sensitive records require Dependency
 Dashboard approval. Renovate may propose a version, but reviewers must update
 the complete checksum table and run the existing verification. A partial
@@ -168,6 +175,7 @@ Run the focused checks after changing dependency discovery or image evidence:
 ```bash
 actionlint .github/workflows/workspace-image-security-evidence.yml
 npx --yes --package renovate@44.65.5 renovate-config-validator --strict renovate.json
+jq -e '.features["ghcr.io/devcontainers/features/docker-in-docker:4"].iptablesSwitchAtRuntime == false' .devcontainer/devcontainer.json
 git diff --check
 ```
 
