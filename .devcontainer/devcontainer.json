@@ -15,8 +15,8 @@
   "initializeCommand": "bash ${localWorkspaceFolder}/ai-agent-sandbox/setup-env.sh",
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:4": {
-      "version": "latest",
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "29.8.0",
       "moby": true
     }
   },
