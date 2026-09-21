@@ -54,6 +54,11 @@ and retains the declared evidence paths in one artifact for seven days. See
 [Dependency Automation](docs/dependency-automation.md) for extraction boundaries,
 image-scan limits, and validation commands.
 
+After applying the Docker-in-Docker feature rollback, follow the
+[host recovery and rebuild sequence](docs/dependency-automation.md#applying-the-docker-feature-rollback)
+before resuming the local stack. The configuration change does not repair
+already damaged host firewall rules.
+
 ## Run An AI Session Handler Plan
 
 A fresh container installs `/workspace/ai-session-handler` globally through an editable pipx

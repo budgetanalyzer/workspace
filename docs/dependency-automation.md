@@ -32,18 +32,45 @@ Native managers also cover the Docker-in-Docker Dev Container feature and the
 Actions and runner inputs in the evidence workflow, except for the
 `aquasecurity/setup-trivy` action handled below.
 
-Docker-in-Docker updates must preserve `iptablesSwitchAtRuntime: false` while
-the privileged sandbox uses host networking. Review feature major-version
-proposals for iptables/backend startup changes: the nested daemon must not
-select the host Docker daemon's nftables ruleset at container startup. See the
-[Docker-in-Docker iptables decision](design-decisions.md#docker-in-docker-iptables-backend)
-for the isolation constraint and the acceptance boundary for changing it.
+The Docker-in-Docker feature is rolled back to major 2 with the original 2.16.1
+lock entry after the major-4 update exposed a host firewall collision. Keep the
+feature reference and lock entry consistent. The attempted
+`iptablesSwitchAtRuntime: false` fix has been removed: in feature 4.1.1 it moves
+backend detection into the image build, where the legacy capability probe can
+fail and select nftables. Feature 2.16.1 selects legacy when available on the
+current Debian-family image.
+
+This rollback is a recovery measure, not network isolation. The sandbox still
+shares the host network namespace, and the feature's `version: latest` option
+still allows Docker/Moby engine packages to change on rebuild. Review future
+feature updates for backend selection and daemon startup behavior, and verify
+host Kind forwarding after a devcontainer restart. The base-image security scan
+below does not exercise feature installation or daemon startup.
 
 The checksum-coupled and platform-sensitive records require Dependency
 Dashboard approval. Renovate may propose a version, but reviewers must update
 the complete checksum table and run the existing verification. A partial
 proposal is expected to fail and must not be made mergeable by weakening a
 checksum check.
+
+### Applying the Docker feature rollback
+
+Run recovery from the host, outside the devcontainer:
+
+1. Stop the existing devcontainer so its nested daemon cannot rewrite the host
+   firewall. Closing the VS Code window alone does not stop it because
+   `shutdownAction` is `none`.
+2. If host Docker's forwarding rules are damaged, restart host Docker to restore
+   its network state. This interrupts Docker workloads; do not restart the
+   devcontainer built with the old major-4 configuration.
+3. Use **Dev Containers: Rebuild and Reopen in Container** with the restored
+   feature and lockfile. A normal window reload is insufficient.
+4. Confirm `iptables --version` inside the rebuilt container reports `legacy`,
+   then verify host Kind image pulls and the affected workloads recover. Backend
+   selection alone is not proof of working forwarding.
+
+Re-run orchestration `./setup.sh` on the host only if a clean cluster bootstrap
+is wanted; it deletes and recreates Kind and performs TLS setup.
 
 ### Digest-only Ubuntu base
 
@@ -175,7 +202,8 @@ Run the focused checks after changing dependency discovery or image evidence:
 ```bash
 actionlint .github/workflows/workspace-image-security-evidence.yml
 npx --yes --package renovate@44.65.5 renovate-config-validator --strict renovate.json
-jq -e '.features["ghcr.io/devcontainers/features/docker-in-docker:4"].iptablesSwitchAtRuntime == false' .devcontainer/devcontainer.json
+jq -e '.features["ghcr.io/devcontainers/features/docker-in-docker:2"] | type == "object" and (has("iptablesSwitchAtRuntime") | not)' .devcontainer/devcontainer.json
+jq -e '.features["ghcr.io/devcontainers/features/docker-in-docker:2"].version == "2.16.1"' .devcontainer/devcontainer-lock.json
 git diff --check
 ```
 
