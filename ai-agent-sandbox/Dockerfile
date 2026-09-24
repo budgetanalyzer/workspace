@@ -131,7 +131,7 @@ RUN set -eux; \
         amd64|arm64) : ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
-    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.31.0/kind-linux-${TARGETARCH}" \
+    curl -fsSLo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-${TARGETARCH}" \
     && chmod +x /usr/local/bin/kind
 
 # Install helm
