@@ -1,0 +1,56 @@
+name: budget-analyzer-agent
+
+services:
+  agent:
+    image: budget-analyzer-agent:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: vscode
+        USER_UID: ${AGENT_VM_USER_UID:?set AGENT_VM_USER_UID in agent-vm.env}
+        USER_GID: ${AGENT_VM_USER_GID:?set AGENT_VM_USER_GID in agent-vm.env}
+        CLI_CACHE_BUST: ${CLI_CACHE_BUST:-0}
+    entrypoint: /usr/local/bin/guest-entrypoint.sh
+    command: sleep infinity
+    init: true
+    stdin_open: true
+    tty: true
+    user: "${AGENT_VM_USER_UID:?set AGENT_VM_USER_UID in agent-vm.env}:${AGENT_VM_USER_GID:?set AGENT_VM_USER_GID in agent-vm.env}"
+    group_add:
+      - "${AGENT_VM_DOCKER_GID:?set AGENT_VM_DOCKER_GID in agent-vm.env}"
+    network_mode: host
+    environment:
+      BUDGET_ANALYZER_WORKTREE_PARENT: ${AGENT_VM_WORKTREES:?set AGENT_VM_WORKTREES in agent-vm.env}
+      BUDGET_ANALYZER_BARE_PARENT: ${AGENT_VM_BARE:?set AGENT_VM_BARE in agent-vm.env}
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1"
+      SSH_AUTH_SOCK: ""
+      GITHUB_TOKEN: ""
+      GH_TOKEN: ""
+      GIT_ASKPASS: ""
+      SSH_ASKPASS: ""
+    working_dir: ${AGENT_VM_WORKTREES:?set AGENT_VM_WORKTREES in agent-vm.env}
+    volumes:
+      - type: bind
+        source: ${AGENT_VM_WORKTREES:?set AGENT_VM_WORKTREES in agent-vm.env}
+        target: ${AGENT_VM_WORKTREES:?set AGENT_VM_WORKTREES in agent-vm.env}
+      - type: bind
+        source: ${AGENT_VM_BARE:?set AGENT_VM_BARE in agent-vm.env}
+        target: ${AGENT_VM_BARE:?set AGENT_VM_BARE in agent-vm.env}
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+      - type: volume
+        source: claude-config
+        target: /home/vscode/.claude
+      - type: volume
+        source: codex-config
+        target: /home/vscode/.codex
+      - type: volume
+        source: gemini-config
+        target: /home/vscode/.gemini
+
+volumes:
+  claude-config:
+  codex-config:
+  gemini-config:

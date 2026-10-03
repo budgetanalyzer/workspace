@@ -3,8 +3,9 @@
 set -u
 set -o pipefail
 
-readonly PUBLICATION_FILE="/workspace/orchestration/nginx/certs/k8s/_mkcert-rootCA.pem"
-readonly WILDCARD_CERT_FILE="/workspace/orchestration/nginx/certs/k8s/_wildcard.budgetanalyzer.localhost.pem"
+readonly WORKTREE_PARENT="${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}"
+readonly PUBLICATION_FILE="$WORKTREE_PARENT/orchestration/nginx/certs/k8s/_mkcert-rootCA.pem"
+readonly WILDCARD_CERT_FILE="$WORKTREE_PARENT/orchestration/nginx/certs/k8s/_wildcard.budgetanalyzer.localhost.pem"
 readonly SYSTEM_CERT_FILE="/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt"
 readonly SYSTEM_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
 readonly NSS_DB_DIR="$HOME/.pki/nssdb"
@@ -42,6 +43,14 @@ fail() {
     exit "$exit_code"
 }
 
+print_publication_remediation() {
+    if [ "$WORKTREE_PARENT" = /workspace ]; then
+        echo "        Run ./setup.sh from the orchestration checkout on the host, then retry." >&2
+    else
+        echo "        Recopy the three approved TLS files from the personal host, validate them in the guest, then retry." >&2
+    fi
+}
+
 certificate_fingerprint() {
     openssl x509 -in "$1" -noout -sha256 -fingerprint 2>/dev/null \
         | sed -e 's/^[^=]*=//' -e 's/://g'
@@ -77,20 +86,20 @@ fi
 
 if [ ! -r "$PUBLICATION_FILE" ]; then
     echo "[ERROR] Host-published Budget Analyzer local CA is missing." >&2
-    echo "        Run ./setup.sh from the orchestration checkout on the host, then retry." >&2
+    print_publication_remediation
     exit "$EXIT_PUBLICATION_MISSING"
 fi
 
 if ! certificate_is_valid_ca "$PUBLICATION_FILE"; then
     echo "[ERROR] Host-published Budget Analyzer local CA is invalid or expired." >&2
-    echo "        Run ./setup.sh from the orchestration checkout on the host, then retry." >&2
+    print_publication_remediation
     exit "$EXIT_PUBLICATION_INVALID"
 fi
 
 if [ ! -r "$WILDCARD_CERT_FILE" ] \
     || ! openssl verify -CAfile "$PUBLICATION_FILE" "$WILDCARD_CERT_FILE" >/dev/null 2>&1; then
     echo "[ERROR] Host-published Budget Analyzer local CA does not verify the local ingress certificate." >&2
-    echo "        Run ./setup.sh from the orchestration checkout on the host, then retry." >&2
+    print_publication_remediation
     exit "$EXIT_PUBLICATION_INVALID"
 fi
 

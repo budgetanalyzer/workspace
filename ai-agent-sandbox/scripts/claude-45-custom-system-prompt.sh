@@ -7,6 +7,8 @@
 
 PROXY_PORT=${PROXY_PORT:-9080}
 WEB_PORT=$((PROXY_PORT + 1))
+WORKTREE_PARENT=${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}
+PROMPT_ADDON="$WORKTREE_PARENT/workspace/ai-agent-sandbox/system-prompt-addon.py"
 
 export HTTPS_PROXY=http://127.0.0.1:$PROXY_PORT
 export HTTP_PROXY=http://127.0.0.1:$PROXY_PORT
@@ -36,7 +38,7 @@ else
     mitmweb --listen-port "$PROXY_PORT" --web-port "$WEB_PORT" \
         --set console_eventlog_verbosity=info \
         --set web_password=mitmlocal \
-        -s /workspace/workspace/ai-agent-sandbox/system-prompt-addon.py \
+        -s "$PROMPT_ADDON" \
         >/dev/null 2>&1 &
     PROXY_PID=$!
     sleep 2

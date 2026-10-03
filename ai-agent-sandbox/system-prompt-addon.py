@@ -29,7 +29,10 @@ from mitmproxy import ctx, http
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PROMPT_PATH = "/workspace/workspace/ai-agent-sandbox/system-prompt.md"
+WORKTREE_PARENT = os.environ.get("BUDGET_ANALYZER_WORKTREE_PARENT", "/workspace")
+DEFAULT_PROMPT_PATH = os.path.join(
+    WORKTREE_PARENT, "workspace", "ai-agent-sandbox", "system-prompt.md"
+)
 DUMP_DIR = "/tmp/claude-proxy-dumps"
 
 

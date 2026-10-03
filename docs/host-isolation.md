@@ -44,10 +44,23 @@ not a Docker profile or a Dev Container configuration.
 The host SSH aliases must retain strict host-key checking, the dedicated VM
 identity, `IdentitiesOnly yes`, `ForwardAgent no`, `ForwardX11 no`, and no
 automatic forwarding. The dedicated VS Code profile must disable automatic and
-restored port forwarding. Connect with Remote SSH, then open
+restored port forwarding. In that profile, also disable **Git: Terminal
+Authentication** and **Git: Use Integrated Ask Pass** so VS Code does not inject
+its Git credential bridge into guest terminals. Their setting IDs are
+`git.terminalAuthentication` and `git.useIntegratedAskPass`; both must be
+`false` in the dedicated profile. Close every existing integrated terminal and
+create new terminals after changing those settings; only then check that
+`GIT_ASKPASS`, `SSH_ASKPASS`, GitHub token variables, and `SSH_AUTH_SOCK` are
+absent. Connect with Remote SSH, then open
 `/srv/budget-analyzer/worktrees`; the extension host, terminals, tasks, and
 language servers run in the guest. Do not choose **Reopen in Container** from
 that remote window or install GitHub authentication/publishing extensions.
+
+In a newly created Remote SSH terminal, this command must print nothing:
+
+```bash
+env | rg '^(SSH_AUTH_SOCK|GITHUB_TOKEN|GH_TOKEN|GIT_ASKPASS|SSH_ASKPASS)=' || true
+```
 
 ## Install Guest Prerequisites
 

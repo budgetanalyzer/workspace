@@ -18,7 +18,12 @@ from urllib.request import Request, urlopen
 
 MITM_API = os.environ.get("MITM_API", "http://localhost:9081").rstrip("/")
 MITM_PASS = os.environ.get("MITM_PASS", "mitmlocal")
-WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace/workspace")).resolve()
+WORKTREE_PARENT = Path(
+    os.environ.get("BUDGET_ANALYZER_WORKTREE_PARENT", "/workspace")
+).resolve()
+WORKSPACE_ROOT = Path(
+    os.environ.get("WORKSPACE_ROOT", str(WORKTREE_PARENT / "workspace"))
+).resolve()
 EXPORT_ROOT = WORKSPACE_ROOT / "tmp" / "mitmproxy-flows"
 SECRET_KEYS = {
     "api_key",

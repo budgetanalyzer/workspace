@@ -22,6 +22,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     git \
+    jq \
+    # Client access to the mounted guest socket; no daemon starts in the image
+    docker.io \
+    docker-compose-v2 \
     sudo \
     ca-certificates \
     gnupg \
@@ -160,15 +164,31 @@ RUN set -eux; \
     tar -xzf /tmp/tilt.tar.gz -C /usr/local/bin tilt; \
     rm -f /tmp/tilt.tar.gz
 
-# Create vscode user with matching UID/GID from host
+# Create the vscode user with the guest operator's UID/GID. Ubuntu 24.04's
+# base image reserves 1000:1000 for its stock ubuntu account, so rename that
+# account when the guest operator uses the normal first-user IDs. Refuse any
+# other collision instead of silently taking over an unexpected account.
 ARG USERNAME=vscode
 ARG USER_UID
 ARG USER_GID
 
-# Create vscode group and user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash $USERNAME \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN set -eux; \
+    existing_group="$(getent group "$USER_GID" | cut -d: -f1 || true)"; \
+    case "$existing_group" in \
+        '') groupadd --gid "$USER_GID" "$USERNAME" ;; \
+        ubuntu) groupmod --new-name "$USERNAME" ubuntu ;; \
+        "$USERNAME") : ;; \
+        *) echo "Refusing unexpected group collision for GID $USER_GID: $existing_group" >&2; exit 1 ;; \
+    esac; \
+    existing_user="$(getent passwd "$USER_UID" | cut -d: -f1 || true)"; \
+    case "$existing_user" in \
+        '') useradd --uid "$USER_UID" --gid "$USER_GID" -m -s /bin/bash "$USERNAME" ;; \
+        ubuntu) usermod --login "$USERNAME" --home "/home/$USERNAME" --move-home \
+            --gid "$USER_GID" --shell /bin/bash ubuntu ;; \
+        "$USERNAME") usermod --gid "$USER_GID" --shell /bin/bash "$USERNAME" ;; \
+        *) echo "Refusing unexpected user collision for UID $USER_UID: $existing_user" >&2; exit 1 ;; \
+    esac; \
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Set up bash aliases for vscode user
 COPY bash_aliases.sh /home/$USERNAME/.bash_aliases
@@ -211,12 +231,15 @@ RUN mkdir -p /workspace && chown -R $USER_UID:$USER_GID /workspace
 
 # Create auth/config directories for the container user. Codex lean defaults
 # are passed by the codex-lean launcher so plain codex keeps upstream defaults.
-RUN mkdir -p /home/$USERNAME/.codex && chown -R $USER_UID:$USER_GID /home/$USERNAME/.codex
-RUN mkdir -p /home/$USERNAME/.gemini && chown -R $USER_UID:$USER_GID /home/$USERNAME/.gemini
+RUN mkdir -p /home/$USERNAME/.claude /home/$USERNAME/.codex /home/$USERNAME/.gemini \
+    && chown -R $USER_UID:$USER_GID \
+        /home/$USERNAME/.claude /home/$USERNAME/.codex /home/$USERNAME/.gemini
 
 # Copy entrypoint and helper scripts
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY guest-entrypoint.sh /usr/local/bin/guest-entrypoint.sh
+RUN chmod +x /usr/local/bin/guest-entrypoint.sh
 COPY scripts/start-proxy.sh /usr/local/bin/start-proxy
 COPY scripts/claude-with-proxy.sh /usr/local/bin/claude-with-proxy
 COPY scripts/claude-with-custom-system-prompt.sh /usr/local/bin/claude-with-custom-system-prompt
