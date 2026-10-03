@@ -16,6 +16,11 @@ material at startup, or weaken HTTPS verification.
    system bundle and the `vscode` user's Chromium NSS database only when the
    command is explicitly invoked.
 
+The guest agent runtime sets `BUDGET_ANALYZER_WORKTREE_PARENT` to its reviewed
+guest working-clone parent. The helpers resolve the orchestration publication
+under that parent instead of assuming `/workspace`. The existing Mint
+devcontainer leaves the variable unset and retains `/workspace` as its default.
+
 Before changing container trust, the command verifies that the publication is
 a current CA certificate and that it validates the orchestration-owned local
 wildcard ingress certificate. A mismatched or stale publication fails with
@@ -60,6 +65,11 @@ orchestration `./setup.sh` on the host. Do not run mkcert or orchestration
 certificate setup from the container. After the image has been rebuilt once
 to add the commands and NSS tooling, ordinary host CA publication or rotation
 requires only another ensure invocation, not a container restart.
+
+For the development VM, "publication" means the approved public CA and leaf
+that the human transferred with the leaf key according to Checkpoint A. Renew
+only on the personal host, recopy those three files, and rerun the guest import
+workflow. Never copy the mkcert CA signing key.
 
 A DNS failure, connection refusal, gateway readiness failure, or
 authentication failure is not a reason to reinstall certificate trust. Fix

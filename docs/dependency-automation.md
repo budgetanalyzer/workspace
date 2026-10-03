@@ -129,19 +129,21 @@ docker buildx build \
 This is intentionally the `ai-agent-sandbox` context declared by
 `ai-agent-sandbox/docker-compose.yml`. Do not substitute the repository root,
 add live mounts, push the image, or run its entrypoint for dependency evidence.
-The scan-only UID/GID 10001 avoids the Ubuntu base's existing `ubuntu` account
-at 1000. Normal Dev Container builds continue to use the host values generated
-by `ai-agent-sandbox/setup-env.sh`; the Compose fallback of 1000 collides when
-that generated file is absent, which remains an existing setup limitation rather
-than an image-scan reason to change account creation.
+The scan-only UID/GID 10001 keeps scan evidence independent of an operator
+account. Normal Dev Container builds continue to use the host values generated
+by `ai-agent-sandbox/setup-env.sh`. For the separate guest runtime, the shared
+Dockerfile safely renames only Ubuntu 24.04's stock `ubuntu` account when the
+operator uses its normal 1000:1000 IDs; any other UID/GID collision fails the
+build instead of taking over an unexpected account.
 
 ## Inventory limits
 
 Unversioned `apt-get install` declarations do not provide patch targets for
-Renovate. This includes the base utilities, Maven, ImageMagick, and the
-`zulu25-jdk` package: the Dockerfile selects Zulu major 25, while Azul apt
-selects the patch available at build time. Renovate's `java-version` datasource
-uses Adoptium metadata and must not be presented as Azul Zulu coverage.
+Renovate. This includes the base utilities, the guest-socket Docker/Compose
+clients, Maven, ImageMagick, and the `zulu25-jdk` package: the Dockerfile
+selects Zulu major 25, while Azul apt selects the patch available at build
+time. Renovate's `java-version` datasource uses Adoptium metadata and must not
+be presented as Azul Zulu coverage.
 
 Node is similarly declared as major 24 and receives NodeSource patch updates
 only through a fresh apt transaction. A cached image build is not evidence of

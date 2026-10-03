@@ -41,14 +41,17 @@ Convenience aliases:
 
 ## AI Session Handler Plans
 
-Container startup installs `/workspace/ai-session-handler` into pipx with `--force --editable`, so
-both `ai-session-handler` and `ai-session-handler-codex-high` are available globally and current
-Python source changes are used immediately.
+Container startup installs the `ai-session-handler` sibling checkout from the
+configured working-clone parent into pipx with `--force --editable`, so both
+`ai-session-handler` and `ai-session-handler-codex-high` are available globally
+and current Python source changes are used immediately. The Mint devcontainer's
+default parent is `/workspace`; the guest entrypoint uses the reviewed
+guest-local parent.
 
 Run the sandbox's normal plan workflow from the repository that owns the plan:
 
 ```bash
-cd /workspace/REPOSITORY
+cd "${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}/REPOSITORY"
 ai-run PLAN_NAME
 ```
 
@@ -75,13 +78,13 @@ environment variable; the launcher does not hard-code a model.
 - `claude-with-custom-system-prompt` — traffic inspection + prompt replacement (not required for normal development)
 - `codex-with-proxy`, `codex-*-with-proxy` — Codex lean equivalents
 
-Browse [`ai-agent-sandbox/scripts/`](/workspace/workspace/ai-agent-sandbox/scripts/) for the full set of launchers.
+Browse [`ai-agent-sandbox/scripts/`](../ai-agent-sandbox/scripts/) for the full set of launchers.
 
 Request dumps are written to `/tmp/claude-proxy-dumps/` with CWD and timestamp in filenames.
 
 ### Why the custom system prompt launcher exists
 
-Anthropic's default system prompt includes verbose per-tool elaboration that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon swaps the prompt in-flight as a workaround. See [AGENTS.md](/workspace/workspace/AGENTS.md) for operating rules and source-of-truth pointers.
+Anthropic's default system prompt includes verbose per-tool elaboration that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon swaps the prompt in-flight as a workaround. See [AGENTS.md](../AGENTS.md) for operating rules and source-of-truth pointers.
 
 ## Disabling Tools
 

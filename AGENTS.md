@@ -39,6 +39,9 @@ find tmp/site-modeler-image-tracing/proposed/ai-agent-sandbox -maxdepth 3 -type 
 # Staged AI Session Handler global commands
 find tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
 
+# Staged development-VM sandbox runtime
+find tmp/agent-host-isolation/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+
 # Relevant config and hook surfaces
 rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
 
@@ -67,6 +70,11 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
   or artifact limits.
 - Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
 - Staged AI Session Handler global installation and `ai-run` launcher work lives in `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
+- Guest VM runtime, entrypoint and configurable helper changes staged from the
+  read-only sandbox live in
+  `tmp/agent-host-isolation/proposed/ai-agent-sandbox/`. Read
+  `docs/host-isolation.md` before changing repository transport, guest mounts,
+  Docker selection, credentials, Remote SSH guidance or Checkpoint A commands.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
@@ -104,12 +112,20 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 - Read the relevant source-of-truth file before changing setup assumptions, sandbox configuration, launchers, hooks, or staged mitmproxy helpers.
 - Prefer checked-in scripts and config files over reconstructing commands from memory.
 - When continuing staged sandbox work, make and test changes in that proposal's tree under `tmp/`; for AI Session Handler global commands, use `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
+- Keep the Mint devcontainer configuration separate from the explicitly
+  selected guest runtime. Never launch guest Compose against the personal-host
+  daemon or add host workspace, home, credential, SSH-agent, kubeconfig or
+  libvirt mounts to it.
 - Keep documentation updates in the same change set as the behavior or workflow change that required them.
 
 ## Validation
 
 - Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
 - Run `shellcheck <changed shell scripts>` after changing shell scripts.
+- After changing guest runtime or repository transport, render both the
+  unchanged Mint Compose/devcontainer selection and the staged guest Compose
+  configurations, then run the disposable Git fixtures described in
+  `docs/host-isolation.md` and the active implementation plan.
 - After changing the dependency-automation evidence workflow, run
   `actionlint .github/workflows/workspace-image-security-evidence.yml`.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.

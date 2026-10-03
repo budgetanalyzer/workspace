@@ -2,6 +2,11 @@
 
 Development environment entry point that runs AI coding agents in a sandboxed Docker container.
 
+The existing Dev Container remains the Mint-hosted implementation runner. A
+separate, explicitly launched development-VM agent runtime is documented in
+[Development VM And Guest Agent Runtime](docs/host-isolation.md); it does not
+replace or become an alternate VS Code Dev Container profile.
+
 ## Quick Start
 
 1. Install [VS Code](https://code.visualstudio.com/) and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
@@ -14,16 +19,21 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 3. Click "Reopen in Container" when prompted (first build uses [`ai-agent-sandbox/Dockerfile`](/ai-agent-sandbox/Dockerfile))
 4. Follow [Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md) to run the system
 
-## Security Model
+## Existing Dev Container Security Model
 
 | Constraint | Mechanism | Config |
 |------------|-----------|--------|
 | Filesystem isolation | Docker container with explicit volume mounts | [docker-compose.yml:13-17](/ai-agent-sandbox/docker-compose.yml#L13-L17) |
 | No SSH agent forwarding | `SSH_AUTH_SOCK: ""` in remoteEnv | [devcontainer.json:18](/.devcontainer/devcontainer.json#L18) |
 | Read-only sandbox | `ai-agent-sandbox/` mounted `:ro` — agent cannot modify its own config | [docker-compose.yml:17](/ai-agent-sandbox/docker-compose.yml#L17) |
-| No git push | Without SSH credentials, push fails with "Permission denied (publickey)" | (runtime) |
+| No GitHub push | Without host SSH credentials, GitHub push fails with "Permission denied (publickey)" | (runtime) |
 
-**Worst case:** `git reset --hard origin/main` and everything disappears. All changes are local and trivially reversible.
+The existing runner's mounted host clones are writable, so preserve or back up
+uncommitted work. The separate guest runtime moves source and runtime state
+inside the VM, but its Docker-socket access means the agent can alter or destroy
+all guest repositories, credentials, containers, volumes, and Kind state. The
+personal-host and GitHub boundaries—not the container—protect canonical source
+and publication authority.
 
 ## What's Inside
 
@@ -35,14 +45,18 @@ Development environment entry point that runs AI coding agents in a sandboxed Do
 - **ImageMagick** — deterministic image metadata, crop, and review-overlay tools (`identify` and `convert`)
 - **Lazy local TLS trust** — verified system, Python, and Chromium trust for the host-managed Budget Analyzer ingress ([details](docs/local-budget-analyzer-tls.md))
 - **actionlint** — GitHub Actions workflow linting available on `PATH`
+- **Guest Docker client** — the VM runtime uses the mounted guest Unix socket;
+  the image never starts a nested daemon
 
 ## What's Here
 
 - `.devcontainer/` — VS Code devcontainer configuration
-- `ai-agent-sandbox/` — Docker sandbox: Dockerfile, compose, entrypoint, scripts, skills, settings overlay (**read-only at runtime**)
-- `scripts/` — workspace utilities (`sync-all.sh`)
+- `ai-agent-sandbox/` — Docker sandbox: Dockerfile, compose, entrypoint,
+  scripts, skills, settings overlay (**read-only in the existing Mint
+  devcontainer**)
+- `scripts/` — workspace utilities, including the reviewed one-time VM repository setup and guest prerequisite provisioner
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
-- `docs/` — [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
+- `docs/` — [guest isolation](docs/host-isolation.md), [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
 
 ## Dependency Automation
 
@@ -56,12 +70,14 @@ image-scan limits, and validation commands.
 
 ## Run An AI Session Handler Plan
 
-A fresh container installs `/workspace/ai-session-handler` globally through an editable pipx
-environment. From any repository root, run a plan in that repository's `docs/plans/` directory by
-its filename stem:
+A fresh container installs the `ai-session-handler` checkout from its configured
+working-clone parent globally through an editable pipx environment. The Mint
+devcontainer uses `/workspace`; the guest runtime uses its reviewed guest-local
+parent. From any repository root, run a plan in that repository's `docs/plans/`
+directory by its filename stem:
 
 ```bash
-cd /workspace/REPOSITORY
+cd "${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}/REPOSITORY"
 ai-run PLAN_NAME
 ```
 
@@ -69,7 +85,7 @@ For example, `ai-run improve-imports --max-phases 1` runs
 `./docs/plans/improve-imports.md` with `ai-session-handler-codex-high`, streams the worker's
 progress, and forwards the phase limit unchanged. Pass `--quiet` explicitly to suppress live worker
 output while retaining the transcript. Set `CODEX_MODEL` when an explicit Codex model is needed.
-Ordinary Python source changes under `/workspace/ai-session-handler/src/` are visible to the global
+Ordinary Python source changes in that checkout are visible to the global
 commands without a reinstall or image rebuild.
 
 ## Local Budget Analyzer HTTPS
@@ -87,6 +103,10 @@ If publication is missing, run orchestration `./setup.sh` on the host. Do not
 generate certificates or bypass TLS verification in the container. See
 [Local Budget Analyzer TLS Trust](docs/local-budget-analyzer-tls.md) for the
 ownership flow and diagnostics.
+
+In the development-VM runtime, the same helpers resolve the orchestration clone
+from the configured guest working-clone parent. The public CA and wildcard leaf
+are human-transferred inputs; the host mkcert signing key never enters the VM.
 
 ## Human-Reviewed Image Tracing
 
