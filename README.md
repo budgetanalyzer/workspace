@@ -2,10 +2,11 @@
 
 Development environment entry point that runs AI coding agents in a sandboxed Docker container.
 
-The existing Dev Container remains the Mint-hosted implementation runner. A
-separate, explicitly launched development-VM agent runtime is documented in
-[Development VM And Guest Agent Runtime](docs/host-isolation.md); it does not
-replace or become an alternate VS Code Dev Container profile.
+The existing Dev Container remains available on Mint. The host-isolation
+continuation runs inside the separate development-VM agent container after the
+manual handoff. [Development VM And Guest Agent Runtime](docs/host-isolation.md)
+owns that workflow; the guest runtime does not replace or become an alternate
+VS Code Dev Container profile.
 
 ## Quick Start
 
@@ -54,7 +55,9 @@ and publication authority.
 - `ai-agent-sandbox/` — Docker sandbox: Dockerfile, compose, entrypoint,
   scripts, skills, settings overlay (**read-only in the existing Mint
   devcontainer**)
-- `scripts/` — workspace utilities, including the reviewed one-time VM repository setup and guest prerequisite provisioner
+- `scripts/` — workspace utilities, including the reviewed one-time VM
+  repository setup, guest prerequisite provisioner, and stable guest agent-
+  container start/stop/restart/status/shell helpers
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 - `docs/` — [guest isolation](docs/host-isolation.md), [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
 

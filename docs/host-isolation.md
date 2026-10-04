@@ -1,15 +1,20 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Phase 2 static preparation is complete. Live repository transfer,
-guest provisioning, agent launch, Kind/Tilt bootstrap, and acceptance remain
-human-operated Checkpoint A work.
+**Status:** Phase 2 static preparation and the lifecycle-helper implementation
+are complete. The operator completed the Checkpoint A repository, credential,
+TLS, bootstrap, stack-health and agent-restart checks; Java/frontend live-update
+checks remain deferred to Checkpoint B. The original Phase 3 stopped at the
+Mint-to-guest access gap recorded below. Remaining work now uses the separate
+[VM continuation plan](../../orchestration/docs/plans/agent-host-isolation-vm-continuation-plan.md)
+inside the guest agent, after its
+[manual continuation handoff](../../orchestration/docs/plans/agent-host-isolation-manual-plan.md#continuation-handoff-start-the-vm-execution-plan).
 
 This workspace keeps two deliberately separate environments:
 
 - `.devcontainer/devcontainer.json` continues to select
   `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
-  That Mint-hosted devcontainer remains the implementation runner through
-  Phase 6 and Checkpoint B.
+  Keep Mint Docker available through Checkpoint B. Continuation workers run in
+  the guest agent container; they do not need an SSH identity on Mint.
 - `ai-agent-sandbox/docker-compose.agent-vm.yml` is selected explicitly on the
   development VM. It builds the shared tool image on the guest daemon, uses
   guest host networking, and mounts the guest Docker socket. Socket access lets
@@ -129,16 +134,16 @@ getent group docker | cut -d: -f3
 
 Set `AGENT_VM_USER_UID`, `AGENT_VM_USER_GID`, and
 `AGENT_VM_DOCKER_GID` from those results. Keep the reviewed working and bare
-parents under `/srv/budget-analyzer`. Before Kind exists, render and launch only
-the base configuration:
+parents under `/srv/budget-analyzer`. Before Kind exists, render and explicitly
+build only the base configuration:
 
 ```bash
 docker compose --env-file agent-vm.env \
   -f docker-compose.agent-vm.yml config
 docker compose --env-file agent-vm.env \
-  -f docker-compose.agent-vm.yml up -d --build
-docker compose --env-file agent-vm.env \
-  -f docker-compose.agent-vm.yml exec agent bash
+  -f docker-compose.agent-vm.yml build agent
+../scripts/agent-vm-container-start.sh --bootstrap-only
+../scripts/agent-vm-container-shell.sh --bootstrap-only
 ```
 
 The working and bare parents are mounted read/write at their identical guest
@@ -158,15 +163,13 @@ scope; it never comes from a personal-host mount.
 After `./setup.sh --guest-local` creates Kind, run
 `realpath "$HOME/.kube/config"` and set `AGENT_VM_KUBECONFIG` in
 `agent-vm.env` to that exact absolute guest path. Do not use a literal `~`.
-Then render both files and recreate the same service:
+Then render both files and recreate the same service through the normal helper:
 
 ```bash
 docker compose --env-file agent-vm.env \
   -f docker-compose.agent-vm.yml \
   -f docker-compose.agent-vm-kubeconfig.yml config
-docker compose --env-file agent-vm.env \
-  -f docker-compose.agent-vm.yml \
-  -f docker-compose.agent-vm-kubeconfig.yml up -d --force-recreate
+../scripts/agent-vm-container-start.sh
 ```
 
 The override adds only that read-only kubeconfig. The base configuration starts
@@ -174,13 +177,46 @@ without any kubeconfig mount. Guest host networking is intentional: agent
 `localhost` reaches guest Kind, ingress, Tilt, and test ports while the mounted
 Unix socket remains the single Docker endpoint.
 
-Stop the runtime without deleting provider volumes. The base file identifies
-the same Compose project both before and after the kubeconfig override is used:
+## Agent Container Lifecycle Helpers
+
+These stable guest-run commands share one implementation and work from any
+current directory when invoked by path:
 
 ```bash
-docker compose --env-file agent-vm.env \
-  -f docker-compose.agent-vm.yml down
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-start.sh
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-stop.sh
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-restart.sh
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-status.sh
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-shell.sh
 ```
+
+Normal operation always loads `agent-vm.env`,
+`docker-compose.agent-vm.yml`, and
+`docker-compose.agent-vm-kubeconfig.yml`. Start, restart and shell therefore
+fail until the exact absolute guest kubeconfig exists. Every command rejects a
+remote Docker environment/context, requires the default guest Unix socket and
+`/var/lib/docker` data root, validates the repository parents and Compose
+service, and reports only the operation and mode rather than environment-file
+contents.
+
+`start` uses the existing image without rebuilding it. `stop` stops only the
+agent service and preserves the named provider-configuration volumes;
+`restart` does not rebuild; none of the helpers starts or restarts Kind, Tilt,
+the VM, host forwarding, provider login, or repository transfer.
+
+Only the pre-Kind bootstrap window may add `--bootstrap-only`, for example:
+
+```bash
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-start.sh \
+  --bootstrap-only
+/srv/budget-analyzer/worktrees/workspace/scripts/agent-vm-container-shell.sh \
+  --bootstrap-only
+```
+
+That visibly selects only the base Compose file. Do not use it as the normal
+daily path after Kind exists. An intentional image refresh remains a separate,
+reviewed `docker compose ... build agent` operation; no lifecycle helper builds
+an image.
 
 ## Docker And Testcontainers Discovery
 
@@ -259,11 +295,47 @@ in order: prove the Git round trip and absence of GitHub authority; transfer
 and validate only approved TLS files; launch and authenticate the guest agent
 before Kind exists; run `./setup.sh --guest-local` and `npm install` from the
 human guest shell; recreate the agent with the kubeconfig override; then start
-Tilt and collect live-update/restart evidence. Keep the Mint devcontainer and
-Mint Docker available through Phases 3–6 and Checkpoint B. The canonical guest
+Tilt and collect live-update/restart evidence. Keep Mint Docker available
+through Checkpoint B. Complete the manual continuation handoff before running
+the remaining implementation inside the guest agent. The canonical guest
 bootstrap command sequence remains in orchestration
 [Getting Started](../../orchestration/docs/development/getting-started.md#development-vm-first-bootstrap).
 
 No VM, repository transfer, package installation, Compose launch, certificate
 operation, Kind/Tilt bootstrap, GitHub operation, or host configuration change
 was performed during Phase 2.
+
+## Phase 3 Verification Record
+
+Recorded 2026-10-04:
+
+- The shared lifecycle implementation and five entry commands were exercised
+  from outside the workspace with a disposable Compose fixture. Normal start,
+  stop, restart, status and shell selected both Compose files; explicit
+  bootstrap-only start and shell selected only the base file. The fixture
+  confirmed no build, `down`, Kind or Tilt invocation, and preserved provider-
+  volume, Kind and Tilt markers across stop/restart.
+- Fail-closed fixture cases passed for a missing environment file, missing
+  override, invalid kubeconfig, remote Docker environment, non-default context,
+  non-Unix endpoint, unexpected Docker data root and missing `agent` service.
+  Bash syntax and ShellCheck passed for every lifecycle script and its fixture.
+- The redacted orchestration acceptance record was inspected. It records all
+  13 selected guest working/bare repository pairs, a two-commit
+  `checkstyle-config` host/guest round trip, absent guest GitHub authority,
+  guest-local Docker and `kind-kind`, healthy Tilt/application resources, and
+  a successful agent restart. It also records positive DNS/download and
+  host-initiated SSH/Git controls plus IPv4/IPv6 native and Docker-path denials,
+  one `docker0` and one `br-+` reject per `DOCKER-USER` family, and both
+  persistence hooks. Host-reboot proof remains Checkpoint B work.
+- This implementation worker could not resolve the reviewed
+  `budget-agent-vm` SSH alias and has no host SSH identity, as required by the
+  current Mint-container credential boundary. No alternate credential,
+  personal-host mount, direct-address bypass or host-Docker fallback was used.
+  Consequently, Phase 3 did not directly reproduce in-agent repository/mount/
+  credential checks, the disposable identity/add/delete/executable-bit Git
+  round trip, disposable published-port and bind-path containers, uncached
+  pulls, guest-local representative build/Tilt-file detection, or combined
+  guest firewall probes. These are acceptance blockers, not inferred passes.
+- The Java and frontend Remote SSH live-update checks remain explicitly
+  deferred to Checkpoint B. No shared-folder watcher or fabricated save
+  evidence was substituted.

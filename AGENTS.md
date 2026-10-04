@@ -11,8 +11,12 @@ This repo exists to provide the development environment. It owns the devcontaine
 ### Boundaries
 - Read sibling repositories under `../` when work in this repo needs their current docs or manifests.
 - Write only within this repository.
-- `ai-agent-sandbox/` is a read-only bind mount in the running devcontainer. You cannot modify, overwrite, or delete files there in place.
-- Stage sandbox-derived edits, tests, and generated files under `tmp/`.
+- In the Mint devcontainer, `ai-agent-sandbox/` is a read-only bind mount.
+  Stage sandbox-derived edits under `tmp/`; do not modify that mount in place.
+  In the guest agent, inspect the actual guest-local mount before editing the
+  tracked sandbox sources. Do not rebuild or recreate the executing agent.
+- Keep temporary tests and generated files under `tmp/`; retain reusable
+  verifiers in a tracked test directory so ordinary Git transfer carries them.
 - **NO GIT WRITE OPERATIONS:** Do not run git write commands such as `commit`, `push`, `checkout`, or `reset` unless the user explicitly requests them. The user controls git operations entirely.
 
 ## Discovery
@@ -75,6 +79,9 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
   `tmp/agent-host-isolation/proposed/ai-agent-sandbox/`. Read
   `docs/host-isolation.md` before changing repository transport, guest mounts,
   Docker selection, credentials, Remote SSH guidance or Checkpoint A commands.
+- Guest agent-container lifecycle commands live in
+  `scripts/agent-vm-container-*.sh`. Read `docs/host-isolation.md` before
+  changing their interface, validation or daily/bootstrap-only behavior.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
@@ -116,6 +123,9 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
   selected guest runtime. Never launch guest Compose against the personal-host
   daemon or add host workspace, home, credential, SSH-agent, kubeconfig or
   libvirt mounts to it.
+- The host-isolation continuation runs inside the guest agent after the manual
+  handoff. Read `docs/host-isolation.md` for the active plan and prerequisites;
+  the original Mint-run plan is prior execution history.
 - Keep documentation updates in the same change set as the behavior or workflow change that required them.
 
 ## Validation
@@ -126,6 +136,9 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
   unchanged Mint Compose/devcontainer selection and the staged guest Compose
   configurations, then run the disposable Git fixtures described in
   `docs/host-isolation.md` and the active implementation plan.
+- After changing guest agent-container lifecycle commands, run `bash -n` and
+  ShellCheck on every changed shell file, then run
+  `tmp/agent-host-isolation/validation/test-agent-vm-container-lifecycle.sh`.
 - After changing the dependency-automation evidence workflow, run
   `actionlint .github/workflows/workspace-image-security-evidence.yml`.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
