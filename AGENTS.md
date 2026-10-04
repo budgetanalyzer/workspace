@@ -123,9 +123,12 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
   selected guest runtime. Never launch guest Compose against the personal-host
   daemon or add host workspace, home, credential, SSH-agent, kubeconfig or
   libvirt mounts to it.
-- The host-isolation continuation runs inside the guest agent after the manual
-  handoff. Read `docs/host-isolation.md` for the active plan and prerequisites;
-  the original Mint-run plan is prior execution history.
+- The host-isolation target runs agents natively in the development VM. Read
+  `docs/host-isolation.md` for the active execution plan and human checkpoints
+  before migration work. Only preparation Phases 1–2 use the existing guest
+  container; native Phases 3–8 require human installation and handoff. Do not
+  resume the superseded container continuation or claim native acceptance from
+  old container evidence.
 - Keep documentation updates in the same change set as the behavior or workflow change that required them.
 
 ## Validation

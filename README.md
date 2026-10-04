@@ -1,12 +1,13 @@
 # Budget Analyzer Workspace
 
-Development environment entry point that runs AI coding agents in a sandboxed Docker container.
+Development environment entry point for Budget Analyzer and its AI coding tools.
 
-The existing Dev Container remains available on Mint. The host-isolation
-continuation runs inside the separate development-VM agent container after the
-manual handoff. [Development VM And Guest Agent Runtime](docs/host-isolation.md)
-owns that workflow; the guest runtime does not replace or become an alternate
-VS Code Dev Container profile.
+The selected target runs agents directly in the development VM using repeatable
+native tool installers. Implementation and acceptance are pending; follow
+[Development VM And Guest Agent Runtime](docs/host-isolation.md) for the active
+execution plan and human checkpoints. The existing guest container supplies
+only the first two preparation phases. Mint's Dev Container remains transitional
+until human retirement; the quick start below describes that existing setup.
 
 ## Quick Start
 

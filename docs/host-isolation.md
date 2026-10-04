@@ -1,20 +1,25 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Phase 2 static preparation and the lifecycle-helper implementation
-are complete. The operator completed the Checkpoint A repository, credential,
-TLS, bootstrap, stack-health and agent-restart checks; Java/frontend live-update
-checks remain deferred to Checkpoint B. The original Phase 3 stopped at the
-Mint-to-guest access gap recorded below. Remaining work now uses the separate
-[VM continuation plan](../../orchestration/docs/plans/agent-host-isolation-vm-continuation-plan.md)
-inside the guest agent, after its
-[manual continuation handoff](../../orchestration/docs/plans/agent-host-isolation-manual-plan.md#continuation-handoff-start-the-vm-execution-plan).
+**Status:** Native agent migration planned. Use the new
+[execution plan](../../orchestration/docs/plans/agent-vm-native-execution-plan.md)
+and [human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md).
+Only preparation Phases 1–2 run in the existing guest container; the human
+installs native tooling before Phases 3–8. The selected final workflow has no
+agent container. This repository will own its full tool installers and verifier.
+
+The container procedures and original phase/checkpoint references below describe
+the existing transitional implementation and prior evidence. They are not a
+second active migration plan. Preserve the existing healthy VM/Kind/Tilt state;
+do not repeat bootstrap to change where an agent runs. Native acceptance,
+Java/frontend saves and reboot proof remain pending.
 
 This workspace keeps two deliberately separate environments:
 
 - `.devcontainer/devcontainer.json` continues to select
   `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
-  Keep Mint Docker available through Checkpoint B. Continuation workers run in
-  the guest agent container; they do not need an SSH identity on Mint.
+  Keep Mint Docker available until new human Checkpoint D. Only the two
+  preparation workers use the existing guest container; no worker needs a
+  personal-host SSH identity.
 - `ai-agent-sandbox/docker-compose.agent-vm.yml` is selected explicitly on the
   development VM. It builds the shared tool image on the guest daemon, uses
   guest host networking, and mounts the guest Docker socket. Socket access lets
@@ -289,15 +294,14 @@ volumes, databases, Kind state, caches, or snapshots.
 
 ## Checkpoint A Handoff
 
-After repository setup and guest provisioning, follow
-[orchestration Checkpoint A](../../orchestration/docs/plans/agent-host-isolation-manual-plan.md#checkpoint-a-set-up-repositories-and-bootstrap-the-guest)
-in order: prove the Git round trip and absence of GitHub authority; transfer
+The original container bootstrap ordered these steps: prove the Git round trip
+and absence of GitHub authority; transfer
 and validate only approved TLS files; launch and authenticate the guest agent
 before Kind exists; run `./setup.sh --guest-local` and `npm install` from the
 human guest shell; recreate the agent with the kubeconfig override; then start
-Tilt and collect live-update/restart evidence. Keep Mint Docker available
-through Checkpoint B. Complete the manual continuation handoff before running
-the remaining implementation inside the guest agent. The canonical guest
+Tilt and collect live-update/restart evidence. That procedure is historical;
+follow the [native human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md)
+for remaining work and do not repeat it on the healthy guest. The canonical guest
 bootstrap command sequence remains in orchestration
 [Getting Started](../../orchestration/docs/development/getting-started.md#development-vm-first-bootstrap).
 
