@@ -1,6 +1,6 @@
-# Use the pinned Ubuntu 24.04 digest. Keep this digest-only because the
+# Use the pinned Ubuntu 26.04 digest. Keep this digest-only because the
 # Dev Containers image resolver rejects tag+digest base references.
-FROM docker.io/library/ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
+FROM docker.io/library/ubuntu@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
 
 ARG TARGETARCH
 ARG NODE_MAJOR=24
