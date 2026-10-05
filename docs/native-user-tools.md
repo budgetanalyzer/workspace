@@ -2,8 +2,9 @@
 
 **Status:** Human Checkpoint B completed on 2026-10-05. Native installation,
 repeat-run verification, trust, provider proof, destructive cutover and clean
-application rebuild passed. Native Phase 3 subsequently passed; human C–D
-acceptance remains pending.
+application rebuild passed. All eight native phases and human C–D acceptance
+are now operator-confirmed complete in the
+[canonical acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-human-acceptance).
 
 Phase 2 supplies reviewed installers and focused offline safety checks. The
 human runs the following sequence from the Ubuntu development VM OS as its
@@ -14,7 +15,9 @@ The companion remains read-only under this worker's repository boundary.
 Completed live installation, authentication, permission-mode, sandbox-mechanism
 and verified browser evidence is recorded in
 [host-isolation.md](host-isolation.md#native-execution-handoff-evidence).
-Offline checks alone do not establish acceptance, and C–D remain pending.
+Offline checks alone do not establish human acceptance. The additional
+[security remediation review](../../orchestration/docs/plans/agent-vm-security-review-remediation-plan.md)
+is separate from the completed migration.
 
 ## Review And System Preparation
 

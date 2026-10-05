@@ -6,14 +6,25 @@ The selected target runs agents directly in the development VM using repeatable
 native tool installers. Human Checkpoint B completed on 2026-10-05, including
 trust, provider proof, destructive guest Docker cutover and clean application
 rebuild. Native Phase 3 has now proved the workspace runtime and retired the
-old guest-agent container source; C–D acceptance remains human work. Follow
+old guest-agent container source. The operator has confirmed all eight phases
+and human A–D checkpoints complete, including Mint Docker retirement. Follow
 [Development VM And Guest Agent Runtime](docs/host-isolation.md) for the active
-execution plan and human checkpoints. The retired guest container supplied only
+acceptance record and native operating guidance. The retired guest container supplied only
 the first two preparation phases and was deleted at B.3. Mint's Dev Container
-remains transitional until human retirement; the quick start below describes
-that existing setup.
+is retired; its tracked source awaits the
+[review remediation plan](../orchestration/docs/plans/agent-vm-security-review-remediation-plan.md).
+The historical quick start below is not the accepted VM daily workflow.
 
-## Quick Start
+## Native Daily Workflow
+
+Connect using the dedicated Remote SSH profile, open the guest working clones,
+run orchestration's native runtime preflight and start Tilt as documented in
+[Getting Started](../orchestration/docs/development/getting-started.md#daily-native-startup).
+Use the installed native agent commands. Do not recreate an agent container or
+rerun the migration bootstrap. Source cleanup and the additional firewall audit
+are separate from operator-confirmed migration completion.
+
+## Historical Dev Container Quick Start
 
 1. Install [VS Code](https://code.visualstudio.com/) and the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension
 2. Clone and open:

@@ -12,7 +12,9 @@ helper ownership and validation inputs. The
 System and normal-user provisioning, helper adaptation and offline verification
 are implemented. Follow [native user tools and Checkpoint B](native-user-tools.md)
 for installation, trust, authentication and exact handoff commands. Human B and
-native Phase 3 runtime verification passed on 2026-10-05; C–D remain pending.
+native Phase 3 runtime verification passed on 2026-10-05. The operator has since
+confirmed all phases and C–D complete; see the
+[canonical acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-human-acceptance).
 This inventory is the durable parity contract; an assigned disposition alone
 does not claim installation or acceptance.
 
@@ -157,7 +159,7 @@ relaxes AppArmor/native sandboxing.
 | Entrypoint banners/version reports/provider auth hints | User installer/verifier reports resolved versions. Human authenticates native provider at B; never import container credentials automatically |
 | Dockerfile mitmdump first-run CA generation, `-k`, system proxy-root trust and pipx ensurepath | Retire install-time activation/TLS bypass. Optional proxy trust is separate reviewed workflow; Phase 2 preserves shell/config and does not run automatic ensurepath rewrites |
 | `/workspace` creation/ownership, provider `.claude`/`.codex`/`.gemini` directories | Ordinary user's existing home/repositories; no recursive ownership repair, shell replacement or forced provider configuration |
-| Mint compose/devcontainer and `setup-env.sh` | Retained until human Checkpoint D; they are not native daily agent launch tools. Retired guest lifecycle/Compose sources are absent and must not be recreated |
+| Mint compose/devcontainer and `setup-env.sh` | Runtime retired at operator-confirmed Checkpoint D; tracked source awaits the reviewed cleanup plan. They are not native daily agent launch tools. Retired guest lifecycle/Compose sources are absent and must not be recreated |
 
 ## Phase 1 Verification And Handoff
 

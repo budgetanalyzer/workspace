@@ -1,10 +1,13 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Native Phase 3 completed on 2026-10-05 after the human Checkpoint B
-handoff. Native tools, repository boundaries, Git/Docker fixtures, verified
-browser trust and Kind/Tilt preservation passed; retired guest-agent source was
-removed. Human Checkpoints C–D and overall acceptance remain pending.
-Use the new
+**Status:** COMPLETE — the operator confirmed on 2026-10-05 that all eight native
+execution phases and human Checkpoints A–D passed, including Mint Docker
+retirement. The canonical
+[acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-human-acceptance)
+attributes C/D completion to that confirmation; it is not a new agent inspection
+of the personal host. Dated evidence below retains its original collection
+state, including formerly pending checkpoints.
+The completed migration used the
 [execution plan](../../orchestration/docs/plans/agent-vm-native-execution-plan.md)
 and [human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md).
 Only preparation Phases 1–2 ran in the former guest container. Checkpoint B.3
@@ -15,15 +18,21 @@ container. This repository owns its full tool installers and verifier.
 The container procedures and original phase/checkpoint references below describe
 the transitional implementation and prior evidence. They are not a second
 active migration plan or a live runtime to recreate. Preserve the rebuilt
-VM/Kind/Tilt state. Native C/D acceptance, Java/frontend saves and reboot proof
-remain pending.
+VM/Kind/Tilt state. Do not repeat completed destructive migration operations.
+The new
+[remediation plan](../../orchestration/docs/plans/agent-vm-security-review-remediation-plan.md)
+owns the review fixes, CA/helper consolidation, transitional source cleanup
+and additional host firewall review. That review remains open independently of
+completed migration acceptance; follow the orchestration
+[host audit runbook](../../orchestration/docs/runbooks/host-isolation-audit.md)
+for human-only collection and privately reviewed evidence transfer.
 
-This workspace now retains one deliberately transitional container environment:
+This workspace retains retired container source pending reviewed cleanup:
 
 - `.devcontainer/devcontainer.json` continues to select
   `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
-  Keep Mint Docker available until human Checkpoint D. No native worker needs a
-  personal-host SSH identity.
+  The operator confirmed Mint Docker retirement at Checkpoint D; do not launch
+  this retained source. No native worker needs a personal-host SSH identity.
 - Native Phase 3 removed the former guest-agent Compose files, entrypoint,
   environment example and lifecycle commands after proving native independence.
   The historical procedures and evidence below preserve their review context;
@@ -85,8 +94,8 @@ It assigns every Dockerfile/entrypoint/helper capability to system, user,
 optional activation or deliberate retirement. The
 [native user-tools guide](native-user-tools.md) supplies the normal-user
 installer, read-only verifier and exact Checkpoint B commands. The live B.1
-installation and completed B.2/B.3 handoff results are recorded below;
-Checkpoints C–D remain pending.
+installation and completed B.2/B.3 handoff results are recorded below; final
+C/D completion is recorded in the canonical acceptance record above.
 
 The human runs this entry point only at Checkpoint B, after both preparation
 phases and all workers have ended, from the normal guest OS user shell.
