@@ -109,7 +109,7 @@ provider call from workspace `tmp/`:
 ```bash
 mkdir -p tmp/native-sandbox-proof
 cd tmp/native-sandbox-proof
-codex sandbox linux -- sh -c 'printf "native sandbox command passed\n"'
+codex sandbox -- sh -c 'printf "native sandbox command passed\n"'
 cd ../..
 ```
 
@@ -300,11 +300,11 @@ check-budget-analyzer-local-ca-trust
 
 Record the installation report, live rerun/config preservation, trust matrix,
 actual sandbox mode, native provider proof and host boundary evidence in the
-human-owned Native Execution Handoff. Follow B.3 to stop only the old guest
-agent and preserve its volumes/image; do not stop Docker/Kind/Tilt. Resume the
-same guest-local orchestration runner state from a native shell with the
-companion's command only after handoff completion. End this authoring handler
-at its two-phase limit. Phase 3 remains gated by human handoff.
+human-owned Native Execution Handoff. Follow the canonical
+[B.3 cutover](../../orchestration/docs/plans/agent-vm-native-manual-plan.md#b3-destroy-guest-docker-state-clean-rebuild-and-resume)
+for the human-owned destructive reset, clean rebuild and native runner resume.
+End this authoring handler at its two-phase limit. Phase 3 remains gated by
+human handoff.
 
 ## Optional Human Inspection Setup
 
