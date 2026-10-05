@@ -2,7 +2,8 @@
 
 **Status:** Human Checkpoint B completed on 2026-10-05. Native installation,
 repeat-run verification, trust, provider proof, destructive cutover and clean
-application rebuild passed; the preserved runner is cleared for Phase 3.
+application rebuild passed. Native Phase 3 subsequently passed; human C–D
+acceptance remains pending.
 
 Phase 2 supplies reviewed installers and focused offline safety checks. The
 human runs the following sequence from the Ubuntu development VM OS as its
@@ -111,10 +112,20 @@ provider call from workspace `tmp/`:
 ```bash
 mkdir -p tmp/native-sandbox-proof
 cd tmp/native-sandbox-proof
-codex sandbox -- sh -c 'printf "native sandbox command passed\n"'
+codex sandbox -P :workspace -- sh -c 'printf "native sandbox command passed\n"'
 cd ../..
+
+test ! -e tmp/native-sandbox-proof/read-only-denied
+if codex sandbox -P :read-only -C tmp/native-sandbox-proof -- \
+  sh -c 'printf "must not exist\n" > read-only-denied'; then
+  printf 'ERROR: read-only sandbox allowed a write\n' >&2
+  exit 1
+fi
+test ! -e tmp/native-sandbox-proof/read-only-denied
 ```
 
+The explicit built-in profiles follow current
+[OpenAI permission-profile guidance](https://learn.chatgpt.com/docs/permissions).
 Inspect installed CLI help/config if the syntax changes; do not substitute a
 permission bypass to claim sandbox acceptance. Run the native provider probe in
 the mode actually selected and record that mode in the human handoff.
@@ -305,8 +316,9 @@ actual sandbox mode, native provider proof and host boundary evidence in the
 human-owned Native Execution Handoff. Follow the canonical
 [B.3 cutover](../../orchestration/docs/plans/agent-vm-native-manual-plan.md#b3-destroy-guest-docker-state-clean-rebuild-and-resume)
 for the human-owned destructive reset, clean rebuild and native runner resume.
-End this authoring handler at its two-phase limit. Phase 3 remains gated by
-human handoff.
+At the end of the authoring run, stop its handler at the two-phase limit. The
+completed human handoff and native Phase 3 evidence are recorded in
+[host isolation](host-isolation.md#native-phase-3-execution-evidence).
 
 ## Optional Human Inspection Setup
 

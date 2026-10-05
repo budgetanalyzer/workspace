@@ -238,8 +238,6 @@ RUN mkdir -p /home/$USERNAME/.claude /home/$USERNAME/.codex /home/$USERNAME/.gem
 # Copy entrypoint and helper scripts
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-COPY guest-entrypoint.sh /usr/local/bin/guest-entrypoint.sh
-RUN chmod +x /usr/local/bin/guest-entrypoint.sh
 COPY scripts/start-proxy.sh /usr/local/bin/start-proxy
 COPY scripts/claude-with-proxy.sh /usr/local/bin/claude-with-proxy
 COPY scripts/claude-with-custom-system-prompt.sh /usr/local/bin/claude-with-custom-system-prompt

@@ -10,10 +10,11 @@ helper ownership and validation inputs. The
 [system provisioner](../scripts/provision-agent-vm-guest.sh) consumes it.
 
 System and normal-user provisioning, helper adaptation and offline verification
-are implemented for human review. Follow [native user tools and Checkpoint B](native-user-tools.md)
-for installation, trust, authentication and exact handoff commands. Native runtime
-verification remains human B/Phase 3 work. This inventory is their durable parity contract; an assigned disposition
-does not claim that a native tool has already been installed or accepted.
+are implemented. Follow [native user tools and Checkpoint B](native-user-tools.md)
+for installation, trust, authentication and exact handoff commands. Human B and
+native Phase 3 runtime verification passed on 2026-10-05; C–D remain pending.
+This inventory is the durable parity contract; an assigned disposition alone
+does not claim installation or acceptance.
 
 ## Ownership And Version Policy
 
@@ -92,12 +93,16 @@ libraries and fonts.
 
 The manifest maps each of the 17 original commands to its `native_source`.
 Portable resources live in `native/helpers/`; native CA and proxy adapters live
-in `scripts/native/local_ca.py` and `scripts/native/proxy.py`. The container
-sources remain unchanged. Every command gets an executable user wrapper that
-loads the same small environment fragment. The read-only source/environment
-checker renders those wrappers under `tmp/` and validates shell syntax and
-ShellCheck. Native `ensure` diagnoses established ingress trust; only the
-explicit human trust installer performs privileged imports. Optional proxy
+in `scripts/native/local_ca.py` and `scripts/native/proxy.py`. Shared Mint
+container sources remain available, while the retired guest-agent entrypoint
+and lifecycle sources were removed after native Phase 3 proof. Every command
+gets an executable user wrapper that loads the same small environment fragment.
+The read-only source/environment checker renders those wrappers under `tmp/`
+and validates shell syntax and ShellCheck. The manifest's `reviewed_sources`
+entrypoint list preserves the original Phase 1 migration provenance; it is not
+a native runtime dependency and may name the retired guest entrypoint. Native
+`ensure` diagnoses established ingress trust; only the explicit human trust
+installer performs privileged imports. Optional proxy
 wrappers refuse unidentified occupied listeners, keep TLS verification on and
 use a separate human-initialized CA with process-scoped trust.
 
@@ -147,12 +152,12 @@ relaxes AppArmor/native sandboxing.
 | USER creation/rename, UID/GID ARGs, `NOPASSWD:ALL` | Do not reproduce. Validate existing normal account/home, preserve ownership and sudo policy; Docker membership remains explicit guest-root-equivalent authority |
 | WORKDIR `/workspace`, ENTRYPOINT and CMD | Native process starts in human-selected guest checkout. No daemon/container lifecycle is needed for agent tools |
 | `entrypoint.sh` recursive `chown`, repository `clone`, SSH `origin` rewrite | Retire those side effects; stop on collisions/missing guest-local sources. Human owns Git transfer; native installer never changes repositories/remotes |
-| `entrypoint.sh` / `guest-entrypoint.sh` handler `pipx --force --editable`, skills copy and overlay merge | Move to explicit Phase 2 user installation, not every agent startup. Retain import-path/command checks and make repeat runs collision-safe |
-| `guest-entrypoint.sh` guest origins, credential, Docker and kubeconfig checks | Retain as read-only native environment/preflight contract at Phase 3; do not copy a container-specific kubeconfig or recreate Kind |
+| Historical `entrypoint.sh` / `guest-entrypoint.sh` handler `pipx --force --editable`, skills copy and overlay merge | Moved to explicit user installation, not every agent startup. Import-path/command checks remain repeatable; the Mint entrypoint remains and the guest entrypoint was retired after Phase 3 proof |
+| Historical `guest-entrypoint.sh` guest origins, credential, Docker and kubeconfig checks | Migrated into the read-only native verifier; the container-specific entrypoint and kubeconfig path were removed after Phase 3 proof |
 | Entrypoint banners/version reports/provider auth hints | User installer/verifier reports resolved versions. Human authenticates native provider at B; never import container credentials automatically |
 | Dockerfile mitmdump first-run CA generation, `-k`, system proxy-root trust and pipx ensurepath | Retire install-time activation/TLS bypass. Optional proxy trust is separate reviewed workflow; Phase 2 preserves shell/config and does not run automatic ensurepath rewrites |
 | `/workspace` creation/ownership, provider `.claude`/`.codex`/`.gemini` directories | Ordinary user's existing home/repositories; no recursive ownership repair, shell replacement or forced provider configuration |
-| Mint compose/devcontainer, `setup-env.sh`, guest lifecycle/Compose helpers | Transitional references remain until human retirement; not native daily agent launch tools. No rebuild/recreation of authoring container |
+| Mint compose/devcontainer and `setup-env.sh` | Retained until human Checkpoint D; they are not native daily agent launch tools. Retired guest lifecycle/Compose sources are absent and must not be recreated |
 
 ## Phase 1 Verification And Handoff
 
@@ -176,7 +181,8 @@ before sudo/downloads; checksum failure rejects before mutation; spaced paths
 remain single arguments; and a repeat with healthy Docker performs no package
 or restart operation. It deliberately does not emulate apt output, package
 transactions, systemd, repositories or browser installation. Source parity
-checks cover Dockerfile apt/COPY/ENV surfaces, both entrypoints' dispositions,
+checks cover Dockerfile apt/COPY/ENV surfaces, the retained Mint entrypoint and
+the retired guest entrypoint disposition,
 all helpers, current orchestration tool contracts and documentation links.
 Native pins are manual-review inputs; existing Renovate extraction/evidence
 configuration is untouched.

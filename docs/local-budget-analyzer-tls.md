@@ -16,7 +16,7 @@ material at startup, or weaken HTTPS verification.
    system bundle and the `vscode` user's Chromium NSS database only when the
    command is explicitly invoked.
 
-The guest agent runtime sets `BUDGET_ANALYZER_WORKTREE_PARENT` to its reviewed
+The native guest runtime sets `BUDGET_ANALYZER_WORKTREE_PARENT` to its reviewed
 guest working-clone parent. The helpers resolve the orchestration publication
 under that parent instead of assuming `/workspace`. The existing Mint
 devcontainer leaves the variable unset and retains `/workspace` as its default.

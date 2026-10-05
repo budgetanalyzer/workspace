@@ -13,6 +13,20 @@ spec.loader.exec_module(module)
 data = module.load_manifest()
 source = (REPO / 'ai-agent-sandbox/Dockerfile').read_text()
 inventory = (REPO / 'docs/native-tool-inventory.md').read_text()
+retired_guest_sources = (
+    'ai-agent-sandbox/agent-vm.env.example',
+    'ai-agent-sandbox/docker-compose.agent-vm.yml',
+    'ai-agent-sandbox/docker-compose.agent-vm-kubeconfig.yml',
+    'ai-agent-sandbox/guest-entrypoint.sh',
+    'scripts/agent-vm-container-lifecycle.sh',
+    'scripts/agent-vm-container-start.sh',
+    'scripts/agent-vm-container-stop.sh',
+    'scripts/agent-vm-container-restart.sh',
+    'scripts/agent-vm-container-status.sh',
+    'scripts/agent-vm-container-shell.sh',
+)
+assert not [path for path in retired_guest_sources if (REPO / path).exists()], 'retired guest-agent source returned'
+assert 'guest-entrypoint.sh' not in source, 'Mint image still installs retired guest entrypoint'
 # Essential apt RUN surface, including the later Maven/JDK/Node declarations.
 block = source.split('# Install essential packages\n', 1)[1].split('&& rm -rf', 1)[0]
 packages = re.findall(r'^    ([a-z0-9][a-z0-9+.-]*)\s*\\?$', block, re.M)
@@ -21,6 +35,7 @@ assert not set(packages) - covered, f'Dockerfile apt capability missing: {set(pa
 for line in source.splitlines():
     if line.startswith('COPY '):
         copied = line.split()[1]
+        assert (REPO / 'ai-agent-sandbox' / copied).exists(), f'Dockerfile COPY source missing: {copied}'
         if copied.startswith('scripts/'):
             assert 'ai-agent-sandbox/' + copied in data['helpers'], copied
         assert copied in inventory, f'COPY disposition undocumented: {copied}'

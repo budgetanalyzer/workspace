@@ -92,7 +92,7 @@ class UserToolsProbe(user_tools.UserTools):
         self.fixture = root
         self.calls = []
         self.home = root / "guest user's disposable home"
-        self.home.mkdir()
+        self.home.mkdir(mode=0o700)
         self.env = {'HOME': str(self.home), 'PATH': '/usr/bin:/bin'}
         self.uid = os.getuid()
         self.origin_bad = False
@@ -127,17 +127,22 @@ class UserToolsProbe(user_tools.UserTools):
         (handler / 'src/ai_session_handler').mkdir(parents=True)
         (handler / 'pyproject.toml').write_text(
             '[project]\nname="ai-session-handler"\n')
-        (self.home / '.claude').mkdir()
+        (self.home / '.claude').mkdir(mode=0o700)
         self.credentials = self.home / '.claude/.credentials.json'
         self.credentials.write_text('{"fixture":"must remain untouched"}')
-        (self.home / '.claude/settings.json').write_text(json.dumps({
+        self.credentials.chmod(0o600)
+        settings = self.home / '.claude/settings.json'
+        settings.write_text(json.dumps({
             'env': {'keep': 'value'},
             'permissions': {'allow': ['Read']},
             'hooks': {'SessionStart': [{
                 'hooks': [{'type': 'command', 'command': 'echo user-hook'}],
             }]},
         }))
-        (self.home / '.profile').write_text('# user login\n')
+        settings.chmod(0o600)
+        profile = self.home / '.profile'
+        profile.write_text('# user login\n')
+        profile.chmod(0o600)
 
     def account(self):
         return SimpleNamespace(
@@ -147,6 +152,10 @@ class UserToolsProbe(user_tools.UserTools):
             pw_dir=str(self.home),
             pw_shell='/bin/bash',
         )
+
+    def private_primary_group(self, gid):
+        # Model the fixture account's verified same-name private primary group.
+        return gid == os.getgid()
 
     def system_path(self, path):
         if path == '/var/run/docker.sock':

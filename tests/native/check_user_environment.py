@@ -56,6 +56,10 @@ for doc in ('README.md', 'AGENTS.md', 'docs/host-isolation.md', 'docs/native-use
         target = raw.split('#', 1)[0].strip('<>')
         path = REPO / target.lstrip('/') if target.startswith('/') else (REPO / doc).parent / target
         assert path.exists(), f'{doc}: broken link {raw}'
+sandbox_guide = (REPO / 'docs/native-user-tools.md').read_text()
+assert 'codex sandbox -P :workspace' in sandbox_guide
+assert 'codex sandbox -P :read-only' in sandbox_guide
+assert 'codex sandbox -- sh' not in sandbox_guide
 # Newly created files are not covered by ordinary git diff --check.
 for parent in ('native', 'scripts/native', 'tests/native'):
     for path in (REPO / parent).rglob('*'):

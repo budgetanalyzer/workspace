@@ -131,10 +131,8 @@ This is intentionally the `ai-agent-sandbox` context declared by
 add live mounts, push the image, or run its entrypoint for dependency evidence.
 The scan-only UID/GID 10001 keeps scan evidence independent of an operator
 account. Normal Dev Container builds continue to use the host values generated
-by `ai-agent-sandbox/setup-env.sh`. For the separate guest runtime, the shared
-Dockerfile safely renames only Ubuntu 24.04's stock `ubuntu` account when the
-operator uses its normal 1000:1000 IDs; any other UID/GID collision fails the
-build instead of taking over an unexpected account.
+by `ai-agent-sandbox/setup-env.sh`. The retired guest-agent runtime no longer
+shares this Dockerfile; native agents use the reviewed workspace installers.
 
 ## Inventory limits
 

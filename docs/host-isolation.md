@@ -1,9 +1,9 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Human Checkpoint B, including native trust/authentication, destructive
-guest Docker cutover, clean application rebuild and Native Execution Handoff,
-completed on 2026-10-05. The preserved runner is cleared for native Phase 3;
-human Checkpoints C–D and overall acceptance remain pending.
+**Status:** Native Phase 3 completed on 2026-10-05 after the human Checkpoint B
+handoff. Native tools, repository boundaries, Git/Docker fixtures, verified
+browser trust and Kind/Tilt preservation passed; retired guest-agent source was
+removed. Human Checkpoints C–D and overall acceptance remain pending.
 Use the new
 [execution plan](../../orchestration/docs/plans/agent-vm-native-execution-plan.md)
 and [human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md).
@@ -18,22 +18,19 @@ active migration plan or a live runtime to recreate. Preserve the rebuilt
 VM/Kind/Tilt state. Native C/D acceptance, Java/frontend saves and reboot proof
 remain pending.
 
-This workspace retains source for two deliberately separate transitional
-environments while Phase 3 performs the reviewed source retirement:
+This workspace now retains one deliberately transitional container environment:
 
 - `.devcontainer/devcontainer.json` continues to select
   `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
-  Keep Mint Docker available until new human Checkpoint D. Only the two
-  preparation workers use the existing guest container; no worker needs a
+  Keep Mint Docker available until human Checkpoint D. No native worker needs a
   personal-host SSH identity.
-- `ai-agent-sandbox/docker-compose.agent-vm.yml` describes the former guest
-  agent. B.3 removed its live container, image and provider volumes. Do not
-  recreate it; Phase 3 owns retirement of the now-unused source after it
-  confirms native independence.
+- Native Phase 3 removed the former guest-agent Compose files, entrypoint,
+  environment example and lifecycle commands after proving native independence.
+  The historical procedures and evidence below preserve their review context;
+  do not recreate that runtime.
 
-Never launch the guest Compose configuration against the personal-host Docker
-daemon. It has no privileged mode, nested daemon, personal-host workspace,
-home-directory, SSH-agent, host kubeconfig, credential-helper, or libvirt mount.
+Never recreate or launch the retired guest Compose configuration against any
+Docker daemon.
 
 ## Accepted Reference Configuration
 
@@ -409,7 +406,12 @@ files, host hooks, host Git configuration, GitHub remotes, tags as a mirror,
 credentials, or personal SSH state. The script stops after setup and provides
 no daily sync, commit, GitHub push, or publication behavior.
 
-## Configure And Start The Guest Agent
+## Historical Guest-Agent Container Setup
+
+This section preserves the former container procedure as migration evidence.
+Its Compose, environment-example, entrypoint and lifecycle sources were removed
+after native Phase 3 passed, so these commands are intentionally no longer
+runnable. Daily agents start as ordinary native guest processes.
 
 From a human-operated guest shell, review and create the ignored runtime file:
 
@@ -466,9 +468,9 @@ without any kubeconfig mount. Guest host networking is intentional: agent
 `localhost` reaches guest Kind, ingress, Tilt, and test ports while the mounted
 Unix socket remains the single Docker endpoint.
 
-## Agent Container Lifecycle Helpers
+## Historical Agent Container Lifecycle Helpers
 
-These stable guest-run commands share one implementation and work from any
+These retired guest-run commands shared one implementation and worked from any
 current directory when invoked by path:
 
 ```bash
@@ -510,11 +512,11 @@ an image.
 ## Docker And Testcontainers Discovery
 
 Leave `DOCKER_HOST`, `DOCKER_CONTEXT`, and
-`TESTCONTAINERS_HOST_OVERRIDE` unset. The container uses
+`TESTCONTAINERS_HOST_OVERRIDE` unset. Native processes use
 `/var/run/docker.sock`; Java Testcontainers falls back to its Unix-socket
-strategy and published test ports are reachable through guest host networking.
-The entrypoint rejects a non-default context, inaccessible socket, non-guest
-Docker data root, or endpoint override. Diagnose selection with:
+strategy and published test ports are reachable from the guest OS. The native
+verifier rejects a non-default context, inaccessible socket, non-guest Docker
+data root, or endpoint override. Diagnose selection with:
 
 ```bash
 env | rg '^(DOCKER|TESTCONTAINERS)_' || true
@@ -566,9 +568,10 @@ force-push, automate publication, or run GitHub authentication in the guest.
 
 Treat guest runtime state as disposable. For a normal application rebuild,
 stop Tilt, run the reviewed guest preflight, rerun `./setup.sh --guest-local`
-from the guest orchestration clone, reinstall frontend dependencies, and
-recreate the agent with the exact regenerated kubeconfig. That setup command
-deletes and recreates Kind; it is not a daily start command.
+from the guest orchestration clone, and reinstall frontend dependencies. Native
+agents remain ordinary guest processes and need no recreation or kubeconfig
+copy. That setup command deletes and recreates Kind; it is not a daily start
+command.
 
 For a fully clean environment, create a new Ubuntu 24.04 VM from the reviewed
 host configuration, rerun the guest provisioner and one-time repository setup,
@@ -593,7 +596,7 @@ No VM, repository transfer, package installation, Compose launch, certificate
 operation, Kind/Tilt bootstrap, GitHub operation, or host configuration change
 was performed during Phase 2.
 
-## Phase 3 Verification Record
+## Historical Container Phase 3 Verification Record
 
 Recorded 2026-10-04:
 
@@ -627,3 +630,60 @@ Recorded 2026-10-04:
 - The Java and frontend Remote SSH live-update checks were explicitly deferred
   at this historical collection point and remain current Checkpoint C work. No
   shared-folder watcher or fabricated save evidence was substituted.
+
+## Native Phase 3 Execution Evidence
+
+Execution: 2026-10-05, AI Session Handler run
+`20261005T111830Z-phase-3-b3aa2059-9596-4a61-8cd5-9f11e6db647d`, native
+`budgetops` process in the KVM guest, home `/home/budgetops`, workspace revision
+`7ba4654e6961ba68b739e3b47832929968046dcc`, initially clean. The accepted plan
+SHA-256 remained
+`feadfeb5d8c1d2d915352e6db438053bb95945d446230e880bf32e658668b75b` and
+the live handler status identified this Phase 3 attempt and this execution
+workspace. PID 1 was systemd, container detection returned `none`, VM detection
+returned `kvm`, and the process ancestry resolved through the native
+`.local/share/budget-analyzer-native` Codex installation. No old agent worker,
+container or image remained.
+
+Native runtime results:
+
+| Proof | Result |
+| --- | --- |
+| Fresh-environment native tool verifier | PASS before and after source cleanup; 13 local repository pairs, six pinned user tools, browser payload, exact ingress trust, fresh-shell commands and editable handler import from `/srv/budget-analyzer/worktrees/ai-session-handler/src/ai_session_handler` |
+| Provider availability and selected mode | PASS; Claude 2.1.289, Codex 0.160.0 and Gemini 0.62.0 resolved from `.local/bin` without printing authentication state. The active handler command line explicitly selected bypass, `never` and `danger-full-access`; it is not sandboxed |
+| Explicit sandbox profiles | PASS; current OpenAI permission-profile syntax `-P :workspace` allowed the fixture write, while `-P :read-only` rejected a deliberate write with exit 2/read-only filesystem and left no target. This proof is not attributed to the unrestricted handler |
+| Credential and Git boundary | PASS; credential/askpass/agent variables, home credential files and forwarded SSH/GPG sockets were absent. System config had zero keys, global config had only identity keys, and all 13 effective configs had no credential/include/rewrite/extra-header/askpass/SSH-command/GPG keys; every fetch and push URL was its matching guest-local bare origin |
+| Disposable Git transport fixture | PASS; two commits through a repository-local bare origin preserved synthetic author identity, one addition, one deletion and executable mode `100755`. No real repository write or external remote was used |
+| Disposable Docker fixture | PASS with official `alpine:3.21.3` index digest `sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c`; initial cache inspection was absent and pull output recorded new layer downloads. A named container read a read-only same-path bind and served the marker through `127.0.0.1:18083`; the container was removed. The first attempt established that this Alpine BusyBox omits `httpd`; its cleanup trap passed and the successful rerun used the image's `nc` applet |
+| Verified application trust | PASS; native check plus curl, Python, Node and headless Playwright/Chromium each returned verified HTTPS 200 for the exact app origin. Browser routing blocked all other origins; no TLS bypass was used |
+| Kind/Tilt preservation | PASS before and after fixtures; context `kind-kind`, loopback HTTPS API, cluster `kind`, node `kind-control-plane` Ready, only that node container running, and all 45 Tilt resources healthy. Docker stayed on the default Unix socket with `/var/lib/docker`; no cluster mutation occurred |
+
+Workspace changes retire the tracked guest-agent Compose files, environment
+example, guest entrypoint and six lifecycle scripts. The Mint Compose,
+devcontainer, Dockerfile entrypoint and shared helpers remain; the Dockerfile no
+longer copies the retired guest entrypoint. README, AGENTS, TLS, dependency and
+native-tool owner docs now distinguish native daily execution from historical
+container evidence. Static checks enforce that retired source stays absent and
+that current `:workspace`/`:read-only` sandbox syntax stays documented.
+
+Validation (final commands exited 0):
+
+| Command / review | Result |
+| --- | --- |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v` | PASS, 12 focused cases; report `tmp/native-phase-3/validation/fixtures.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py` | PASS, 25 apt inputs, seven downloads, 17 helpers, links and retired-source guard; report `tmp/native-phase-3/validation/manifest.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py` | PASS, locked dependencies, 17 mappings, 49 shell files/wrappers, source guards and links; report `tmp/native-phase-3/validation/environment.log` |
+| Python compilation, Bash syntax and ShellCheck commands from the native owner docs | PASS for all changed Python fixtures and all retained native shell entry points/helpers |
+| `docker compose -f ai-agent-sandbox/docker-compose.yml config` | PASS; retained Mint service is `ai-dev`, report `tmp/native-phase-3/validation/mint-compose.yml` |
+| `git diff --check`, AGENTS checkstyle and retired-source/dependency review | PASS; no Renovate extraction or evidence-workflow behavior changed |
+
+The first fixture run exposed that disposable private paths inherited the native
+account's `0002` umask while the mock identity did not model its verified private
+primary group. The fixture now uses explicit private modes and models that group;
+production ownership checks were not weakened. No package/user-tool install,
+trust import, provider login, proxy activation, VM/cluster restart, application
+bootstrap, sibling write, or Git write outside the disposable fixture occurred.
+The ignored human-owned `ai-agent-sandbox/agent-vm.env`, if present, was not
+deleted; no tracked runtime consumes it. Host firewall/reboot evidence and live
+Remote SSH Java/frontend edits remain human Checkpoint C work, and Mint Docker
+retirement remains Checkpoint D.
