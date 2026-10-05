@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# mitmflow-detail — Summarize a single flow via the shared renderer
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/mitmflow-render.py" detail "$@"

@@ -87,3 +87,21 @@ The commands use these exit statuses:
 | `13` | System trust installation or verification failed. |
 | `14` | Python is not configured for the combined system bundle. |
 | `15` | Chromium/NSS trust installation or verification failed. |
+
+## Native Development VM
+
+The native user environment points Python, requests and Node at the combined
+system CA bundle while Chromium uses the same normal user's NSS database.
+[Native user tools](native-user-tools.md#establish-exact-ingress-trust) owns the
+exact human commands and verified curl/Python/Node/Chromium matrix.
+
+The human runs `scripts/install-agent-vm-local-ca-trust.sh` from the guest OS
+with the reviewed worktree/bare parents to import only the approved public
+ingress root. It verifies CA validity and the exact local hostname/leaf before
+explicit interactive sudo operations. The root signing key stays host-only.
+Native `ensure-budget-analyzer-local-ca-trust` and `check-budget-analyzer-local-ca-trust`
+are read-only diagnostics; missing/stale system or NSS trust prints the exact
+human command. Neither invokes `sudo -n` nor generates a CA. Container lazy
+installation above remains the transitional image's behavior. Optional guest
+inspection trust is separate, process-scoped and never imported system-wide
+or into NSS by native installation. Public roots remain intact.

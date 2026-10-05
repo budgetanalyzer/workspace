@@ -52,6 +52,9 @@ rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontain
 # Dependency automation configuration and evidence workflow
 find .github/workflows -maxdepth 1 -type f | sort
 
+# Native installer inputs, helper resources and focused safety checks
+rg --files native scripts/native tests/native
+
 # Sandbox compose services
 docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 ```
@@ -82,6 +85,22 @@ docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 - Guest agent-container lifecycle commands live in
   `scripts/agent-vm-container-*.sh`. Read `docs/host-isolation.md` before
   changing their interface, validation or daily/bootstrap-only behavior.
+- Native system provisioning lives in `scripts/provision-agent-vm-guest.sh`,
+  `scripts/native/provision.py`, and `native/toolchain.json`. Read
+  `docs/native-tool-inventory.md` and `docs/host-isolation.md` before changing
+  installation, version selection, helper ownership or native preparation.
+  Do not run the provisioner from a worker or the authoring container; human
+  Checkpoint B owns live installation.
+- Native user installation, environment, permission modes, optional inspection
+  and exact human Checkpoint B commands live in `docs/native-user-tools.md`.
+  Read it before changing `scripts/prepare-agent-vm-native.sh`,
+  `scripts/install-agent-vm-bwrap-profile.sh`, `scripts/native/bwrap_profile.py`,
+  `scripts/install-agent-vm-user-tools.sh`,
+  `scripts/check-agent-vm-tools.sh`, `scripts/install-agent-vm-local-ca-trust.sh`,
+  native helper resources, settings merge or user/trust ownership.
+  Keep repeatable installation workflows in tracked scripts; keep only generated
+  logs and disposable safety-check data in `tmp/`. Workers must not invoke the live
+  preparation runner or bwrap profile installer.
 - Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
 
 ## Code Exploration
@@ -101,6 +120,13 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 ## Operating Rules
 
 - Keep all work products inside this repository. Do not install, copy, or move files into system paths except by explicitly invoking the workspace-owned `ensure-budget-analyzer-local-ca-trust` command for its exact local target.
+- The explicit native-install exception belongs only to the human at
+  Checkpoint B: reviewed workspace installers may write managed tools/config
+  to the normal guest development home and reviewed system inputs through
+  scoped sudo. Workers must not invoke live installers, authenticate providers,
+  initialize inspection CAs, copy container state or modify sudo/AppArmor
+  policy. Native installed ensure/check trust commands are read-only; missing
+  established trust requires the exact human command they report.
 - When you need to test a file that originates in `ai-agent-sandbox/`, copy it into `tmp/` and test from there.
 - Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
 - Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
@@ -133,6 +159,16 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
 
 ## Validation
 
+- After changing native installer inputs or behavior, run Bash syntax,
+  ShellCheck, the focused installer-safety harness and the static
+  manifest/parity/link checks listed in `docs/native-tool-inventory.md`.
+  Keep mocked safety checks distinct from human live-installation evidence;
+  do not model detailed apt transactions or exact command transcripts. After
+  changing user setup/helpers, also run the static environment checks and
+  shell/Python validation listed in `docs/native-user-tools.md`. Safety checks
+  must use repository `tmp/` homes and must never touch real credentials or
+  trust stores. Use the real guest smoke check for Docker, browser, networking
+  and installed-tool behavior.
 - Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
 - Run `shellcheck <changed shell scripts>` after changing shell scripts.
 - After changing guest runtime or repository transport, render both the
@@ -166,7 +202,7 @@ Read those files before changing prompt replacement behavior. Use `claude-with-p
   Run a specific plan from the repository that owns it with:
 
   ```bash
-  cd /workspace/REPOSITORY
+  cd "${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}/REPOSITORY"
   ai-run PLAN_NAME
   ```
 

@@ -3,7 +3,9 @@
 Development environment entry point for Budget Analyzer and its AI coding tools.
 
 The selected target runs agents directly in the development VM using repeatable
-native tool installers. Implementation and acceptance are pending; follow
+native tool installers. Human Checkpoint B.1 system/user installation and its
+repeat run completed on 2026-10-05; trust, authentication and native acceptance
+remain human work. Follow
 [Development VM And Guest Agent Runtime](docs/host-isolation.md) for the active
 execution plan and human checkpoints. The existing guest container supplies
 only the first two preparation phases. Mint's Dev Container remains transitional
@@ -40,15 +42,15 @@ and publication authority.
 ## What's Inside
 
 - **Claude Code, Gemini CLI, Codex CLI, and AI Session Handler** — globally available with convenience launchers ([details](docs/launch-options.md))
-- **mitmproxy** — HTTPS traffic inspection with CA cert trusted system-wide ([details](docs/traffic-inspection.md))
-- **Playwright + Chromium** — browser automation pre-installed; verify with `playwright install --list`
+- **mitmproxy** — optional native inspection with a separate human-initialized, scoped CA ([native setup](docs/native-user-tools.md#optional-human-inspection-setup)); the transitional container has its [existing inspection flow](docs/traffic-inspection.md)
+- **Playwright + Chromium** — pinned browser automation installed by the native user flow, or pre-installed in the transitional image; verify with `playwright install --list`
 - **Node.js 24** — the latest LTS major line from the signed NodeSource repository, compatible with Site Modeler's `>=22` engine requirement
 - **VGG Image Annotator 3.0.13** — pinned standalone human annotation UI with a localhost-only foreground launcher
 - **ImageMagick** — deterministic image metadata, crop, and review-overlay tools (`identify` and `convert`)
 - **Lazy local TLS trust** — verified system, Python, and Chromium trust for the host-managed Budget Analyzer ingress ([details](docs/local-budget-analyzer-tls.md))
 - **actionlint** — GitHub Actions workflow linting available on `PATH`
-- **Guest Docker client** — the VM runtime uses the mounted guest Unix socket;
-  the image never starts a nested daemon
+- **Guest Docker client** — native tools use the guest default Unix socket;
+  the transitional image mounts that guest socket and never starts a nested daemon
 
 ## What's Here
 
@@ -57,8 +59,12 @@ and publication authority.
   scripts, skills, settings overlay (**read-only in the existing Mint
   devcontainer**)
 - `scripts/` — workspace utilities, including the reviewed one-time VM
-  repository setup, guest prerequisite provisioner, and stable guest agent-
+  repository setup, native system provisioner, and stable guest agent-
   container start/stop/restart/status/shell helpers
+- `native/toolchain.json` — reviewed native tool versions, signed repository
+  inputs, architecture checksums and system/user ownership
+- `tests/native/` — focused installer-safety checks and static manifest/parity
+  verifiers
 - `AGENTS.md` — AI agent context (injected via SessionStart hook)
 - `docs/` — [guest isolation](docs/host-isolation.md), [launch options](docs/launch-options.md), [traffic inspection](docs/traffic-inspection.md), [design decisions](docs/design-decisions.md), and [dependency automation](docs/dependency-automation.md)
 
@@ -72,7 +78,26 @@ and retains the declared evidence paths in one artifact for seven days. See
 [Dependency Automation](docs/dependency-automation.md) for extraction boundaries,
 image-scan limits, and validation commands.
 
+## Native Guest Tool Preparation
+
+Review the [system provisioner](scripts/provision-agent-vm-guest.sh) and complete
+[tool migration inventory](docs/native-tool-inventory.md). Only the human runs
+installation from the Ubuntu development VM's OS shell at Checkpoint B, after
+both preparation phases and all workers exit. The tracked
+[preparation runner](scripts/prepare-agent-vm-native.sh) runs the repeatable B.1
+system, scoped bwrap profile and repeated user installation workflow; it prompts
+for the guest bare-repository parent and keeps private logs under `tmp/`.
+The installer rejects containers, Mint, remote Docker
+endpoints and ownership/version collisions, and preserves existing Docker and
+running workloads. Review the [normal-user installation and exact Checkpoint B commands](docs/native-user-tools.md). Follow
+[host isolation](docs/host-isolation.md#install-guest-prerequisites) for commands,
+prerequisites and the validation/handoff record.
+
 ## Run An AI Session Handler Plan
+
+Native installation exposes the editable handler and wrappers in `.local/bin`;
+see the [user setup guide](docs/native-user-tools.md) for fresh-shell setup.
+The plan command below works with both prepared native and container tools.
 
 A fresh container installs the `ai-session-handler` checkout from its configured
 working-clone parent globally through an editable pipx environment. The Mint

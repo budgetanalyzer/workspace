@@ -1,6 +1,9 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Native agent migration planned. Use the new
+**Status:** Human Checkpoint B.1 system/user installation and its repeat run
+completed on 2026-10-05. Trust, authentication, native handoff and acceptance
+remain pending.
+Use the new
 [execution plan](../../orchestration/docs/plans/agent-vm-native-execution-plan.md)
 and [human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md).
 Only preparation Phases 1–2 run in the existing guest container; the human
@@ -74,20 +77,248 @@ env | rg '^(SSH_AUTH_SOCK|GITHUB_TOKEN|GH_TOKEN|GIT_ASKPASS|SSH_ASKPASS)=' || tr
 
 ## Install Guest Prerequisites
 
-Run the one-time repository setup in the next section first. Then review the
-provisioner and run it from a human-operated guest shell:
+The native system installer is preparation Phase 1 output, with reviewed inputs
+in [`native/toolchain.json`](../native/toolchain.json), an implementation in
+[`scripts/native/provision.py`](../scripts/native/provision.py), and tracked
+[focused safety checks](../tests/native/test_provision.py). Review the full
+[tool migration inventory](native-tool-inventory.md) before installation.
+It assigns every Dockerfile/entrypoint/helper capability to system, user,
+optional activation or deliberate retirement. The
+[native user-tools guide](native-user-tools.md) supplies the normal-user
+installer, read-only verifier and exact Checkpoint B commands. The live B.1
+installation result is recorded below; B.2 and later acceptance remain pending.
+
+The human runs this entry point only at Checkpoint B, after both preparation
+phases and all workers have ended, from the normal guest OS user shell.
+Do not run it in the authoring container or wrap the entry point in sudo:
 
 ```bash
 cd /srv/budget-analyzer/worktrees/workspace
+sudo -v
 ./scripts/provision-agent-vm-guest.sh --docker-user "$USER"
 ```
 
-It installs Ubuntu's Docker and Compose packages, Git, OpenSSL, ShellCheck, NSS
-trust tools, Node.js 24/npm, and Azul Zulu JDK 25. It enables the guest daemon,
-requires `/var/lib/docker`, and adds only the named guest user to the Docker
-group. End the SSH session and reconnect after it succeeds. Do not use
-`newgrp`, install a remote Docker context, or move Docker data into a shared
-path.
+For the complete repeatable B.1 sequence, use the tracked
+[`prepare-agent-vm-native.sh`](../scripts/prepare-agent-vm-native.sh) runner.
+It also performs scoped bwrap profile setup and repeated user installation;
+path selection, private logs and focused repair commands are owned by the
+[native user-tools guide](native-user-tools.md#review-and-system-preparation).
+Workers must not invoke this human installer workflow.
+
+Bootstrap prerequisites are Ubuntu 24.04's Python 3.12, systemd VM detection,
+sudo, curl, GnuPG, apt/dpkg and core system utilities; the provisioner stops if
+they are missing. It requires actual QEMU/KVM detection and no container,
+an existing canonical home owned by the selected normal account, matching
+architecture, unset Docker endpoint override variables and a default local
+Docker context. A marker alone cannot authorize it. Sudo uses the human's
+existing authorization with `-n`; no passwordless sudo rule is installed.
+Privileged Docker reads explicitly pin the verified Unix socket so root's
+separate Docker configuration cannot redirect them to a remote daemon.
+
+It installs missing manifest system packages and verified binaries, signed
+Node 24/npm and Azul Zulu JDK 25, Go, compiler/build tools, inspection tools,
+VIA assets and Chromium libraries. User agents, handler, browsers, mitmproxy,
+helpers and shell/provider configuration belong to Phase 2. Before OS writes,
+downloads and repository keys are verified in workspace `tmp/`. It stops on
+version/ownership/source collisions rather than replacing an unexpected tool.
+Release binaries already matching the manifest are retained.
+
+Existing healthy Docker/Compose is inspected and preserved: no Docker apt
+transaction, enable/start/restart, cluster recreation or runtime pruning. Only
+a fresh VM without a Docker installation installs Ubuntu Docker/Compose and
+enables the guest daemon. Partial/unhealthy installation requires human repair.
+Missing apt packages are installed without upgrading existing packages;
+simulation rejects dependency upgrades/removals after refreshing apt indexes,
+pending dpkg configuration is rejected before writes, and needrestart is
+limited to reporting. The installer checks running container
+IDs/start times before and after. It requires `/var/lib/docker` and adds only
+the selected user to the Docker group if needed. No CA/proxy activation,
+repository chown, Git rewrite/clone or config replacement occurs. Installation
+reports resolved binary and apt versions for the human handoff.
+
+End the SSH session and reconnect if group membership changed. Do not use
+`newgrp`, install a remote Docker context or move Docker data into a shared path.
+Real apt/browser installation and repeat-run runtime preservation are human B
+evidence; Phase 1 mock passes do not substitute for them.
+
+## Native Phase 1 Preparation Evidence
+
+Execution: 2026-10-04, existing guest preparation container, UID/GID 1000
+(`vscode`), workspace checkout at `8222890f1696d7e4f7e204d6b1647e1ffed06fb6`,
+initially clean. Orchestration was read-only and clean at
+`c7e2580674b8311575457837d368344027e8488f`. The accepted native plan snapshot
+SHA-256 is `feadfeb5d8c1d2d915352e6db438053bb95945d446230e880bf32e658668b75b`.
+The prior attempt stopped on missing Checkpoint A. The current human-owned
+[Native Preparation Handoff](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-preparation-handoff)
+now records COMPLETE and explicitly clears Phases 1–2. VM confinement,
+credential boundary and paired firewall results are attributed to that human
+record, not inferred from container names or marker files.
+
+Read-only startup checks: workspace local bare origin, default Docker context,
+`unix:///var/run/docker.sock`, `/var/lib/docker`, same-path guest working/bare
+bind mounts, nonprivileged host-network guest agent and read-only guest
+kubeconfig. Docker inspection used the discovered Compose container name;
+the first `$HOSTNAME` lookup was not a Docker object and was corrected. No
+cluster mutation or guest OS prerequisite checker ran inside the container.
+The in-container `systemd-detect-virt` absence remains compatible with the
+human's actual-VM evidence; native installation requires that tool on the OS.
+
+Phase 1 artifacts: system entry point/stdlib engine, reviewed manifest,
+tracked disposable fixtures and parity verifier, this procedure and
+`native-tool-inventory.md`, README/AGENTS discovery and validation guidance,
+and the dependency-doc native-manifest coverage boundary. No transitional
+sandbox/Compose/devcontainer or sibling source changes were made.
+
+Validation on 2026-10-04 (exit 0 unless noted):
+
+| Command / review | Result |
+| --- | --- |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v` | PASS, 36 disposable fixture cases; privileged/download commands mocked; final report `tmp/native-agent-installer/fixtures.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py` | PASS; 25 Dockerfile apt inputs, seven downloads on both architectures, 17 helper sources, current orchestration versions/checksums, ENV/startup dispositions and local links |
+| `bash -n scripts/provision-agent-vm-guest.sh` / `shellcheck scripts/provision-agent-vm-guest.sh` | PASS; only changed shell file, no suppressions |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py tests/native/test_provision.py tests/native/check_manifest.py` | PASS |
+| `./scripts/provision-agent-vm-guest.sh --help` | PASS, interface inspection only; report `tmp/native-agent-installer/help.txt`; no live installation invocation |
+| Downloaded NodeSource/Azul keys through isolated GPG fingerprint parser; Go official release metadata and npm registry selection | PASS; reviewed fingerprints and both Go checksums/architecture filenames recorded in manifest; metadata scratch under `tmp/native-agent-installer/` |
+| AGENTS checkstyle / portable paths / local links / `git diff --check`, including new-file whitespace checks | PASS; checkstyle read from orchestration's active owner doc; new instruction pointers keep version details in owner files |
+| Existing dependency extraction / image evidence / Compose / service build suites | Not applicable: Renovate, workflow, Dockerfile, entrypoints, Compose, transport and service code are untouched; the native manifest remains an explicitly documented manual discovery surface |
+
+Initial fixture failures (Unix-socket filename length and a mock's curl-version
+dispatch) were fixed in the tracked fixture, then the suite rerun. There are no
+unresolved or pre-existing validation failures in touched files. Final dirty
+workspace inputs are the five modified tracked files and five new phase-owned
+files shown by `git status --short`; no Git writes or runner-state changes.
+
+Real installation, normal-user helpers/settings/aliases/trust, provider login
+and browser/runtime verification remain Phase 2/human B work. Historical
+container evidence is not native acceptance.
+
+Boundary limitation: the first read-only signing-key inspection used GPG's
+default home and created empty `.gnupg` bookkeeping in the authoring container
+user home (directory, public keybox and trust database). No key was imported,
+no CA was generated/trusted and no guest system trust store changed. Subsequent
+inspection and the installer use a private GPG home under repository `tmp/`.
+This outside-repository side effect is disclosed rather than treated as a
+compliant work product; its cleanup is left to the human/container retirement.
+
+
+## Native Phase 2 Preparation Evidence
+
+Execution: 2026-10-04, same guest preparation container, UID/GID 1000
+(`vscode`), workspace revision `8222890f1696d7e4f7e204d6b1647e1ffed06fb6`.
+Starting dirty inputs were Phase 1's AGENTS/README/dependency/host-isolation
+changes, system installer, native manifest/engine/fixtures and inventory; they
+were preserved. Read-only sibling inputs: orchestration revision
+`c7e2580674b8311575457837d368344027e8488f`, handler revision
+`619cdd14f8568fbe40a6e8e821ab16fba95be6ca`. The accepted plan SHA256 remains
+`feadfeb5d8c1d2d915352e6db438053bb95945d446230e880bf32e658668b75b`;
+run ID `20261004T130118Z-phase-2-09d6b070-160a-4522-8791-94e20f7e1965`.
+Runner state/outcomes and all sibling sources remained read-only.
+
+Fresh read-only checks returned default Docker context,
+`unix:///var/run/docker.sock` and `/var/lib/docker`; `findmnt` located the
+sandbox sources on the guest ext4 same-path worktree mount. Repository
+owner-controlled 0775 directories are accepted without permission repair.
+VM isolation authority remains the human Checkpoint A handoff referenced above;
+these observations alone do not prove the host boundary. No system/user-home
+installation, trust change, CA generation, provider call/authentication,
+container replacement or cluster mutation occurred.
+
+Artifacts: normal-user installer and read-only verifier with identical path
+inputs, separate explicit human ingress trust installer, native Python
+installation/trust/proxy adapters, portable helper/skill/prompt resources,
+tracked npm transitive integrity lock, conditional human bubblewrap profile,
+tracked user/environment/helper fixtures, and
+[native user-tools guide](native-user-tools.md) with exact Checkpoint B review,
+installation/rerun, trust matrix, authentication, permissions, optional
+inspection and native handoff commands. README/AGENTS/TLS/inventory owner
+pointers were updated. Manifest adds Ubuntu `apparmor` for the human system
+stage and native mappings for all 17 original helper commands. Existing
+Dockerfile, entrypoints, Compose/devcontainer and transport remain untouched.
+No system tool version changed.
+
+Validation (all final commands exited 0):
+
+| Command / review | Result |
+| --- | --- |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v` | PASS, 76 cases: 36 existing system fixtures and 40 user/helper cases; report `tmp/native-phase-2/fixtures.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py` | PASS, Dockerfile/orchestration parity and local links; report `tmp/native-phase-2/manifest.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py` | PASS, full npm integrity lock, all 17 native command mappings, 47 rendered/source shell files with `bash -n` and ShellCheck, source guards, links and new-file whitespace; report `tmp/native-phase-2/environment.log` |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile` on three new engines, two new fixture/check files, native flow renderer and prompt addon | PASS |
+| All three new shell entry points `--help` | PASS, interface only; no live installation |
+| AGENTS checkstyle, portable source/config paths, `git diff --check` | PASS; stable repository/Git/worker boundaries preserved; native-install exception is explicitly human-only |
+
+Fixtures use disposable repository `tmp/` homes with synthetic credentials and
+mocked installer/trust/provider/proxy commands. They prove repeated installation
+without credential/config loss, paths with spaces/apostrophes, origin/owner/
+credential rejection, fresh shell and noninteractive wrapper environment,
+Bash/zsh source-line and settings/hook idempotence, handler import checks,
+missing trust/browser prerequisites, CA import idempotence preserving public
+roots, optional listener refusal/lifecycle/cleanup and scoped trust, lean/alias
+model-effort/permission arguments, VIA bind/asset validation, flow HTTP/SSE/
+WebSocket redaction/export boundary and addon prefix/cache/ancillary behavior.
+No fixture uses the actual provider home or changes real trust. Initial fixture
+syntax/mock-dispatch failures and an alias ShellCheck shell-identification issue
+were corrected; no unresolved validation failure remains.
+
+Decisions/limitations: plain provider commands retain upstream permissions;
+existing explicit lean/custom wrappers retain their bypass flags. The handler's
+high wrapper calls lean and therefore has full guest access, not a native OS
+sandbox. Linux bwrap/seccomp mechanism was verified against current official
+OpenAI documentation; loaded Ubuntu AppArmor policy and actual sandbox behavior
+require human proof. Native ensure/check diagnose established trust and print
+the exact human import command instead of acquiring sudo. Inspection is
+installed but inactive; only a human can initialize a separate guest CA.
+Occupied listeners are rejected because their identity/addon cannot be proved.
+
+Live system/user/browser installation, provider login, verified HTTPS matrix,
+loaded-policy/sandbox proof, old-agent stop and Native Execution Handoff remain
+human Checkpoint B work. The companion is unchanged because this invocation
+prohibits sibling writes; its B commands remain compatible and this workspace
+owner guide supplies their exact missing detail. No later phase ran. End the
+handler at the two-phase limit; Phase 3 must require the real human handoff.
+
+The Phase 1 and Phase 2 tables above preserve the validation evidence produced
+on 2026-10-04. After the B.1 debugging review, the current tracked suite was
+reduced from broad package/helper emulation to nine focused installer-safety
+tests plus the two static manifest/environment verifiers. The current harness
+does not emulate apt output, package transactions, systemd, AppArmor parsing,
+proxy lifecycle or trust-store mutation. The real B.1 run and later human smoke
+checks are the integration evidence for those behaviors.
+
+## Human Checkpoint B.1 Evidence
+
+**Status:** COMPLETE on 2026-10-05; B.2 trust, authentication, full verification
+and native handoff remain pending.
+
+The operator ran the reviewed scripts from the Ubuntu guest OS as `budgetops`
+using `/srv/budget-analyzer/worktrees` and `/srv/budget-analyzer/bare`. System
+provisioning completed with the selected Docker containers and start times
+unchanged. The scoped `/usr/bin/bwrap` AppArmor profile installed, loaded and
+passed its unprivileged namespace check. The first user installation stopped
+before user-home mutation because the preflight treated the account's `0750`
+home and private-group `0775` `.config` layout as shared writable state. The
+source was corrected to accept group write only after verifying the account's
+same-name private primary group; shared-group and world-writable paths remain
+rejected.
+
+Both the initial and repeated focused user-tool installations then completed.
+Each run passed the Claude, Codex, Gemini, Playwright, mitmproxy and AI Session
+Handler version checks, resolved the editable handler import from the selected
+guest checkout, and verified browser/package/home and fresh-shell command
+resolution. The repeat run preserved configuration and produced no duplicate
+managed shell or hook failure. Python syntax validation and ShellCheck passed
+for the changed native helper and B.1 shell entry points; no fixture tests were
+run during this manual debugging cycle.
+
+The preparation runner stopped at the original user preflight failure, so the
+operator resumed with its documented focused user-installer command rather than
+repeating successful apt and AppArmor work. This debugging worker remained in
+the transitional guest container during the manual commands; the installer
+recorded no container restart or start-time change. That deviation from the
+preferred worker-exit ordering is retained explicitly and is not native runtime
+acceptance. The full tools verifier intentionally remains deferred until B.2
+establishes trust. Provider authentication, actual Codex sandbox proof, verified
+HTTPS, old-agent shutdown and the Native Execution Handoff are not claimed.
 
 ## One-Time Repository Setup
 

@@ -165,6 +165,17 @@ ARM64. Changing that architecture behavior is separate work.
 
 ## Validation
 
+Native provisioning uses the separate reviewed `native/toolchain.json`
+manifest. Existing Renovate managers and workspace image evidence continue to
+target the transitional Dockerfile and workflow; they do not extract the native
+manifest. Native exact versions, both architecture checksums, signing-key
+fingerprints and npm integrity selections require explicit human refresh and
+the tracked manifest/parity checks in
+[the native inventory](native-tool-inventory.md#phase-1-verification-and-handoff).
+Signed apt package patches remain distribution/repository selections, and
+native browser/provider runtime proof remains human Checkpoint B evidence.
+This migration adds no update manager or image-scan workflow change.
+
 Run the focused checks after changing dependency discovery or image evidence:
 
 ```bash
