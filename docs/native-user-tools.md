@@ -1,8 +1,8 @@
 # Native Guest User Tools And Checkpoint B
 
-**Status:** Human B.1 system/user installation and repeat-run verification
-completed on 2026-10-05. B.2 trust, authentication and full verification remain
-pending.
+**Status:** Human Checkpoint B completed on 2026-10-05. Native installation,
+repeat-run verification, trust, provider proof, destructive cutover and clean
+application rebuild passed; the preserved runner is cleared for Phase 3.
 
 Phase 2 supplies reviewed installers and focused offline safety checks. The
 human runs the following sequence from the Ubuntu development VM OS as its
@@ -10,8 +10,10 @@ normal development user after both authoring phases and all old workers end.
 These instructions complete workspace's part of the companion
 [Checkpoint B](../../orchestration/docs/plans/agent-vm-native-manual-plan.md#checkpoint-b-install-and-launch-native-agents).
 The companion remains read-only under this worker's repository boundary.
-Live installation, authentication, sandbox execution and verified browser
-traffic remain human evidence; offline checks do not establish acceptance.
+Completed live installation, authentication, permission-mode, sandbox-mechanism
+and verified browser evidence is recorded in
+[host-isolation.md](host-isolation.md#native-execution-handoff-evidence).
+Offline checks alone do not establish acceptance, and C–D remain pending.
 
 ## Review And System Preparation
 

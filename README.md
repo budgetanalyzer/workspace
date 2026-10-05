@@ -3,13 +3,14 @@
 Development environment entry point for Budget Analyzer and its AI coding tools.
 
 The selected target runs agents directly in the development VM using repeatable
-native tool installers. Human Checkpoint B.1 system/user installation and its
-repeat run completed on 2026-10-05; trust, authentication and native acceptance
-remain human work. Follow
+native tool installers. Human Checkpoint B completed on 2026-10-05, including
+trust, provider proof, destructive guest Docker cutover and clean application
+rebuild; native Phase 3 is next, while C–D acceptance remains human work. Follow
 [Development VM And Guest Agent Runtime](docs/host-isolation.md) for the active
-execution plan and human checkpoints. The existing guest container supplies
-only the first two preparation phases. Mint's Dev Container remains transitional
-until human retirement; the quick start below describes that existing setup.
+execution plan and human checkpoints. The retired guest container supplied only
+the first two preparation phases and was deleted at B.3. Mint's Dev Container
+remains transitional until human retirement; the quick start below describes
+that existing setup.
 
 ## Quick Start
 

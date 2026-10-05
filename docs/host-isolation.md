@@ -1,33 +1,35 @@
 # Development VM And Guest Agent Runtime
 
-**Status:** Human Checkpoint B.1 system/user installation and its repeat run
-completed on 2026-10-05. Trust, authentication, native handoff and acceptance
-remain pending.
+**Status:** Human Checkpoint B, including native trust/authentication, destructive
+guest Docker cutover, clean application rebuild and Native Execution Handoff,
+completed on 2026-10-05. The preserved runner is cleared for native Phase 3;
+human Checkpoints C–D and overall acceptance remain pending.
 Use the new
 [execution plan](../../orchestration/docs/plans/agent-vm-native-execution-plan.md)
 and [human checkpoints](../../orchestration/docs/plans/agent-vm-native-manual-plan.md).
-Only preparation Phases 1–2 run in the existing guest container; the human
-installs native tooling before Phases 3–8. The selected final workflow has no
-agent container. This repository will own its full tool installers and verifier.
+Only preparation Phases 1–2 ran in the former guest container. Checkpoint B.3
+deleted that container, its image and all old Docker volumes before the clean
+rebuild. Phases 3–8 run natively; the selected final workflow has no agent
+container. This repository owns its full tool installers and verifier.
 
 The container procedures and original phase/checkpoint references below describe
-the existing transitional implementation and prior evidence. They are not a
-second active migration plan. Preserve the existing healthy VM/Kind/Tilt state;
-do not repeat bootstrap to change where an agent runs. Native acceptance,
-Java/frontend saves and reboot proof remain pending.
+the transitional implementation and prior evidence. They are not a second
+active migration plan or a live runtime to recreate. Preserve the rebuilt
+VM/Kind/Tilt state. Native C/D acceptance, Java/frontend saves and reboot proof
+remain pending.
 
-This workspace keeps two deliberately separate environments:
+This workspace retains source for two deliberately separate transitional
+environments while Phase 3 performs the reviewed source retirement:
 
 - `.devcontainer/devcontainer.json` continues to select
   `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
   Keep Mint Docker available until new human Checkpoint D. Only the two
   preparation workers use the existing guest container; no worker needs a
   personal-host SSH identity.
-- `ai-agent-sandbox/docker-compose.agent-vm.yml` is selected explicitly on the
-  development VM. It builds the shared tool image on the guest daemon, uses
-  guest host networking, and mounts the guest Docker socket. Socket access lets
-  the agent fully administer or destroy guest repositories and runtime state;
-  the VM is the security boundary.
+- `ai-agent-sandbox/docker-compose.agent-vm.yml` describes the former guest
+  agent. B.3 removed its live container, image and provider volumes. Do not
+  recreate it; Phase 3 owns retirement of the now-unused source after it
+  confirms native independence.
 
 Never launch the guest Compose configuration against the personal-host Docker
 daemon. It has no privileged mode, nested daemon, personal-host workspace,
@@ -86,7 +88,8 @@ It assigns every Dockerfile/entrypoint/helper capability to system, user,
 optional activation or deliberate retirement. The
 [native user-tools guide](native-user-tools.md) supplies the normal-user
 installer, read-only verifier and exact Checkpoint B commands. The live B.1
-installation result is recorded below; B.2 and later acceptance remain pending.
+installation and completed B.2/B.3 handoff results are recorded below;
+Checkpoints C–D remain pending.
 
 The human runs this entry point only at Checkpoint B, after both preparation
 phases and all workers have ended, from the normal guest OS user shell.
@@ -287,8 +290,8 @@ checks are the integration evidence for those behaviors.
 
 ## Human Checkpoint B.1 Evidence
 
-**Status:** COMPLETE on 2026-10-05; B.2 trust, authentication, full verification
-and native handoff remain pending.
+**Status:** COMPLETE on 2026-10-05. This subsection preserves the state at the
+end of B.1; the subsequently completed B.2/B.3 evidence follows it.
 
 The operator ran the reviewed scripts from the Ubuntu guest OS as `budgetops`
 using `/srv/budget-analyzer/worktrees` and `/srv/budget-analyzer/bare`. System
@@ -319,6 +322,56 @@ preferred worker-exit ordering is retained explicitly and is not native runtime
 acceptance. The full tools verifier intentionally remains deferred until B.2
 establishes trust. Provider authentication, actual Codex sandbox proof, verified
 HTTPS, old-agent shutdown and the Native Execution Handoff are not claimed.
+
+Those items were still pending at the B.1 collection point. They subsequently
+completed in B.2/B.3 and are recorded below; this historical B.1 limitation is
+not being rewritten as earlier evidence.
+
+## Native Execution Handoff Evidence
+
+**Status:** COMPLETE on 2026-10-05; native Phase 3 is the next runner phase.
+The orchestration
+[acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-execution-handoff)
+owns the complete redacted B.3 and human host-boundary evidence. This section
+records the workspace-owned installer and native-runtime handoff.
+
+| Evidence | Result |
+| --- | --- |
+| Installer sources and tracked preparation evidence | PASS — live installation report captured workspace base `faa63e9`; reviewed B.2/B.3 revisions are `42c0896` and `0195929`, with the latter clean before these evidence edits; Phase 1/2 records retain 36-case and 76-case fixture results and current focused-harness limitations |
+| Handler and locked user-tool inputs | PASS — clean handler `619cdd1`, editable import from the guest-local checkout, reviewed npm-lock SHA-256 retained; installation report records the selected exact CLI/browser releases |
+| Live system/user install and idempotence | PASS — system provisioning, scoped bwrap profile, corrected private-primary-group handling, initial user install and repeat user install completed without duplicate managed shell/hooks or unintended pre-cutover Docker restart |
+| Native identity and command resolution | PASS — `budgetops`, home `/home/budgetops`, container detection `none`, VM detection `kvm`; native verifier passed for 13 repository pairs and fresh login resolved providers, Playwright, helpers and handler from `.local/bin` |
+| Provider and permission mode | PASS — native Codex 0.160.0 with configured `gpt-5.6-sol`, high reasoning and explicit bypass/`never`/`danger-full-access` read and updated the guest checkout; this selected mode has full guest access |
+| Sandbox mechanism distinction | PASS — scoped AppArmor profile and `codex sandbox -- sh ...` bubblewrap command passed separately; this proves mechanism availability but is not claimed for the selected unrestricted provider/handler mode |
+| Native ingress trust | PASS — established host-published root remained unchanged; curl, Python, Node and headless Playwright/Chromium each returned verified HTTP 200 for the exact local HTTPS app; no TLS bypass, guest ingress CA or proxy CA was used |
+| Repository/credential/runtime boundary | PASS — local working/bare pairs and editable handler origin verified; no SSH/GPG agent, GitHub token or askpass bridge; default Unix guest Docker, `/var/lib/docker`, loopback `kind-kind`, Ready node and healthy Tilt verified |
+| Destructive cutover and rebuild | PASS — human-confirmed empty Docker container/volume state before rebuild; no old agent container, image, provider volume or other old Docker volume retained; only rebuilt Kind state now exists and the complete application smoke test passed |
+| Runner and remaining work | PASS/READY — accepted plan hash unchanged and existing state selects Phase 3 in workspace; C must still prove browser/live updates/session lifecycle/reboot and repeated boundary checks, and D must return source and retire Mint Docker |
+
+The live installation report records Claude 2.1.289, Codex 0.160.0, Gemini
+0.62.0, Playwright 1.63.0, mitmproxy 12.2.3 and AI Session Handler 0.2.0.
+The selected native Codex process explicitly used
+`--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`,
+`sandbox_mode="danger-full-access"` and high reasoning. Docker-group access
+also remains guest-root-equivalent. The next handler command intentionally uses
+the same unrestricted high wrapper; neither this record nor the successful
+bubblewrap fixture describes it as sandboxed.
+
+The B.3 human reset removed every old container and named/anonymous volume and
+pruned old images, cache and custom networks only after both empty-state checks
+passed. No old Docker volume was retained. The clean guest-local bootstrap then
+created the current Kind node and its new anonymous `/var` volume. Imported TLS
+validation/Secret installation, required Tilt resources, direct HTTPS and the
+full orchestration smoke-test umbrella passed. The edge verifier's GNU awk
+portability defect was repaired in orchestration before the successful final
+run; its focused result was 84/84 with a 176/176 nested hardening cascade.
+
+The accepted execution-plan SHA-256 remains
+`feadfeb5d8c1d2d915352e6db438053bb95945d446230e880bf32e658668b75b`.
+`ai-session-handler status` selects `phase-3 Prove Native Workspace Execution`
+with this `workspace` checkout as its execution workspace. The operator will
+exit the current native provider session before starting that runner. Leave
+Tilt running for Phase 3's before/after health checks.
 
 ## One-Time Repository Setup
 
@@ -561,7 +614,7 @@ Recorded 2026-10-04:
   a successful agent restart. It also records positive DNS/download and
   host-initiated SSH/Git controls plus IPv4/IPv6 native and Docker-path denials,
   one `docker0` and one `br-+` reject per `DOCKER-USER` family, and both
-  persistence hooks. Host-reboot proof remains Checkpoint B work.
+  persistence hooks. Host-reboot proof remains current Checkpoint C work.
 - This implementation worker could not resolve the reviewed
   `budget-agent-vm` SSH alias and has no host SSH identity, as required by the
   current Mint-container credential boundary. No alternate credential,
@@ -571,6 +624,6 @@ Recorded 2026-10-04:
   round trip, disposable published-port and bind-path containers, uncached
   pulls, guest-local representative build/Tilt-file detection, or combined
   guest firewall probes. These are acceptance blockers, not inferred passes.
-- The Java and frontend Remote SSH live-update checks remain explicitly
-  deferred to Checkpoint B. No shared-folder watcher or fabricated save
-  evidence was substituted.
+- The Java and frontend Remote SSH live-update checks were explicitly deferred
+  at this historical collection point and remain current Checkpoint C work. No
+  shared-folder watcher or fabricated save evidence was substituted.
