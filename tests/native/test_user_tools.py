@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -19,6 +21,65 @@ spec = importlib.util.spec_from_file_location(
     'user_tools', REPO / 'scripts/native/user_tools.py')
 user_tools = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(user_tools)
+local_ca_spec = importlib.util.spec_from_file_location(
+    'local_ca', REPO / 'scripts/native/local_ca.py')
+local_ca = importlib.util.module_from_spec(local_ca_spec)
+with patch.dict(sys.modules, {'user_tools': user_tools}):
+    local_ca_spec.loader.exec_module(local_ca)
+
+
+class LocalCaPathSafetyTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(
+            prefix='nss path with spaces ', dir=SCRATCH)
+        self.home = Path(self.temp.name) / 'home'
+        self.home.mkdir(mode=0o750)
+        self.account = SimpleNamespace(
+            pw_uid=os.getuid(),
+            pw_gid=os.getgid(),
+            pw_name='budgetops',
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def private_group(self, name='budgetops', members=()):
+        group = SimpleNamespace(gr_name=name, gr_mem=list(members))
+        return (
+            patch.object(user_tools.grp, 'getgrgid', return_value=group),
+            patch.object(user_tools.pwd, 'getpwall', return_value=[self.account]),
+        )
+
+    def test_nss_parent_from_private_group_umask_is_accepted(self):
+        previous_umask = os.umask(0o002)
+        try:
+            (self.home / '.pki/nssdb').mkdir(mode=0o700, parents=True)
+        finally:
+            os.umask(previous_umask)
+        self.assertEqual(0o775, stat.S_IMODE((self.home / '.pki').stat().st_mode))
+        self.assertEqual(0o700, stat.S_IMODE((self.home / '.pki/nssdb').stat().st_mode))
+        group_patch, users_patch = self.private_group()
+        with group_patch, users_patch:
+            self.assertEqual(
+                self.home / '.pki/nssdb',
+                local_ca.validate_nss_paths(self.home, self.account),
+            )
+
+    def test_nss_group_write_requires_verified_private_primary_group(self):
+        (self.home / '.pki/nssdb').mkdir(mode=0o700, parents=True)
+        (self.home / '.pki').chmod(0o775)
+        group_patch, users_patch = self.private_group(name='shared-developers')
+        with group_patch, users_patch, self.assertRaisesRegex(
+                local_ca.TrustError, 'NSS ownership/permissions collision'):
+            local_ca.validate_nss_paths(self.home, self.account)
+
+    def test_nss_world_write_remains_rejected(self):
+        (self.home / '.pki/nssdb').mkdir(mode=0o700, parents=True)
+        (self.home / '.pki').chmod(0o777)
+        group_patch, users_patch = self.private_group()
+        with group_patch, users_patch, self.assertRaisesRegex(
+                local_ca.TrustError, 'NSS ownership/permissions collision'):
+            local_ca.validate_nss_paths(self.home, self.account)
 
 
 class UserToolsProbe(user_tools.UserTools):

@@ -36,6 +36,18 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def is_private_primary_group(user, primary_gid, path_gid):
+    if path_gid != primary_gid:
+        return False
+    try:
+        group = grp.getgrgid(path_gid)
+    except KeyError:
+        return False
+    primary_users = {entry.pw_name for entry in pwd.getpwall() if entry.pw_gid == path_gid}
+    return (group.gr_name == user and primary_users == {user} and
+            not set(group.gr_mem) - {user})
+
+
 def merge_settings(settings, overlay):
     """Own only the two controls and one hook; preserve all other user keys."""
     result = json.loads(json.dumps(settings))
@@ -70,15 +82,7 @@ class UserTools:
         return Path(path)
 
     def private_primary_group(self, gid):
-        if gid != self.gid:
-            return False
-        try:
-            group = grp.getgrgid(gid)
-        except KeyError:
-            return False
-        primary_users = {entry.pw_name for entry in pwd.getpwall() if entry.pw_gid == gid}
-        return (group.gr_name == self.user and primary_users == {self.user} and
-                not set(group.gr_mem) - {self.user})
+        return is_private_primary_group(self.user, self.gid, gid)
 
     def owned(self, path, *, directory=False, private=True):
         require(path.exists() and not path.is_symlink(), f'missing or symlinked path: {path}')

@@ -9,6 +9,8 @@ import shlex
 import subprocess
 import sys
 
+from user_tools import is_private_primary_group
+
 SYSTEM_CERT = Path('/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt')
 SYSTEM_BUNDLE = Path('/etc/ssl/certs/ca-certificates.crt')
 NICKNAME = 'Budget Analyzer local mkcert CA'
@@ -43,7 +45,21 @@ def human_command(worktrees, bares):
                        '--worktree-parent', str(worktrees), '--bare-parent', str(bares)])
 
 
-def check_or_install(worktrees, bares, home, install=False):
+def validate_nss_paths(home, account):
+    nss = home / '.pki/nssdb'
+    for path in (home, home / '.pki', nss):
+        require(not path.is_symlink(), 'NSS path symlink collision', 15)
+        if path.exists():
+            status = path.stat()
+            unsafe_group_write = (status.st_mode & 0o020 and not
+                                  is_private_primary_group(account.pw_name, account.pw_gid,
+                                                           status.st_gid))
+            require(status.st_uid == account.pw_uid and not status.st_mode & 0o002 and
+                    not unsafe_group_write, 'NSS ownership/permissions collision', 15)
+    return nss
+
+
+def check_or_install(worktrees, bares, home, account, install=False):
     root = worktrees / 'orchestration/nginx/certs/k8s/_mkcert-rootCA.pem'
     leaf = root.with_name('_wildcard.budgetanalyzer.localhost.pem')
     require(root.is_file() and leaf.is_file(),
@@ -56,12 +72,7 @@ def check_or_install(worktrees, bares, home, install=False):
     require(run(['openssl', 'verify', '-CAfile', root, '-verify_hostname', 'app.budgetanalyzer.localhost', leaf]).returncode == 0,
             'approved public root does not verify exact ingress hostname/leaf', 11)
     wanted = fingerprint(root)
-    nss = home / '.pki/nssdb'
-    for path in (home, home / '.pki', nss):
-        require(not path.is_symlink(), 'NSS path symlink collision', 15)
-        if path.exists():
-            require(path.stat().st_uid == os.getuid() and not path.stat().st_mode & 0o022,
-                    'NSS ownership/permissions collision', 15)
+    nss = validate_nss_paths(home, account)
     system_current = SYSTEM_CERT.is_file() and fingerprint(SYSTEM_CERT) == wanted
     bundle_current = SYSTEM_BUNDLE.is_file() and run(['openssl', 'verify', '-CAfile', SYSTEM_BUNDLE, leaf]).returncode == 0
     command = human_command(worktrees, bares)
@@ -84,7 +95,7 @@ def check_or_install(worktrees, bares, home, install=False):
             run(['certutil', '-D', '-d', 'sql:' + str(nss), '-n', NICKNAME, '-f', '/dev/null'])
             require(run(['certutil', '-A', '-d', 'sql:' + str(nss), '-n', NICKNAME, '-t', 'C,,', '-i', root, '-f', '/dev/null']).returncode == 0,
                     'human NSS public root import failed (password-protected DB needs private human review)', 15)
-        return check_or_install(worktrees, bares, home)
+        return check_or_install(worktrees, bares, home, account)
     require(system_current and bundle_current, 'system trust missing/stale; human command: ' + command, 13)
     require(os.environ.get('SSL_CERT_FILE') == str(SYSTEM_BUNDLE) and
             os.environ.get('NODE_EXTRA_CA_CERTS') == str(SYSTEM_BUNDLE), 'load the native environment fragment for Python/Node trust', 14)
@@ -115,7 +126,7 @@ def main():
             from user_tools import UserTools
             setup = UserTools(worktrees, bares)
             setup.preflight()
-        check_or_install(worktrees, bares, home, args.action == 'human-install')
+        check_or_install(worktrees, bares, home, account, args.action == 'human-install')
     except TrustError as exc:
         print('local-ca-trust: ' + str(exc), file=sys.stderr)
         return exc.code

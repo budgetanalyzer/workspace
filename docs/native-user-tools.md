@@ -207,8 +207,12 @@ The human-only trust installer verifies CA validity, exact hostname/leaf chain,
 normal-user/VM identity and guest-local repositories before using explicit
 interactive `sudo install` and `sudo update-ca-certificates` for the one public
 root. NSS imports use this user's database and only the managed nickname;
-public roots and other NSS entries remain. Password-protected NSS databases
-stop for private human review. No command receives blanket passwordless sudo.
+public roots and other NSS entries remain. NSS path checks use the native
+preflight's same verified private-primary-group exception: a group-writable
+path is accepted only when that group belongs exclusively to this account;
+shared-group and world-writable paths still stop. Password-protected NSS
+databases stop for private human review. No command receives blanket
+passwordless sudo.
 Installed `ensure` and `check` are read-only in native execution. Missing/stale
 system or NSS trust fails with the exact human installer command; agents never
 silently run privileged trust repair. Missing OpenSSL/certutil maps to status
