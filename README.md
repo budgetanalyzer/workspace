@@ -6,6 +6,13 @@ VM as its normal development user. See
 [Development VM And Native Agent Runtime](docs/host-isolation.md) for the
 current host/guest boundary, repository transport and Remote SSH requirements.
 
+Workspace owns native VM identity, the normal user and home, guest-local
+repository topology, rejection of forwarded authority, guest Docker selection,
+native tool versions, guest trust readiness and reusable personal-host
+isolation audit tooling. Orchestration owns application bootstrap, the exact
+local Kind target, Tilt, ingress-file validation and Kubernetes Secret
+reconciliation.
+
 ## Native Daily Workflow
 
 Use the dedicated VS Code Remote SSH profile, open the guest-local working
@@ -27,6 +34,41 @@ The Remote SSH profile must not forward host credentials, restore ports or
 inject Git askpass. Agents use guest-local working clones and bare origins,
 the guest's default Docker socket, and the normal guest home. Git publication
 remains a personal-host operation.
+
+## Canonical Native Runtime Contract
+
+The single read-only native runtime verifier is:
+
+```bash
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+Run it from the reviewed workspace checkout after native preparation and local
+ingress trust are complete. Sibling orchestration calls this same interface for
+both first application bootstrap and daily startup; both parent arguments are
+required canonical absolute directories. The verifier checks Ubuntu 24.04
+QEMU/KVM identity, the normal user/home, absent credential, Git, proxy and
+endpoint bridges, guest-local working/bare repositories, the default guest
+Unix Docker socket and data root, manifest-owned native and user tool versions,
+managed user resources, Chromium and established OS/NSS ingress trust.
+
+The command does not use sudo, install packages, mutate trust, authenticate,
+repair repositories or change Docker/Kind state. A failure requires the
+documented human preparation or trust workflow; callers must not substitute a
+partial check. Exact versions and capabilities remain solely in
+[`native/toolchain.json`](native/toolchain.json).
+
+## Personal-Host Isolation Audit
+
+Workspace owns the reusable human-only audit runbook, read-only evidence
+collector, bounded protocol fixture and configurable binary go/no-go verifier.
+Concrete host topology, policy source and evidence remain private operator
+material outside Git and guest-accessible storage. Agents may run only the
+offline fixtures; they must not access or administer the personal host. Read
+[Personal-Host Isolation Audit](docs/host-isolation-audit.md) before collecting,
+reviewing or testing host-isolation evidence.
 
 To add one host repository after initial VM setup, run this from the personal
 host's common repository parent:
@@ -63,9 +105,13 @@ capability checks live in [`native/toolchain.json`](native/toolchain.json) and
 - `native/helpers/` — canonical portable helpers, settings, prompt and skill
   resources.
 - `scripts/native/` — system, user, trust and optional-proxy implementations.
+- `scripts/host-isolation/` — human-only host audit tools, safe template and
+  strict configuration parser.
 - `scripts/*.sh` — human entry points and read-only native checks.
 - `tests/native/` — focused installer-safety, manifest and environment
   verifiers.
+- `tests/host-isolation-audit/` — offline collector, protocol, configuration
+  and verifier-contract fixtures.
 - `AGENTS.md` — agent operating contract.
 - `docs/` — native setup, isolation, launch, trust and dependency owner docs.
 

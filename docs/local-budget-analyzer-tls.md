@@ -117,6 +117,14 @@ file. Neither invokes `sudo -n` nor generates a CA. Optional guest inspection
 trust is separate, process-scoped and never imported system-wide or into NSS by
 native installation. Public roots remain intact.
 
+The canonical `scripts/check-agent-vm-tools.sh` native runtime verifier invokes
+the installed read-only trust check as part of the same strict contract used by
+first application bootstrap and daily startup. It does not import or repair
+trust. Its stable invocation and complete scope are documented in
+[Native Guest User Tools](native-user-tools.md#canonical-read-only-native-runtime-contract).
+Orchestration remains responsible for validating imported ingress files and
+reconciling the Kubernetes TLS Secret.
+
 Run trust installation only from mutually reviewed workspace and orchestration
 revisions after all affected workers have exited. Repository tests use
 disposable paths and mocked system/NSS commands; source validation does not

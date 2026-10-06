@@ -6,12 +6,17 @@ provider state live in the guest, and the VM boundary separates agent processes
 from personal-host credentials and data. Guest Docker is reserved for
 application workloads such as Kind and Testcontainers.
 
-This repository owns VM provisioning, native user tools and runtime checks.
-Orchestration owns application bootstrap and daily startup. The
+This repository owns native VM identity, the normal user/home, guest-local
+repository topology, forwarded-authority rejection, guest Docker selection,
+native tool versions, OS/NSS trust readiness and the complete read-only runtime
+check. Orchestration owns application bootstrap and daily startup, the exact
+local Kind target, Tilt, ingress-file validation and Kubernetes Secret
+reconciliation. The
 [Getting Started guide](../../orchestration/docs/development/getting-started.md#development-vm-native-workflow)
 is the current end-to-end workflow. The
-[host-isolation audit runbook](../../orchestration/docs/runbooks/host-isolation-audit.md)
-owns human-only personal-host evidence collection and policy review.
+[personal-host isolation audit](host-isolation-audit.md) owns human-only
+evidence collection, private topology review, the configurable live verifier,
+policy handoff and protocol/persistence proof.
 
 ## Security Boundary
 
@@ -29,9 +34,10 @@ Docker socket or credential store into the guest. Do not install GitHub
 authentication or publishing extensions in the Remote SSH environment. GitHub
 publication remains a personal-host operation.
 
-Host audit collection and host policy changes are human-only. Workspace agents
-may review explicitly supplied redacted evidence, but must not acquire host
-access or apply host configuration.
+Host audit collection, live verification, host policy changes, reboot and
+protocol testing are human-only. Workspace agents may review explicitly
+supplied redacted evidence, but must not acquire host access, run live audit
+tools or apply host configuration. Offline fixtures are not live evidence.
 
 ## Reference Configuration
 
@@ -98,6 +104,27 @@ Compose; a partial or unhealthy installation requires human repair.
 Review exact ownership, versions and safety checks in
 [Native Tool Inventory](native-tool-inventory.md), `native/toolchain.json`, and
 the focused tests before changing preparation behavior.
+
+## Canonical Native Runtime Contract
+
+After human preparation and ingress trust are complete, use one workspace-owned
+check for both first application bootstrap and daily startup:
+
+```bash
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+Both arguments are mandatory canonical absolute directories selected during
+workspace preparation. The check proves the VM/user/home, repository,
+forwarded-authority, guest Docker, manifest-owned native tool, managed user
+environment and established OS/NSS trust contract. It is read-only and never
+uses sudo, installs or repairs anything, authenticates a provider, changes
+trust, or changes Docker and Kind. Read
+[Native Guest User Tools](native-user-tools.md#canonical-read-only-native-runtime-contract)
+before changing or diagnosing this interface. Keep application and exact
+Kubernetes-target checks in orchestration.
 
 ## One-Time Repository Setup
 

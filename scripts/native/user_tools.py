@@ -204,6 +204,11 @@ class UserTools:
                     f'missing system package {package}; human: ./scripts/provision-agent-vm-guest.sh --docker-user {self.user}')
         require(self.command(['node', '--version']).stdout.startswith('v24.'), 'requires reviewed Node major 24')
         require(int(self.command(['npm', '--version']).stdout.split('.')[0]) >= 10, 'requires npm >=10')
+        for command in ('java', 'javac'):
+            result = self.command([command, '-version'])
+            require(re.search(r'(?:openjdk|java|javac) (?:version )?"?25(?:[.\s"]|$)',
+                              result.stdout + result.stderr),
+                    f'requires reviewed JDK major 25 from active {command}')
         for tool in self.manifest['downloads'].values():
             if 'check' in tool:
                 r = self.command(tool['check'])

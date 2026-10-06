@@ -4,8 +4,9 @@
 
 **Archetype:** gateway
 **Scope:** budgetanalyzer ecosystem
-**Role:** owns native development-VM provisioning, user tools, helper resources
-and agent-facing workspace guidance
+**Role:** owns native development-VM identity, provisioning, normal-user tools,
+guest-local repository and Docker boundaries, native trust readiness, helper
+resources and agent-facing workspace guidance
 
 This repository provides the supported native development environment. It does
 not own application code or active service architecture. Agents run directly
@@ -33,6 +34,9 @@ ls -d ../*/
 find . -maxdepth 2 -type f | sort
 rg --files native scripts/native tests/native
 
+# Human-only host-audit sources and offline fixtures
+rg --files scripts/host-isolation tests/host-isolation-audit
+
 # Native helper, settings, prompt and skill resources
 find native/helpers -type f | sort
 
@@ -58,11 +62,16 @@ find .github/workflows -maxdepth 1 -type f | sort
   boundaries. Keep initial bulk repository setup and later single-repository
   additions aligned through `scripts/setup-agent-vm-repositories.sh` and
   `scripts/add-agent-vm-repository.sh`.
+- Read `docs/host-isolation-audit.md` before changing personal-host audit
+  collection, private configuration, verifier, protocol fixtures, evidence
+  handling or host-policy handoff. Keep concrete topology, policy and evidence
+  outside the repository.
 - Read `docs/native-tool-inventory.md`, `native/toolchain.json`,
   `scripts/provision-agent-vm-guest.sh` and `scripts/native/provision.py` before
   changing system installation, versions, checksums or capability ownership.
 - Read `docs/native-user-tools.md` before changing normal-user setup, helpers,
-  settings merge, proxy behavior, permissions or trust ownership.
+  settings merge, proxy behavior, permissions, trust ownership or the canonical
+  read-only native runtime verifier.
 - Read `docs/local-budget-analyzer-tls.md` before changing or diagnosing exact
   local ingress trust.
 - Read `docs/dependency-automation.md` and `renovate.json` before changing
@@ -106,6 +115,10 @@ test or workflow.
 - Native installed ensure/check trust commands are read-only. Missing trust
   requires the exact human installer command they report.
 - Preserve guest Docker, Kind, provider state, user work and host/runtime data.
+- Treat `scripts/check-agent-vm-tools.sh` as the single read-only contract for
+  native VM, normal-user, repository, credential, tool, trust and guest-Docker
+  readiness. Do not add a weaker sibling-specific mode or another native
+  preflight implementation.
 - Stop and report missing tools, credentials or environment prerequisites
   instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation
@@ -126,11 +139,16 @@ test or workflow.
   from memory.
 - Keep native system/user/helper changes aligned with `native/toolchain.json`;
   do not create a second capability inventory.
+- Keep application bootstrap, the exact local Kind target, Tilt and Kubernetes
+  mutation in orchestration. Workspace checks native readiness and must not
+  absorb application or cluster-state checks.
 - Run agents natively in the development VM as its normal development user.
   Reserve guest Docker for application workloads such as Kind and
   Testcontainers.
-- Host audit collection and host policy changes are human-only. Review only
-  explicitly supplied redacted evidence; do not acquire host access.
+- Host audit collection, private configuration, live verification, policy
+  repair, reboot and protocol testing are human-only. Review only explicitly
+  supplied redacted evidence; do not acquire host access. Run only the offline
+  host-isolation fixtures as an agent.
 - Keep documentation updates in the same change set as behavior or workflow
   changes.
 
@@ -145,6 +163,9 @@ test or workflow.
 - Run `bash -n` and ShellCheck for changed shell scripts.
 - Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile ...` for changed
   Python files.
+- After host-isolation audit changes, run `PYTHONDONTWRITEBYTECODE=1 python3 -m
+  unittest discover -s tests/host-isolation-audit -v`; never run the live
+  collector or verifier for validation.
 - Run `actionlint <workflow>` after changing a retained GitHub Actions workflow.
 - Validate dependency configuration with the command in
   `docs/dependency-automation.md` after changing `renovate.json`.

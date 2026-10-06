@@ -47,8 +47,11 @@ with tempfile.TemporaryDirectory(prefix='shells-', dir=scratch) as name:
         subprocess.run(['bash', '-n', str(path)], check=True)
     subprocess.run(['shellcheck', '--shell=bash', *map(str, shells)], check=True)
 
-for doc in ('README.md', 'AGENTS.md', 'docs/host-isolation.md', 'docs/native-user-tools.md',
-            'docs/native-tool-inventory.md', 'docs/local-budget-analyzer-tls.md'):
+for doc in ('README.md', 'AGENTS.md', 'docs/host-isolation.md',
+            'docs/host-isolation-audit.md', 'docs/native-user-tools.md',
+            'docs/native-tool-inventory.md', 'docs/local-budget-analyzer-tls.md',
+            'scripts/host-isolation/README.md',
+            'tests/host-isolation-audit/README.md'):
     text = (REPO / doc).read_text()
     for raw in re.findall(r'\]\(([^)]+)\)', text):
         if raw.startswith(('https://', 'http://', '#')):

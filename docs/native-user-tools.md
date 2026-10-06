@@ -189,6 +189,49 @@ installation. An explicit npm refresh requires reviewing both manifest and lock,
 then privately removing only this managed npm environment and rerunning; the
 installer refuses to perform that removal or upgrade automatically.
 
+## Canonical Read-Only Native Runtime Contract
+
+`scripts/check-agent-vm-tools.sh` is the sole native runtime interface for
+sibling application bootstrap and daily startup. From the reviewed workspace
+checkout, after native preparation and exact ingress trust are complete, run:
+
+```bash
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+The two explicit arguments are required canonical absolute directories. They
+identify the reviewed guest working-clone parent and its existing guest-local
+bare-repository parent; the verifier does not guess or repair either path.
+Sibling orchestration must invoke this public wrapper rather than its Python
+implementation or a reduced compatibility mode.
+
+Success proves the complete workspace-owned runtime contract:
+
+- Ubuntu 24.04 running directly under QEMU/KVM, with the canonical normal
+  account home and safe ownership.
+- No forwarded credential socket, token, askpass, Git configuration injection,
+  proxy, TLS bypass or Docker/Testcontainers endpoint override.
+- Standalone guest-local working clones with only matching guest-local bare
+  origins and no credential/include/rewrite/forwarding Git configuration.
+- The default Docker context, `unix:///var/run/docker.sock`, a real guest Unix
+  socket and `/var/lib/docker` data root.
+- All manifest packages, Node major 24, npm 10 or newer, JDK/Javac major 25,
+  exact manifest download releases and exact managed user-tool releases.
+- Current managed user resources, fresh-shell command resolution, the reviewed
+  AI Session Handler checkout, Playwright Chromium and read-only exact ingress
+  OS/NSS trust verification.
+
+The verifier performs no writes. It never invokes sudo, installs packages,
+mutates trust, authenticates providers, edits Git configuration, repairs
+repositories, or changes Docker, Kind or application state. A nonzero result is
+a failed prerequisite for both first bootstrap and daily startup; use the
+reported human preparation or trust procedure after workers stop. Do not weaken
+the contract to permit an application-only Node baseline or partial credential
+check. `native/toolchain.json` remains the sole version and capability
+inventory.
+
 ## Refresh Installed User Resources
 
 `native/helpers/` is the canonical location for helper, settings, prompt and
