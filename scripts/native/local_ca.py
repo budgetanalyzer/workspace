@@ -6,13 +6,17 @@ import os
 from pathlib import Path
 import pwd
 import shlex
+import stat
 import subprocess
 import sys
 
 from user_tools import is_private_primary_group
 
 SYSTEM_CERT = Path('/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt')
+LEGACY_SYSTEM_CERT = Path('/usr/local/share/ca-certificates/budget-analyzer-local-ingress-ca.crt')
 SYSTEM_BUNDLE = Path('/etc/ssl/certs/ca-certificates.crt')
+SYSTEM_OWNER_UID = 0
+SYSTEM_OWNER_GID = 0
 NICKNAME = 'Budget Analyzer local mkcert CA'
 
 
@@ -38,6 +42,36 @@ def fingerprint(path=None, data=None):
     result = run(args, data=data)
     require(result.returncode == 0, 'invalid public root certificate', 11)
     return hashlib.sha256(result.stdout).hexdigest()
+
+
+def path_exists(path):
+    """Include broken symlinks in collision checks."""
+    return os.path.lexists(path)
+
+
+def system_certificate_fingerprint(path, label):
+    if not path_exists(path):
+        return None
+    require(not path.is_symlink(), f'{label} is a symlink; inspect privately', 13)
+    status = path.stat()
+    require(stat.S_ISREG(status.st_mode), f'{label} is not a regular file; inspect privately', 13)
+    require(status.st_uid == SYSTEM_OWNER_UID and status.st_gid == SYSTEM_OWNER_GID,
+            f'{label} has unexpected ownership; inspect privately', 13)
+    require(not status.st_mode & 0o022,
+            f'{label} is group/world writable; inspect privately', 13)
+    try:
+        return fingerprint(path)
+    except TrustError:
+        raise TrustError(f'{label} is not a valid public root; inspect privately', 13) from None
+
+
+def inspect_system_certificates(wanted):
+    canonical = system_certificate_fingerprint(SYSTEM_CERT, 'managed system root')
+    legacy = system_certificate_fingerprint(LEGACY_SYSTEM_CERT, 'legacy system root')
+    if legacy is not None and legacy != wanted:
+        raise TrustError('legacy system root differs from approved publication; '
+                         f'review fingerprints explicitly (approved {wanted}, legacy {legacy})', 13)
+    return canonical, legacy
 
 
 def human_command(worktrees, bares):
@@ -73,15 +107,29 @@ def check_or_install(worktrees, bares, home, account, install=False):
             'approved public root does not verify exact ingress hostname/leaf', 11)
     wanted = fingerprint(root)
     nss = validate_nss_paths(home, account)
-    system_current = SYSTEM_CERT.is_file() and fingerprint(SYSTEM_CERT) == wanted
+    system_identity, legacy_identity = inspect_system_certificates(wanted)
+    system_current = system_identity == wanted
     bundle_current = SYSTEM_BUNDLE.is_file() and run(['openssl', 'verify', '-CAfile', SYSTEM_BUNDLE, leaf]).returncode == 0
     command = human_command(worktrees, bares)
     if install:
         print('Approved public root SHA256: ' + wanted)
+        system_changed = False
         if not system_current:
             require(run(['sudo', '--', 'install', '-m', '0644', root, SYSTEM_CERT]).returncode == 0,
                     'human system root import failed', 13)
-        if not system_current or not bundle_current:
+            require(system_certificate_fingerprint(SYSTEM_CERT, 'managed system root') == wanted,
+                    'installed managed system root identity mismatch', 13)
+            system_changed = True
+        if legacy_identity is not None:
+            # Recheck immediately before deleting this one exact, known duplicate.
+            require(system_certificate_fingerprint(LEGACY_SYSTEM_CERT, 'legacy system root') == wanted,
+                    'legacy system root changed during convergence; inspect privately', 13)
+            require(run(['sudo', '--', 'rm', '--', LEGACY_SYSTEM_CERT]).returncode == 0,
+                    'legacy duplicate removal failed', 13)
+            require(not path_exists(LEGACY_SYSTEM_CERT),
+                    'legacy duplicate remains after removal', 13)
+            system_changed = True
+        if system_changed or not bundle_current:
             require(run(['sudo', '--', 'update-ca-certificates']).returncode == 0,
                     'human combined trust update failed', 13)
         nss.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -92,11 +140,15 @@ def check_or_install(worktrees, bares, home, account, install=False):
         trusted = run(['certutil', '-L', '-d', 'sql:' + str(nss)])
         flags = any(line.startswith(NICKNAME) and line.split()[-1] == 'C,,' for line in trusted.stdout.decode().splitlines())
         if current.returncode or fingerprint(data=current.stdout) != wanted or not flags:
-            run(['certutil', '-D', '-d', 'sql:' + str(nss), '-n', NICKNAME, '-f', '/dev/null'])
+            if current.returncode == 0:
+                require(run(['certutil', '-D', '-d', 'sql:' + str(nss), '-n', NICKNAME,
+                             '-f', '/dev/null']).returncode == 0,
+                        'human NSS managed-root replacement failed', 15)
             require(run(['certutil', '-A', '-d', 'sql:' + str(nss), '-n', NICKNAME, '-t', 'C,,', '-i', root, '-f', '/dev/null']).returncode == 0,
                     'human NSS public root import failed (password-protected DB needs private human review)', 15)
         return check_or_install(worktrees, bares, home, account)
-    require(system_current and bundle_current, 'system trust missing/stale; human command: ' + command, 13)
+    require(system_current and legacy_identity is None and bundle_current,
+            'system trust missing/stale/duplicated; human command: ' + command, 13)
     require(os.environ.get('SSL_CERT_FILE') == str(SYSTEM_BUNDLE) and
             os.environ.get('NODE_EXTRA_CA_CERTS') == str(SYSTEM_BUNDLE), 'load the native environment fragment for Python/Node trust', 14)
     require((nss / 'cert9.db').is_file(), 'NSS trust missing; human command: ' + command, 15)

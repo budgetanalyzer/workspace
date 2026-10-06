@@ -1,64 +1,48 @@
 # AI CLI Launch Options
 
-## Standard Usage
+The native installer exposes commands through the normal guest user's
+`.local/bin`. Plain `claude`, `codex` and `gemini` retain their upstream
+defaults. Optional aliases are installed in
+`~/.local/share/budget-analyzer-native/aliases.sh` but are not sourced
+automatically; opt in explicitly when needed:
 
-Run `claude` for the normal path. Convenience aliases are also installed:
+```bash
+. "$HOME/.local/share/budget-analyzer-native/aliases.sh"
+```
 
-| Alias | Effect |
-|-------|--------|
-| `dangerous` | `--dangerously-skip-permissions` |
-| `high` | Higher effort defaults |
-| `max` | Maximum effort defaults |
+## Explicit High-Authority Launchers
 
-All aliases also set `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` and `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
+The `dangerous`, `high`, `max` and version-selected Claude aliases use
+`--dangerously-skip-permissions`. The `codex-dangerous`, `codex-high` and
+`codex-max` aliases delegate to `codex-lean`.
 
-## Codex Lean Usage
+`codex-lean` keeps project instruction loading enabled and disables web search,
+apps/connectors, MCP apps, subagents, browser/computer/image tools, hooks,
+plugins, memories, shell snapshots and history persistence. It also selects
+`--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"` and
+`sandbox_mode="danger-full-access"`. It is not an OS sandbox. Docker-group
+membership gives native agent processes guest-root-equivalent authority; the
+VM and host policy are the external boundary.
 
-The sandbox installs `codex-lean` but leaves `codex` unaliased so the upstream Codex CLI can still run with its default behavior. The lean wrapper passes its defaults as command-line `-c` overrides on each launch:
-
-- project instruction loading remains enabled (`AGENTS.md` via Codex project docs)
-- no web search
-- no MCP app/connectors
-- no subagents
-- no browser/computer/image tools
-- no hooks or plugin hooks
-- no TUI notifications, animations, status line, or terminal title updates
-- visible agent reasoning (`hide_agent_reasoning = false`)
-- `danger-full-access` with approval prompts disabled, relying on the external container sandbox
-
-Codex also supports persistent settings in `~/.codex/config.toml`. Those settings apply to every plain `codex` invocation, and command-line `-c key=value` options override them for that invocation. This sandbox does not install a Codex config file because doing so would also change vanilla `codex`; lean behavior lives in `codex-lean` and the aliases below. The lean launcher does not override `project_doc_max_bytes`, so applicable `AGENTS.md` files are loaded using Codex's upstream project-doc defaults.
-
-Convenience aliases:
-
-| Alias | Effect |
-|-------|--------|
-| `codex-dangerous` | `codex-lean` |
-| `codex-high` | `codex-lean` with high reasoning effort |
-| `codex-max` | `codex-lean` with extra-high reasoning effort |
-| `codex-proxy` | `codex-with-proxy` |
-| `codex-high-proxy` | `codex-with-proxy` with high reasoning effort |
-| `codex-max-proxy` | `codex-max-with-proxy` |
+`CODEX_REASONING_EFFORT` selects effort and `CODEX_MODEL` supplies a model only
+when the command line did not already select one. Plain `codex` is not aliased
+and uses upstream behavior plus the user's configuration.
 
 ## AI Session Handler Plans
 
-Container startup installs the `ai-session-handler` sibling checkout from the
-configured working-clone parent into pipx with `--force --editable`, so both
-`ai-session-handler` and `ai-session-handler-codex-high` are available globally
-and current Python source changes are used immediately. The Mint devcontainer's
-default parent is `/workspace`; the guest entrypoint uses the reviewed
-guest-local parent.
+The native user installer exposes the sibling AI Session Handler checkout
+through an editable pipx environment. Current reviewed Python source changes
+are visible without an image rebuild or reinstall. Dependency or entry-point
+changes still require an explicit human reinstall after review.
 
-Run the sandbox's normal plan workflow from the repository that owns the plan:
+Run a plan from the repository that owns it:
 
 ```bash
-cd "${BUDGET_ANALYZER_WORKTREE_PARENT:-/workspace}/REPOSITORY"
 ai-run PLAN_NAME
 ```
 
-`PLAN_NAME` is a bare filename stem. `ai-run improve-imports` resolves only
-`$PWD/docs/plans/improve-imports.md`; do not pass a path or the `.md` suffix. The launcher runs the
-plan with the global high-reasoning Codex wrapper and streams worker progress by default. Any later
-arguments are passed unchanged to `ai-session-handler run`:
+`PLAN_NAME` is a bare filename stem for `./docs/plans/PLAN_NAME.md`; do not pass
+a path or `.md` suffix. Later arguments are forwarded unchanged:
 
 ```bash
 ai-run improve-imports --max-phases 1
@@ -66,36 +50,51 @@ ai-run improve-imports --quiet
 ai-run improve-imports --retry-stopped
 ```
 
-Pass `--quiet` explicitly when live worker output is undesirable; the complete transcript is still
-captured.
+The launcher selects the globally installed high-reasoning Codex wrapper and
+streams progress by default. `--quiet` suppresses live output while retaining
+the transcript. Use `ai-run --help` for the command summary.
 
-Use `ai-run --help` for the command summary. `CODEX_MODEL` remains the optional model-selection
-environment variable; the launcher does not hard-code a model.
+## Optional Proxy Launchers
 
-## Proxy Launchers
+- `claude-with-proxy` provides inspection without prompt replacement.
+- `claude-with-custom-system-prompt` adds prompt replacement.
+- `claude-45-custom-system-prompt` and
+  `claude-46-custom-system-prompt` add explicit model selection.
+- `codex-with-proxy` and `codex-max-with-proxy` delegate to `codex-lean`.
 
-- `claude-with-proxy` — traffic inspection only
-- `claude-with-custom-system-prompt` — traffic inspection + prompt replacement (not required for normal development)
-- `codex-with-proxy`, `codex-*-with-proxy` — Codex lean equivalents
+These launchers require the separate human-created inspection identity
+described in [HTTPS Traffic Inspection](traffic-inspection.md). They bind only
+to loopback, keep upstream TLS verification enabled and scope proxy/trust
+variables to the launched provider process.
 
-Browse [`ai-agent-sandbox/scripts/`](../ai-agent-sandbox/scripts/) for the full set of launchers.
-
-Request dumps are written to `/tmp/claude-proxy-dumps/` with CWD and timestamp in filenames.
+Canonical launcher implementations and resources live under `native/helpers/`
+and `scripts/native/proxy.py`; command mappings live in
+[`native/toolchain.json`](../native/toolchain.json).
 
 ### Why the custom system prompt launcher exists
 
-Anthropic's default system prompt includes verbose per-tool elaboration that duplicates what belongs in AGENTS.md, consuming context window on every request. Claude Code's `--system-prompt` and `--system-prompt-file` flags *append* to the default prompt rather than replacing it, so a mitmproxy addon swaps the prompt in-flight as a workaround. See [AGENTS.md](../AGENTS.md) for operating rules and source-of-truth pointers.
+Claude Code's `--system-prompt` flags append to its default main prompt. The
+optional native mitmproxy addon replaces that main prompt in flight while
+preserving required prefix blocks and passing ancillary requests through.
+The prompt and addon are canonical resources in `native/helpers/`.
 
-## Disabling Tools
+## Disabling Claude Subagents
+
+For focused work in a small repository:
 
 ```bash
-claude --disallowedTools "Agent" --dangerously-skip-permissions
+claude --disallowedTools "Agent"
 ```
 
-Disabling the Agent (subagent) tool is useful in small microservice repos where direct Grep/Glob/Read is faster than autonomous subagent exploration. The Agent tool is designed for large monorepos.
+Direct search and reads are usually clearer than autonomous exploration in
+small repositories. Choose permissions separately; disabling one tool does not
+require bypassing all permission checks.
 
-## Auth
+## Authentication
 
-- **Claude** — `claude auth login`
-- **Codex** — `export OPENAI_API_KEY` or `codex login`; use `codex` for upstream defaults and `codex-lean` or Codex aliases for lean defaults
-- **Gemini** — `export GEMINI_API_KEY` or run `gemini` to sign in
+- Claude: `claude auth login`
+- Codex: `codex login`
+- Gemini: run `gemini` interactively
+
+Authenticate only the selected provider in the guest. Do not authenticate
+GitHub, forward host agents or import retired runtime credentials.

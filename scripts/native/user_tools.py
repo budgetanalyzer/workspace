@@ -268,8 +268,7 @@ class UserTools:
                           'mitmflow-render.py': 'mitmflow-render.py'}
         for name, source in helper_sources.items():
             targets[name] = shlex.quote(str(self.root / 'helpers' / source))
-        for tool in self.manifest['helpers'].values():
-            name = tool['command']
+        for name, tool in self.manifest['helpers'].items():
             if name in targets:
                 continue
             module = 'local_ca.py' if 'local-ca-trust' in name else 'proxy.py'
@@ -298,7 +297,7 @@ class UserTools:
         for path in (self.root / 'pipx', self.root / 'pipx-bin', self.root / 'npm-cache',
                      self.root / 'managed-files.json', self.root / 'installation.json'):
             self.home_path(path)
-        overlay = json.loads((REPO / 'ai-agent-sandbox/settings-overlay.json').read_text())
+        overlay = json.loads((REPO / 'native/helpers/settings-overlay.json').read_text())
         settings_path = self.home / '.claude/settings.json'
         settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
         merged = merge_settings(settings, overlay)
@@ -390,7 +389,7 @@ class UserTools:
                      self.home / '.cache/ms-playwright', self.home / '.claude'):
             self.home_path(path)
             require(path.is_dir() and os.access(path, os.W_OK | os.X_OK), f'home path not writable: {path}')
-        overlay = json.loads((REPO / 'ai-agent-sandbox/settings-overlay.json').read_text())
+        overlay = json.loads((REPO / 'native/helpers/settings-overlay.json').read_text())
         settings_path = self.home / '.claude/settings.json'
         require(settings_path.is_file(), 'managed provider settings missing')
         settings = json.loads(settings_path.read_text())

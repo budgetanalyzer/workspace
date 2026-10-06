@@ -352,138 +352,121 @@
     }
   },
   "helpers": {
-    "ai-agent-sandbox/scripts/ai-run.sh": {
+    "ai-run": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "ai-run",
       "policy": "workspace-revision",
       "check": "ai-run --help; mocked argument-forwarding fixture",
       "native_source": "native/helpers/ai-run.sh"
     },
-    "ai-agent-sandbox/scripts/check-budget-analyzer-local-ca-trust.sh": {
+    "check-budget-analyzer-local-ca-trust": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "check-budget-analyzer-local-ca-trust",
       "policy": "workspace-revision",
       "check": "read-only trust fixture and Checkpoint B verified HTTPS matrix",
       "native_source": "scripts/native/local_ca.py"
     },
-    "ai-agent-sandbox/scripts/claude-45-custom-system-prompt.sh": {
+    "claude-45-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "claude-45-custom-system-prompt",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/claude-46-custom-system-prompt.sh": {
+    "claude-46-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "claude-46-custom-system-prompt",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/claude-with-custom-system-prompt.sh": {
+    "claude-with-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "claude-with-custom-system-prompt",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/claude-with-proxy.sh": {
+    "claude-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "claude-with-proxy",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/codex-lean.sh": {
+    "codex-lean": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "codex-lean",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/codex-lean.sh"
     },
-    "ai-agent-sandbox/scripts/codex-max-with-proxy.sh": {
+    "codex-max-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "codex-max-with-proxy",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/codex-with-proxy.sh": {
+    "codex-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "codex-with-proxy",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/ensure-budget-analyzer-local-ca-trust.sh": {
+    "ensure-budget-analyzer-local-ca-trust": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "ensure-budget-analyzer-local-ca-trust",
       "policy": "workspace-revision",
       "check": "mocked trust fixture; explicit Checkpoint B trust activation for the exact local origin",
       "native_source": "scripts/native/local_ca.py"
     },
-    "ai-agent-sandbox/scripts/mitmflow-body": {
+    "mitmflow-body": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "mitmflow-body",
       "policy": "workspace-revision",
       "check": "mitmflow-body --help (offline argparse path)",
       "native_source": "native/helpers/mitmflow-body"
     },
-    "ai-agent-sandbox/scripts/mitmflow-detail": {
+    "mitmflow-detail": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "mitmflow-detail",
       "policy": "workspace-revision",
       "check": "mitmflow-detail --help (offline argparse path)",
       "native_source": "native/helpers/mitmflow-detail"
     },
-    "ai-agent-sandbox/scripts/mitmflow-render.py": {
+    "mitmflow-render.py": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "mitmflow-render.py",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/mitmflow-render.py"
     },
-    "ai-agent-sandbox/scripts/mitmflows": {
+    "mitmflows": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "mitmflows",
       "policy": "workspace-revision",
       "check": "mitmflows --help (offline argparse path)",
       "native_source": "native/helpers/mitmflows"
     },
-    "ai-agent-sandbox/scripts/start-proxy.sh": {
+    "start-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "start-proxy",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "ai-agent-sandbox/scripts/statusline-command.sh": {
+    "statusline-command": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "statusline-command",
       "policy": "workspace-revision",
       "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/statusline-command.sh"
     },
-    "ai-agent-sandbox/scripts/via-annotator.sh": {
+    "via-annotator": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
-      "command": "via-annotator",
       "policy": "workspace-revision",
       "check": "via-annotator --version; via-annotator --check; human foreground bind/stop proof",
       "native_source": "native/helpers/via-annotator.sh"
@@ -582,13 +565,11 @@
     ]
   ],
   "reviewed_sources": {
-    "dockerfile": "ai-agent-sandbox/Dockerfile",
-    "entrypoints": [
-      "ai-agent-sandbox/entrypoint.sh",
-      "ai-agent-sandbox/guest-entrypoint.sh"
-    ],
-    "aliases": "ai-agent-sandbox/bash_aliases.sh",
-    "settings": "ai-agent-sandbox/settings-overlay.json",
+    "aliases": "native/helpers/bash_aliases.sh",
+    "settings": "native/helpers/settings-overlay.json",
+    "skill": "native/helpers/skills/save-conversation/SKILL.md",
+    "system_prompt": "native/helpers/system-prompt.md",
+    "system_prompt_addon": "native/helpers/system-prompt-addon.py",
     "helm_contract": "../orchestration/scripts/bootstrap/check-tilt-prerequisites.sh",
     "orchestration_tools": "../orchestration/scripts/lib/pinned-tool-versions.sh",
     "go_checksums": "https://go.dev/dl/?mode=json&include=all",

@@ -15,10 +15,10 @@ deleted that container, its image and all old Docker volumes before the clean
 rebuild. Phases 3–8 run natively; the selected final workflow has no agent
 container. This repository owns its full tool installers and verifier.
 
-The container procedures and original phase/checkpoint references below describe
-the transitional implementation and prior evidence. They are not a second
-active migration plan or a live runtime to recreate. Preserve the rebuilt
-VM/Kind/Tilt state. Do not repeat completed destructive migration operations.
+The container procedures and original phase/checkpoint references below are
+dated migration evidence. They are not a second active migration plan or a live
+runtime to recreate. Preserve the rebuilt VM/Kind/Tilt state. Do not repeat
+completed destructive migration operations.
 The new
 [remediation plan](../../orchestration/docs/plans/agent-vm-security-review-remediation-plan.md)
 owns the review fixes, CA/helper consolidation, transitional source cleanup
@@ -27,16 +27,12 @@ completed migration acceptance; follow the orchestration
 [host audit runbook](../../orchestration/docs/runbooks/host-isolation-audit.md)
 for human-only collection and privately reviewed evidence transfer.
 
-This workspace retains retired container source pending reviewed cleanup:
-
-- `.devcontainer/devcontainer.json` continues to select
-  `ai-agent-sandbox/docker-compose.yml` and its pinned Docker-in-Docker feature.
-  The operator confirmed Mint Docker retirement at Checkpoint D; do not launch
-  this retained source. No native worker needs a personal-host SSH identity.
-- Native Phase 3 removed the former guest-agent Compose files, entrypoint,
-  environment example and lifecycle commands after proving native independence.
-  The historical procedures and evidence below preserve their review context;
-  do not recreate that runtime.
+Phase 5 removed the remaining tracked Mint editor, Compose, Dockerfile,
+entrypoint, duplicated helper and exclusive image-evidence sources after
+accounting for every native capability. Native helper/settings/prompt/skill
+resources are now canonical. Any ignored legacy environment file remains
+human-owned runtime data and was not deleted. No native worker needs a
+personal-host SSH identity.
 
 Never recreate or launch the retired guest Compose configuration against any
 Docker daemon.
@@ -74,8 +70,8 @@ create new terminals after changing those settings; only then check that
 `GIT_ASKPASS`, `SSH_ASKPASS`, GitHub token variables, and `SSH_AUTH_SOCK` are
 absent. Connect with Remote SSH, then open
 `/srv/budget-analyzer/worktrees`; the extension host, terminals, tasks, and
-language servers run in the guest. Do not choose **Reopen in Container** from
-that remote window or install GitHub authentication/publishing extensions.
+language servers run in the guest. No editor-container configuration remains.
+Do not install GitHub authentication/publishing extensions in the guest.
 
 In a newly created Remote SSH terminal, this command must print nothing:
 
@@ -696,3 +692,47 @@ The ignored human-owned `ai-agent-sandbox/agent-vm.env`, if present, was not
 deleted; no tracked runtime consumes it. Host firewall/reboot evidence and live
 Remote SSH Java/frontend edits remain human Checkpoint C work, and Mint Docker
 retirement remains Checkpoint D.
+
+## Phase 5 Native Source Retirement
+
+Execution: 2026-10-06, native workspace worker for the post-migration security
+review. The operator-confirmed Checkpoint D provided authority to retire source;
+no host or guest runtime deletion was performed.
+
+Phase 5 removed the remaining tracked Mint editor configuration, Compose file,
+Dockerfile, entrypoint, duplicated helper/settings/prompt/skill tree and the
+image-only security-evidence workflow. Its exclusively obsolete Renovate
+managers and package rules were removed while the shared production preset was
+preserved. The ignored human-owned legacy environment file, if present, was
+left untouched.
+
+`native/helpers/` is now the canonical resource tree. The settings overlay was
+relocated there, native user installation and fixtures consume it there, and
+the toolchain manifest keys all 17 retained commands directly to one native
+source. The manifest and source-only checker validate every active resource,
+including the new settings overlay and npm lock. README, AGENTS and active owner
+docs now describe only the native Remote SSH daily workflow; dated procedures
+above remain explicitly historical.
+
+Validation on 2026-10-06 (all commands exited 0):
+
+| Command / review | Result |
+| --- | --- |
+| `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v` | PASS, 21 focused installer, trust, preparation and helper-mapping cases |
+| Native manifest, proposed install-input and user-environment checkers | PASS; 45 apt inputs, seven downloads on two architectures, 17 command mappings, 30 locked npm packages, 49 rendered/source shell files, local links and retirement guards |
+| Bash syntax, ShellCheck and Python compilation from the native owner docs | PASS for all retained native entry points/helpers and changed Python checks |
+| `NPM_CONFIG_CACHE=tmp/renovate-npm-cache npx --yes --package renovate@44.65.5 renovate-config-validator --strict renovate.json` | PASS; shared-preset-only configuration validated |
+| `actionlint` against the removed workflow's `HEAD` bytes, removed-workflow absence and `git diff --check` | PASS; the final workflow bytes linted cleanly before retirement, no retained touched workflow remains, and whitespace checks passed |
+
+No container build/launch, live installer, provider call, trust mutation,
+certificate operation, Docker/Kind/Tilt mutation, sibling write or Git write
+occurred. Source-only proposed publication passes, but ordinary Git-transfer
+proof remains pending until the new npm lock and settings overlay are committed;
+only then can the human run the checker's `--publication committed` mode.
+
+After reviewed source transfer and after all workers stop, the human must rerun
+the focused native user installer twice and the read-only tool verifier as
+documented in
+[native user tools](native-user-tools.md#phase-5-native-source-refresh). This
+refresh is not claimed here. The separate Phase 3/4 CA convergence and verified
+HTTPS matrix also remain human-owned until explicitly performed.

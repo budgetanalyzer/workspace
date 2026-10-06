@@ -15,10 +15,10 @@ spec.loader.exec_module(u)
 data = json.loads((REPO / 'native/toolchain.json').read_text())
 setup = u.UserTools('/fixture/work trees', '/fixture/bare repos')
 setup.validate_lock(REPO / 'native/npm/package-lock.json')
-for source, tool in data['helpers'].items():
-    assert (REPO / tool['native_source']).is_file(), f'native helper unmapped: {source}'
+for command, tool in data['helpers'].items():
+    assert (REPO / tool['native_source']).is_file(), f'native helper unmapped: {command}'
     assert tool['method'] == 'reviewed-native-user-helper-install'
-assert (REPO / 'native/helpers/skills/save-conversation/SKILL.md').read_bytes() == (REPO / 'ai-agent-sandbox/skills/save-conversation/SKILL.md').read_bytes()
+assert (REPO / 'native/helpers/settings-overlay.json').is_file()
 for module in ('user_tools.py', 'proxy.py', 'local_ca.py'):
     text = (REPO / 'scripts/native' / module).read_text()
     for forbidden in ('shell=True', 'verify=False', 'ssl_insecure=true', 'ignore_https_errors', 'NOPASSWD', "'sudo', '-n'", 'git clone', '/home/vscode', ':-/workspace'):
@@ -31,8 +31,8 @@ with tempfile.TemporaryDirectory(prefix='shells-', dir=scratch) as name:
     setup.home, setup.uid = home, os.getuid()
     setup.root, setup.bin, setup.fragment = home / 'resources', home / 'bin', home / 'env.sh'
     files = setup.plan_files()
-    for tool in data['helpers'].values():
-        assert setup.bin / tool['command'] in files, f'command not installed: {tool["command"]}'
+    for command in data['helpers']:
+        assert setup.bin / command in files, f'command not installed: {command}'
     shells = []
     for path, (text, mode) in files.items():
         if text.startswith('#!/usr/bin/env bash') or path.name == 'env.sh':

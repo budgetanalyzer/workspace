@@ -1,9 +1,8 @@
 # Native Tool Migration Inventory
 
-Phase 1 inventories the checked-in `ai-agent-sandbox/Dockerfile`, both
-`entrypoint.sh` and `guest-entrypoint.sh`, `bash_aliases.sh`, settings, every
-script, the skill, and the prompt addon. Container contents and ignored staged
-proposals are not the tool selection authority. The machine-readable
+The original migration inventoried every capability in the former Mint image,
+entrypoints, helpers, settings, skill and prompt addon. Phase 5 retired those
+tracked sources after native acceptance. The machine-readable
 [toolchain manifest](../native/toolchain.json) owns exact releases, both Linux
 architecture URLs/checksums, repository signing fingerprints, package sets,
 helper ownership and validation inputs. The
@@ -15,8 +14,9 @@ for installation, trust, authentication and exact handoff commands. Human B and
 native Phase 3 runtime verification passed on 2026-10-05. The operator has since
 confirmed all phases and C–D complete; see the
 [canonical acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-human-acceptance).
-This inventory is the durable parity contract; an assigned disposition alone
-does not claim installation or acceptance.
+This inventory is the durable native capability contract. Historical
+Dockerfile-era behavior below records explicit retention or retirement; it is
+not an active build recipe and does not claim live installation.
 
 ## Ownership And Version Policy
 
@@ -40,7 +40,7 @@ human responsibility. Refresh versions, URLs, both architecture checksums and
 validation patterns together. Do not use an unverified architecture-specific
 Go download. Kind receives the checksum absent from the old Dockerfile.
 
-The current Dockerfile and orchestration both select Helm **3.20.1**.
+The native manifest and orchestration both select Helm **3.20.1**.
 Orchestration's `check-tilt-prerequisites.sh` supports >=3.20.0 and <4.0.0;
 Helm 4 must not replace this selection. Workspace carries reviewed Linux
 kubectl/Kind/Tilt/Helm inputs matching orchestration's
@@ -93,16 +93,16 @@ libraries and fonts.
 
 ## Native Helper Sources
 
-The manifest maps each of the 17 original commands to its `native_source`.
+The manifest maps each retained command name to its one `native_source`.
 Portable resources live in `native/helpers/`; native CA and proxy adapters live
-in `scripts/native/local_ca.py` and `scripts/native/proxy.py`. Shared Mint
-container sources remain available, while the retired guest-agent entrypoint
-and lifecycle sources were removed after native Phase 3 proof. Every command
+in `scripts/native/local_ca.py` and `scripts/native/proxy.py`. Settings, the
+conversation skill and prompt resources also live under `native/helpers/`.
+Every command
 gets an executable user wrapper that loads the same small environment fragment.
 The read-only source/environment checker renders those wrappers under `tmp/`
-and validates shell syntax and ShellCheck. The manifest's `reviewed_sources`
-entrypoint list preserves the original Phase 1 migration provenance; it is not
-a native runtime dependency and may name the retired guest entrypoint. Native
+and validates shell syntax and ShellCheck. Every path in the manifest's
+`reviewed_sources` map now resolves to an active native or sibling contract.
+Native
 `ensure` diagnoses established ingress trust; only the explicit human trust
 installer performs privileged imports. Optional proxy
 wrappers refuse unidentified occupied listeners, keep TLS verification on and
@@ -111,40 +111,38 @@ use a separate human-initialized CA with process-scoped trust.
 ## Every Helper, Skill And Hook
 
 All native helper installation/configuration is owned by the normal-user
-installer in Phase 2, sourced from the reviewed workspace revision. Preserve
-the commands; adapt container-specific paths and permissions in native-owned
-sources without changing the executing container. Installation/offline checks
+installer and sourced from the reviewed workspace revision. Preserve the
+commands and normal-user paths in the canonical native sources. Installation/offline checks
 must not activate proxy listeners, generate/trust a proxy CA or contact a
 provider. `--help` on a proxy wrapper currently starts its proxy, so use mocked
 commands for its validation, not live help invocation.
 
-| Checked-in source under `ai-agent-sandbox/` | Disposition, dependencies and validation |
+| Retained command or resource | Native implementation, dependencies and validation |
 | --- | --- |
-| `scripts/ai-run.sh` | Preserve `ai-run` forwarding to handler/high wrapper; Bash + installed handler; shell/static checks and human B smoke |
-| `scripts/codex-lean.sh` | Preserve explicit lean wrapper and `CODEX_MODEL`/effort handling; resolve user-installed Codex rather than relying on `/usr/local/bin/codex`; shell/static checks and human B provider smoke; plain Codex defaults remain upstream |
-| `scripts/codex-with-proxy.sh`, `scripts/codex-max-with-proxy.sh` | Preserve optional proxy wrappers; native Python/socket + mitmweb + Codex lean; native paths and xhigh effort; shell/Python checks plus optional human inspection smoke |
-| `scripts/claude-with-proxy.sh` | Preserve inspection-only launch; native Python/socket + mitmweb + npm Claude; shell/Python checks plus optional human inspection smoke |
-| `scripts/claude-with-custom-system-prompt.sh`, `scripts/claude-45-custom-system-prompt.sh`, `scripts/claude-46-custom-system-prompt.sh` | Preserve optional prompt replacement/model selection; native Python/socket + mitmweb and addon; shell/Python checks plus optional human inspection smoke |
-| `scripts/start-proxy.sh` | Optional foreground mitmweb UI; explicit activation, loopback bindings and reviewed trust in Phase 2; native Python + mitmweb; shell/static checks and optional human smoke |
-| `scripts/mitmflows`, `scripts/mitmflow-detail`, `scripts/mitmflow-body`, `scripts/mitmflow-render.py` | Preserve inspection/render/export commands; Bash + Python stdlib urllib/JSON only, no mitmproxy Python import needed; shell/Python checks and optional human inspection smoke; exports remain repository `tmp/` |
-| `scripts/ensure-budget-analyzer-local-ca-trust.sh`, `scripts/check-budget-analyzer-local-ca-trust.sh` | Preserve lazy exact-local-origin trust; native Python + OpenSSL/certutil; ensure/check are read-only, separate human installer uses scoped interactive sudo; static checks plus human B curl/Python/Node/Chromium trust matrix |
-| `scripts/via-annotator.sh` | Preserve human foreground launcher, asset validation and strict 127.0.0.1 binding; Bash + sha256sum/Python http.server; shell/static checks and human B smoke; no service/background autostart |
-| `scripts/statusline-command.sh` | Source exists but no Dockerfile COPY/active overlay activation; optional helper retained, adapt credential path/cache to normal home and repository `tmp/`; Bash, jq, curl/date/stat/awk and Claude version; shell/static checks, no OAuth read/network during installer |
-| `system-prompt-addon.py`, `system-prompt.md` | Optional replacement, preserve required prefix/cache-control and ancillary-request pass-through; mitmproxy venv + Python JSON; Phase 2 native paths/dumps under repository `tmp/`; Python checks and optional human inspection smoke |
-| `skills/save-conversation/SKILL.md` | Preserve explicit file-only skill installed for normal user; instructions remain workspace-owned; installation collision checks and static source equality; no startup invocation |
-| `settings-overlay.json` | SessionStart emits project AGENTS.md; prompt suggestion/autoCompact controls. Phase 2 merges only explicitly selected workspace-owned settings without overwriting unrelated user configuration; focused repeat-install safety check |
-| `bash_aliases.sh` | Preserve explicit model/effort/permission aliases through opt-in native alias fragment. Do not replace `.bash_aliases` or shell contents; append only the environment source line to Bash startup files, and leave aliases opt-in; plain agents retain upstream modes. Use shell/static checks and human B smoke for semantics |
+| `ai-run` | `native/helpers/ai-run.sh`; forwards to the installed handler/high wrapper; Bash/static checks and human smoke |
+| `codex-lean` | `native/helpers/codex-lean.sh`; preserves explicit `CODEX_MODEL`/effort and high-authority arguments while resolving user-installed Codex; plain Codex remains upstream |
+| Codex proxy commands | `scripts/native/proxy.py`; optional mitmweb child plus Codex lean, native paths and xhigh effort; offline argv/lifecycle fixtures |
+| Claude proxy/custom-prompt commands | `scripts/native/proxy.py`; inspection-only or prompt replacement/model selection using npm Claude; offline argv/lifecycle fixtures |
+| `start-proxy` | `scripts/native/proxy.py`; optional foreground loopback mitmweb UI with reviewed private identity and upstream verification |
+| `mitmflows`, `mitmflow-detail`, `mitmflow-body`, `mitmflow-render.py` | `native/helpers/`; Bash + Python stdlib rendering/export with repository-`tmp/` boundaries |
+| `ensure-budget-analyzer-local-ca-trust`, `check-budget-analyzer-local-ca-trust` | `scripts/native/local_ca.py`; read-only exact-origin diagnosis. The separate human installer owns scoped OS/NSS mutation and identity-checked legacy convergence |
+| `via-annotator` | `native/helpers/via-annotator.sh`; asset validation, strict `127.0.0.1` foreground serving and clean stop |
+| `statusline-command` | `native/helpers/statusline-command.sh`; optional normal-home credentials and repository-`tmp/` cache; never activated or invoked by installation |
+| Prompt addon and text | `native/helpers/system-prompt-addon.py` and `system-prompt.md`; required prefix/cache-control preservation, ancillary pass-through and private dumps |
+| Conversation skill | `native/helpers/skills/save-conversation/SKILL.md`; exact file-only installation with collision checks |
+| Settings overlay | `native/helpers/settings-overlay.json`; merges only the AGENTS SessionStart hook and two reviewed controls while preserving unrelated settings |
+| Optional aliases | `native/helpers/bash_aliases.sh`; explicit model/effort/permission choices. Shell startup loads only the environment; aliases remain opt-in |
 
 The inventory deliberately preserves optional proxy, annotation and browser
 capabilities even when the human chooses not to activate them. Permission-bypass
 aliases are explicit choices; system provisioning neither selects them nor
 relaxes AppArmor/native sandboxing.
 
-## Dockerfile Environment And Startup Dispositions
+## Retired Container Environment And Startup Dispositions
 
 | Source surface | Native disposition / validation |
 | --- | --- |
-| Ubuntu FROM digest, TARGETARCH and version ARGs | Native Ubuntu release/actual QEMU/KVM/architecture checks replace container image selection; manifest replaces binary ARGs. Transitional Dockerfile untouched |
+| Ubuntu base digest, target architecture and version arguments | Native Ubuntu release/actual QEMU/KVM/architecture checks replace image selection; the manifest owns binary versions and both architecture checksums |
 | `CLI_CACHE_BUST`, npm `latest` | No cache-bust-dependent selection; exact user manifest inputs and explicit refresh |
 | `DEBIAN_FRONTEND` | Only the human-run apt transaction is noninteractive; not a global user export |
 | `SSL_CERT_FILE` | Phase 2 user environment points Python to combined system CA bundle, preserving public roots; B trust matrix |
@@ -154,27 +152,34 @@ relaxes AppArmor/native sandboxing.
 | USER creation/rename, UID/GID ARGs, `NOPASSWD:ALL` | Do not reproduce. Validate existing normal account/home, preserve ownership and sudo policy; Docker membership remains explicit guest-root-equivalent authority |
 | WORKDIR `/workspace`, ENTRYPOINT and CMD | Native process starts in human-selected guest checkout. No daemon/container lifecycle is needed for agent tools |
 | `entrypoint.sh` recursive `chown`, repository `clone`, SSH `origin` rewrite | Retire those side effects; stop on collisions/missing guest-local sources. Human owns Git transfer; native installer never changes repositories/remotes |
-| Historical `entrypoint.sh` / `guest-entrypoint.sh` handler `pipx --force --editable`, skills copy and overlay merge | Moved to explicit user installation, not every agent startup. Import-path/command checks remain repeatable; the Mint entrypoint remains and the guest entrypoint was retired after Phase 3 proof |
-| Historical `guest-entrypoint.sh` guest origins, credential, Docker and kubeconfig checks | Migrated into the read-only native verifier; the container-specific entrypoint and kubeconfig path were removed after Phase 3 proof |
+| Historical entrypoint handler reinstall, skill copy and overlay merge | Moved to explicit user installation, not every agent startup. Import-path/command checks remain repeatable; both entrypoints are retired |
+| Historical guest entrypoint origin, credential, Docker and kubeconfig checks | Migrated into the read-only native verifier; the container-specific entrypoint and kubeconfig path are retired |
 | Entrypoint banners/version reports/provider auth hints | User installer/verifier reports resolved versions. Human authenticates native provider at B; never import container credentials automatically |
 | Dockerfile mitmdump first-run CA generation, `-k`, system proxy-root trust and pipx ensurepath | Retire install-time activation/TLS bypass. Optional proxy trust is separate reviewed workflow; Phase 2 preserves shell/config and does not run automatic ensurepath rewrites |
 | `/workspace` creation/ownership, provider `.claude`/`.codex`/`.gemini` directories | Ordinary user's existing home/repositories; no recursive ownership repair, shell replacement or forced provider configuration |
-| Mint compose/devcontainer and `setup-env.sh` | Runtime retired at operator-confirmed Checkpoint D; tracked source awaits the reviewed cleanup plan. They are not native daily agent launch tools. Retired guest lifecycle/Compose sources are absent and must not be recreated |
+| Mint Compose/editor launch and environment generation | Runtime retired at operator-confirmed Checkpoint D; tracked launch/build sources and exclusive image evidence are removed. Do not recreate them |
 
-## Phase 1 Verification And Handoff
+## Native Verification And Handoff
 
 Run the tracked checks from the workspace root:
 
 ```bash
 PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 bash -n scripts/provision-agent-vm-guest.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/provision-agent-vm-guest.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/bwrap_profile.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/check_manifest.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/bwrap_profile.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_manifest.py tests/native/check_install_inputs.py
 git diff --check
 ```
+
+The proposed publication mode validates a source-only copy made from tracked
+working-tree files plus the explicitly reviewed new npm lock and native
+settings overlay. After the human commit, use `--publication committed`; only
+that mode validates a true `git archive HEAD` and establishes ordinary
+Git-transfer availability.
 
 The compact harness replaces privileged/download commands only where needed to
 prove the safety boundary: wrong OS, container/non-VM execution, a remote
@@ -182,12 +187,11 @@ Docker endpoint, root or missing users and missing bootstrap commands reject
 before sudo/downloads; checksum failure rejects before mutation; spaced paths
 remain single arguments; and a repeat with healthy Docker performs no package
 or restart operation. It deliberately does not emulate apt output, package
-transactions, systemd, repositories or browser installation. Source parity
-checks cover Dockerfile apt/COPY/ENV surfaces, the retained Mint entrypoint and
-the retired guest entrypoint disposition,
-all helpers, current orchestration tool contracts and documentation links.
-Native pins are manual-review inputs; existing Renovate extraction/evidence
-configuration is untouched.
+transactions, systemd, repositories or browser installation. Static checks
+validate every native manifest path, rendered helper command, settings/skill
+resource, current orchestration tool contract, documentation link and
+retired-source guard. Native pins remain manual-review inputs; Renovate's
+shared policy does not infer arbitrary checksum or signing-key relationships.
 
 The Go archive validator accepts the official top-level `go` directory entry
 and its contents, rejects a non-directory root or unrelated paths, and retains

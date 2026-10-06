@@ -154,6 +154,19 @@ the npm selection. Trust is not required to finish user tool installation; the
 full read-only verifier requires established system/NSS trust after the next
 section. Installation does not authenticate, launch proxies or generate CAs.
 
+The reviewed `native/npm/package-lock.json` has SHA-256
+`f42dff943f668e927407f16ef214f43ea2e88f319c9d0deae13e5b27f6df8b91`.
+That value matches the completed native installation report. The focused input
+checker validates every locked package's registry HTTPS URL and SHA-512
+integrity, direct versions against both `package.json` and the toolchain
+manifest, and required-input Git ignore/publication state. Before publication,
+its `proposed` mode builds a disposable source-only tree from tracked
+working-tree source plus the explicitly reviewed new lock and native settings
+overlay; that proves proposed closure, not committed-source availability. After
+the human commits the reviewed change, run the `committed` mode and require its
+true `git archive HEAD` proof before reporting that an ordinary Git transfer is
+reproducible.
+
 One normal development home owns `.m2/repository`, `.gradle`, `.claude`, `.codex`,
 `.gemini`, `.pki/nssdb` and `.cache/ms-playwright`. No container cache/provider
 volume is copied. Managed tools live under `.local/share/budget-analyzer-native`:
@@ -192,6 +205,28 @@ installation. An explicit npm refresh requires reviewing both manifest and lock,
 then privately removing only this managed npm environment and rerunning; the
 installer refuses to perform that removal or upgrade automatically.
 
+## Phase 5 Native Source Refresh
+
+Phase 5 retired the tracked container sources and made `native/helpers/` the
+only canonical location for helper, settings, prompt and skill resources. It
+also changed manifest helper identities from historical source paths to
+installed command names. No system package, tool release, provider credential,
+inspection identity or trust input changed.
+
+After the reviewed source is transferred and every affected worker has ended,
+the human must rerun the focused normal-user installation sequence in
+[Install User Tools And Environment](#install-user-tools-and-environment),
+including its repeat run. That refresh converges the installed manifest,
+settings overlay and helper resources, then proves idempotence. Do not rerun
+system provisioning solely for this source refresh, and do not remove provider
+state or the human-created optional inspection directory.
+
+Afterward, run the read-only tool verifier from a fresh shell. If the separate
+Phase 3/4 trust convergence has not yet occurred, complete the human trust
+procedure in the next section before the full verifier. Repository fixtures in
+this phase do not update the live home and are not evidence that the refresh
+occurred.
+
 ## Establish Exact Ingress Trust
 
 First validate the three existing human-transferred TLS inputs, without
@@ -208,6 +243,14 @@ Only the public ingress root is imported. The mkcert signing key remains on the
 personal host. A stale publication requires the existing host-only renewal and
 three-file transfer workflow, not a new guest CA or host `setup.sh` rerun.
 
+Trust responsibilities are intentionally singular: the personal host signs
+browser certificates, orchestration validates the transferred files and
+reconciles the Kubernetes TLS Secret, and workspace installs/verifies guest OS
+and NSS trust. During this remediation rollout, wait until orchestration Phase
+4 has removed its `--install-system-trust` writer and every affected worker has
+exited before running the command below. This avoids racing the legacy writer
+while repository revisions are mixed.
+
 From the guest workspace OS shell, with the environment fragment loaded:
 
 ```bash
@@ -222,7 +265,17 @@ check-budget-analyzer-local-ca-trust
 The human-only trust installer verifies CA validity, exact hostname/leaf chain,
 normal-user/VM identity and guest-local repositories before using explicit
 interactive `sudo install` and `sudo update-ca-certificates` for the one public
-root. NSS imports use this user's database and only the managed nickname;
+root. Its sole managed system destination is
+`/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt`. If the
+exact legacy `budget-analyzer-local-ingress-ca.crt` path exists, it is removed
+only after regular-file, no-symlink, root ownership, safe-mode and certificate
+identity checks prove it is the approved root; identity is rechecked just
+before removal. A different or unparseable legacy root reports both relevant
+SHA-256 identities when available and stops before any `sudo` or NSS mutation.
+The human must review that unexplained root explicitly; do not rename, retain
+as stale managed trust or delete it through an unattended invocation.
+
+NSS imports use this user's database and only the managed nickname;
 public roots and other NSS entries remain. NSS path checks use the native
 preflight's same verified private-primary-group exception: a group-writable
 path is accepted only when that group belongs exclusively to this account;
@@ -233,6 +286,27 @@ Installed `ensure` and `check` are read-only in native execution. Missing/stale
 system or NSS trust fails with the exact human installer command; agents never
 silently run privileged trust repair. Missing OpenSSL/certutil maps to status
 12; publication/system/environment/NSS failures retain statuses 10/11/13/14/15.
+
+After the installer succeeds, the final state can be checked without changing
+trust:
+
+```bash
+canonical_ca=/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt
+legacy_ca=/usr/local/share/ca-certificates/budget-analyzer-local-ingress-ca.crt
+test -f "$canonical_ca" && test ! -L "$canonical_ca"
+test ! -e "$legacy_ca" && test ! -L "$legacy_ca"
+stat -c '%U:%G %a %F' "$canonical_ca" # expected: root:root 644 regular file
+check-budget-analyzer-local-ca-trust
+openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt \
+  "$native_worktree_parent/orchestration/nginx/certs/k8s/_wildcard.budgetanalyzer.localhost.pem"
+certutil -L -d "sql:$HOME/.pki/nssdb" -n 'Budget Analyzer local mkcert CA' -a \
+  | openssl x509 -noout -sha256 -fingerprint
+```
+
+The read-only helper verifies the canonical certificate and combined bundle,
+requires the legacy source to be absent, and checks the managed NSS nickname
+and CA flags. The direct commands make the expected one-source state visible;
+compare the displayed NSS fingerprint privately with the approved publication.
 
 Human verified HTTPS matrix, from a fresh guest shell:
 
@@ -374,6 +448,7 @@ Run from workspace, without actual provider calls, homes or trust changes:
 ```bash
 PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py
 bash -n scripts/install-agent-vm-user-tools.sh
 bash -n scripts/check-agent-vm-tools.sh
@@ -381,16 +456,22 @@ bash -n scripts/install-agent-vm-local-ca-trust.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/install-agent-vm-user-tools.sh scripts/check-agent-vm-tools.sh scripts/install-agent-vm-local-ca-trust.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh native/helpers/*.sh native/helpers/mitmflows native/helpers/mitmflow-detail native/helpers/mitmflow-body
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/check_user_environment.py native/helpers/system-prompt-addon.py native/helpers/mitmflow-render.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/system-prompt-addon.py native/helpers/mitmflow-render.py
 git diff --check
 ```
 
-The compact harness uses disposable homes and command shims under workspace
-`tmp/`. It checks repeat installation without credential/settings loss,
-pre-mutation origin and credential-bridge rejection, read-only verification,
-missing browser/trust reporting, quoted path forwarding, runner sequencing and
-short-circuit behavior. It invokes no real trust, provider, package, Docker or
-AppArmor command and generates no CA. The static source checker renders
+Once the lock and checker are committed, replace `--publication proposed` with
+`--publication committed`. The latter fails unless every required input is in
+`HEAD` and validates only the extracted `git archive HEAD` source.
+
+The compact harness uses disposable homes, trust stores and command shims under
+workspace `tmp/`. It checks exact duplicate convergence, unknown-root refusal
+before mutation, symlink/ownership rejection, idempotence, preservation of
+unrelated NSS entries, read-only trust verification, repeat installation
+without credential/settings loss, pre-mutation origin and credential-bridge
+rejection, missing browser/trust reporting, quoted path forwarding, runner
+sequencing and short-circuit behavior. It invokes no real trust, provider,
+package, Docker or AppArmor command and generates no CA. The static source checker renders
 generated wrappers into `tmp/`, validates native mappings/locks/links and runs
 shell syntax/ShellCheck. Human B owns real package/browser behavior, loaded
 AppArmor proof, authentication, HTTPS and installed-helper smoke checks.

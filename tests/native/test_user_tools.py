@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import stat
 import sys
 import tempfile
@@ -117,11 +118,6 @@ class UserToolsProbe(user_tools.UserTools):
             REPO / 'scripts/native',
             self.repo / 'scripts/native',
             ignore=shutil.ignore_patterns('__pycache__'),
-        )
-        (self.repo / 'ai-agent-sandbox').mkdir()
-        shutil.copy2(
-            REPO / 'ai-agent-sandbox/settings-overlay.json',
-            self.repo / 'ai-agent-sandbox/settings-overlay.json',
         )
         handler = worktrees / 'ai-session-handler'
         (handler / 'src/ai_session_handler').mkdir(parents=True)
@@ -274,6 +270,32 @@ class UserInstallerSafetyTests(unittest.TestCase):
         self.assertFalse(any(
             call[0] in ('sudo', 'certutil', 'mitmdump', 'mitmweb')
             for call in self.probe.calls))
+
+    def test_manifest_command_keys_render_exact_forwarding_wrappers(self):
+        self.probe.preflight()
+        files = self.probe.plan_files()
+        manifest_commands = set(self.probe.manifest['helpers'])
+        self.assertTrue(manifest_commands.issubset(self.probe.names))
+        for command, helper in self.probe.manifest['helpers'].items():
+            wrapper = files[self.probe.bin / command][0]
+            source = helper['native_source']
+            if source.startswith('native/helpers/'):
+                target = self.probe.root / 'helpers' / Path(source).relative_to(
+                    'native/helpers')
+                self.assertIn(f'exec {shlex.quote(str(target))}', wrapper)
+            elif source == 'scripts/native/local_ca.py':
+                self.assertIn(
+                    f'python3 {shlex.quote(str(self.probe.root / "local_ca.py"))} {command}',
+                    wrapper,
+                )
+            elif source == 'scripts/native/proxy.py':
+                self.assertIn(
+                    f'python3 {shlex.quote(str(self.probe.root / "proxy.py"))} {command}',
+                    wrapper,
+                )
+            else:
+                self.fail(f'unexpected helper source mapping: {source}')
+            self.assertTrue(wrapper.rstrip().endswith('"$@"'))
 
     def test_wrong_origin_rejects_before_home_mutation(self):
         self.probe.origin_bad = True
