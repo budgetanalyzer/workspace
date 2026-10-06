@@ -78,7 +78,8 @@ host's common repository parent:
 ```
 
 The command shows the exact repository and branch before asking for
-confirmation. See [Development VM And Native Agent Runtime](docs/host-isolation.md#adding-one-repository-later)
+confirmation. The conventional organization repository basename `.github` is
+supported. See [Development VM And Native Agent Runtime](docs/host-isolation.md#adding-one-repository-later)
 for the transfer contract and prerequisites.
 
 ## What Is Installed

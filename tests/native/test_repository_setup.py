@@ -121,6 +121,58 @@ class RepositorySetupTests(unittest.TestCase):
         )
         self.assertFalse((self.guest_root / 'bare/ignored-service.git').exists())
 
+    def test_adds_dot_github_as_selected_repository(self):
+        dot_github = self.host_parent / '.github'
+        self.repository.rename(dot_github)
+
+        result = subprocess.run(
+            [
+                'bash', str(SETUP),
+                '--repository', str(dot_github),
+                '--ssh-host', 'fixture-vm',
+                '--guest-root', str(self.guest_root),
+            ],
+            input='yes\n',
+            text=True,
+            capture_output=True,
+            env=self.env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        self.assertEqual(
+            f'fixture-vm:{self.guest_root}/bare/.github.git',
+            self._git(dot_github, 'remote', 'get-url', 'vm').stdout.strip(),
+        )
+        self.assertEqual(
+            self.feature_oid,
+            self._git(
+                self.guest_root / 'worktrees/.github', 'rev-parse', 'HEAD',
+            ).stdout.strip(),
+        )
+
+    def test_discovers_dot_github_under_host_parent(self):
+        dot_github = self.host_parent / '.github'
+        self.repository.rename(dot_github)
+        self.ignored.rename(self.root / 'ignored-service')
+
+        result = subprocess.run(
+            [
+                'bash', str(SETUP),
+                '--host-parent', str(self.host_parent),
+                '--ssh-host', 'fixture-vm',
+                '--guest-root', str(self.guest_root),
+            ],
+            input='yes\n',
+            text=True,
+            capture_output=True,
+            env=self.env,
+        )
+
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        self.assertIn('  .github (main; selected branch: feature/add)', result.stdout)
+        self.assertTrue((self.guest_root / 'bare/.github.git').is_dir())
+        self.assertTrue((self.guest_root / 'worktrees/.github').is_dir())
+
     def test_simple_entry_point_requires_one_path(self):
         result = subprocess.run(
             ['bash', str(ADD_ONE)],

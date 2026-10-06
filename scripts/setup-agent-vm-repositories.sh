@@ -81,6 +81,10 @@ if [[ -n "$host_parent" ]]; then
         [[ -d "$candidate" ]] || continue
         candidates+=("$candidate")
     done
+    github_candidate="$host_parent/.github"
+    if [[ -d "$github_candidate" ]]; then
+        candidates+=("$github_candidate")
+    fi
 else
     [[ ! -L "$repository" ]] \
         || die "repository path must not be a symbolic link: $repository"
@@ -113,7 +117,7 @@ for candidate in "${candidates[@]}"; do
     fi
 
     name=$(basename -- "$candidate")
-    [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
+    [[ "$name" == .github || "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
         || die "unsupported repository basename: $name"
     [[ -z "${seen_names[$name]:-}" ]] || die "duplicate repository basename: $name"
     seen_names[$name]=1

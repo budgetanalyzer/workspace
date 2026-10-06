@@ -163,8 +163,12 @@ This command deliberately has one input. It uses the accepted
 `budget-agent-vm` SSH profile and `/srv/budget-analyzer` guest root, then applies
 the same cleanliness, branch, confirmation, bare-origin and working-clone
 rules as the initial setup. The host repository must have a local `main` branch
-and a clean checked-out branch. Use the full setup command above only when a
-different reviewed SSH alias or guest root is intentional.
+and a clean checked-out branch. The conventional organization repository name
+`.github` is supported; its guest bare repository is `.github.git` and its
+working clone is `.github`. Parent-based initial setup discovers it as well.
+Other dot-prefixed repository basenames remain unsupported. Use the full setup
+command above only when a different reviewed SSH alias or guest root is
+intentional.
 
 ## Docker And Testcontainers
 
