@@ -28,6 +28,17 @@ inject Git askpass. Agents use guest-local working clones and bare origins,
 the guest's default Docker socket, and the normal guest home. Git publication
 remains a personal-host operation.
 
+To add one host repository after initial VM setup, run this from the personal
+host's common repository parent:
+
+```bash
+./workspace/scripts/add-agent-vm-repository.sh ./repository-name
+```
+
+The command shows the exact repository and branch before asking for
+confirmation. See [Development VM And Native Agent Runtime](docs/host-isolation.md#adding-one-repository-later)
+for the transfer contract and prerequisites.
+
 ## What Is Installed
 
 - Claude Code, Codex CLI, Gemini CLI and AI Session Handler, with reviewed

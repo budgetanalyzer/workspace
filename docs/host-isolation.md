@@ -123,6 +123,22 @@ objects only. It does not copy uncommitted files, hooks, host Git configuration,
 GitHub remotes, credentials or personal SSH state. Matching partial setup is
 repeatable; the script provides no daily sync or publication behavior.
 
+### Adding One Repository Later
+
+From the personal host's common repository parent, pass the new repository
+root to the focused entry point:
+
+```bash
+./workspace/scripts/add-agent-vm-repository.sh ./repository-name
+```
+
+This command deliberately has one input. It uses the accepted
+`budget-agent-vm` SSH profile and `/srv/budget-analyzer` guest root, then applies
+the same cleanliness, branch, confirmation, bare-origin and working-clone
+rules as the initial setup. The host repository must have a local `main` branch
+and a clean checked-out branch. Use the full setup command above only when a
+different reviewed SSH alias or guest root is intentional.
+
 ## Docker And Testcontainers
 
 Leave `DOCKER_HOST`, `DOCKER_CONTEXT` and `TESTCONTAINERS_HOST_OVERRIDE` unset.

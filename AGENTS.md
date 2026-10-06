@@ -55,7 +55,9 @@ find .github/workflows -maxdepth 1 -type f | sort
   how this workspace relates to ecosystem startup.
 - Read `docs/host-isolation.md` before changing repository transport, guest
   Docker selection, credentials, Remote SSH guidance or native runtime
-  boundaries.
+  boundaries. Keep initial bulk repository setup and later single-repository
+  additions aligned through `scripts/setup-agent-vm-repositories.sh` and
+  `scripts/add-agent-vm-repository.sh`.
 - Read `docs/native-tool-inventory.md`, `native/toolchain.json`,
   `scripts/provision-agent-vm-guest.sh` and `scripts/native/provision.py` before
   changing system installation, versions, checksums or capability ownership.

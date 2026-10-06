@@ -6,10 +6,13 @@ usage() {
 Usage:
   setup-agent-vm-repositories.sh \
     --host-parent PATH --ssh-host HOST_ALIAS --guest-root ABSOLUTE_PATH
+  setup-agent-vm-repositories.sh \
+    --repository PATH --ssh-host HOST_ALIAS --guest-root ABSOLUTE_PATH
 
-Discover every immediate child Git repository under PATH, create matching bare
-repositories and working clones under ABSOLUTE_PATH in the guest, add a `vm`
-remote to each host repository, and seed `main` plus the checked-out branch.
+Discover every immediate child Git repository under a host parent, or select
+one repository explicitly. Create matching bare repositories and working clones
+under ABSOLUTE_PATH in the guest, add a `vm` remote to each host repository,
+and seed `main` plus the checked-out branch.
 
 The command is a one-time, interactive host operation. It preserves normal SSH
 host-key verification, disables agent forwarding, and never contacts GitHub
@@ -23,15 +26,17 @@ die() {
 }
 
 host_parent=''
+repository=''
 ssh_host=''
 guest_root=''
 
 while (($#)); do
     case "$1" in
-        --host-parent|--ssh-host|--guest-root)
+        --host-parent|--repository|--ssh-host|--guest-root)
             (($# >= 2)) || die "$1 requires a value"
             case "$1" in
                 --host-parent) host_parent=$2 ;;
+                --repository) repository=$2 ;;
                 --ssh-host) ssh_host=$2 ;;
                 --guest-root) guest_root=$2 ;;
             esac
@@ -48,7 +53,10 @@ while (($#)); do
     esac
 done
 
-[[ -n "$host_parent" ]] || die '--host-parent is required'
+[[ -n "$host_parent" || -n "$repository" ]] \
+    || die 'exactly one of --host-parent or --repository is required'
+[[ -z "$host_parent" || -z "$repository" ]] \
+    || die '--host-parent and --repository are mutually exclusive'
 [[ -n "$ssh_host" ]] || die '--ssh-host is required'
 [[ -n "$guest_root" ]] || die '--guest-root is required'
 [[ "$ssh_host" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
@@ -64,9 +72,23 @@ command -v git >/dev/null || die 'git is required'
 command -v realpath >/dev/null || die 'realpath is required'
 command -v ssh >/dev/null || die 'ssh is required'
 
-host_parent=$(realpath -e -- "$host_parent") \
-    || die 'could not resolve --host-parent'
-[[ -d "$host_parent" ]] || die "host parent is not a directory: $host_parent"
+declare -a candidates=()
+if [[ -n "$host_parent" ]]; then
+    host_parent=$(realpath -e -- "$host_parent") \
+        || die 'could not resolve --host-parent'
+    [[ -d "$host_parent" ]] || die "host parent is not a directory: $host_parent"
+    for candidate in "$host_parent"/*; do
+        [[ -d "$candidate" ]] || continue
+        candidates+=("$candidate")
+    done
+else
+    [[ ! -L "$repository" ]] \
+        || die "repository path must not be a symbolic link: $repository"
+    repository=$(realpath -e -- "$repository") \
+        || die 'could not resolve --repository'
+    [[ -d "$repository" ]] || die "host repository is not a directory: $repository"
+    candidates+=("$repository")
+fi
 
 declare -a repo_paths=()
 declare -a repo_names=()
@@ -75,16 +97,20 @@ declare -a repo_main_oids=()
 declare -a repo_branch_oids=()
 declare -A seen_names=()
 
-for candidate in "$host_parent"/*; do
-    [[ -d "$candidate" ]] || continue
+for candidate in "${candidates[@]}"; do
     top=$(git -C "$candidate" rev-parse --show-toplevel 2>/dev/null) || continue
     [[ ! -L "$candidate" ]] \
-        || die "repository child must not be a symbolic link: $candidate"
+        || die "repository path must not be a symbolic link: $candidate"
     top=$(realpath -e -- "$top") || die "could not resolve repository path: $candidate"
-    candidate=$(realpath -e -- "$candidate") || die "could not resolve child path: $candidate"
-    [[ "$top" == "$candidate" ]] || continue
-    [[ "$(dirname -- "$candidate")" == "$host_parent" ]] \
-        || die "repository resolves outside the selected parent: $candidate"
+    candidate=$(realpath -e -- "$candidate") || die "could not resolve selected path: $candidate"
+    if [[ -n "$host_parent" ]]; then
+        [[ "$top" == "$candidate" ]] || continue
+        [[ "$(dirname -- "$candidate")" == "$host_parent" ]] \
+            || die "repository resolves outside the selected parent: $candidate"
+    else
+        [[ "$top" == "$candidate" ]] \
+            || die "selected path is not a Git repository root: $candidate"
+    fi
 
     name=$(basename -- "$candidate")
     [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
@@ -127,9 +153,18 @@ for candidate in "$host_parent"/*; do
     repo_branch_oids+=("$(git -C "$candidate" rev-parse "refs/heads/$branch")")
 done
 
-((${#repo_paths[@]} > 0)) || die "no immediate child Git repositories found under $host_parent"
+((${#repo_paths[@]} > 0)) || {
+    if [[ -n "$host_parent" ]]; then
+        die "no immediate child Git repositories found under $host_parent"
+    fi
+    die "selected path is not a Git repository: $repository"
+}
 
-printf 'Resolved host parent: %s\n' "$host_parent"
+if [[ -n "$host_parent" ]]; then
+    printf 'Resolved host parent: %s\n' "$host_parent"
+else
+    printf 'Resolved repository:  %s\n' "$repository"
+fi
 printf 'SSH host alias:      %s\n' "$ssh_host"
 printf 'Guest root:          %s\n' "$guest_root"
 printf 'Guest bare parent:   %s/bare\n' "$guest_root"
