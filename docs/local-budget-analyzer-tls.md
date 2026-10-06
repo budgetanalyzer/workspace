@@ -117,8 +117,7 @@ file. Neither invokes `sudo -n` nor generates a CA. Optional guest inspection
 trust is separate, process-scoped and never imported system-wide or into NSS by
 native installation. Public roots remain intact.
 
-Orchestration Phase 4 removed its competing system-trust writer. The remaining
-human convergence must happen only after the reviewed workspace and
-orchestration changes are installed and all affected workers have exited.
-Repository tests use disposable paths and mocked system/NSS commands; source
-validation does not establish live trust convergence.
+Run trust installation only from mutually reviewed workspace and orchestration
+revisions after all affected workers have exited. Repository tests use
+disposable paths and mocked system/NSS commands; source validation does not
+establish live trust.

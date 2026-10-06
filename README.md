@@ -2,13 +2,9 @@
 
 Development-environment entry point for Budget Analyzer and its AI coding
 tools. The supported workflow runs agents directly in the Ubuntu development
-VM as its normal development user. The former container workflow is retired
-and its tracked launch/build sources have been removed; do not recreate it.
-
-The native migration and human Checkpoints A–D completed on 2026-10-05. See
-[Development VM And Guest Agent Runtime](docs/host-isolation.md) for the current
-boundary and historical acceptance record. The separate post-migration
-security review remains tracked by orchestration.
+VM as its normal development user. See
+[Development VM And Native Agent Runtime](docs/host-isolation.md) for the
+current host/guest boundary, repository transport and Remote SSH requirements.
 
 ## Native Daily Workflow
 
@@ -47,7 +43,7 @@ remains a personal-host operation.
 
 Exact versions, checksums, signed repository inputs, package ownership and
 capability checks live in [`native/toolchain.json`](native/toolchain.json) and
-[Native Tool Migration Inventory](docs/native-tool-inventory.md).
+[Native Tool Inventory](docs/native-tool-inventory.md).
 
 ## Repository Layout
 
@@ -57,8 +53,8 @@ capability checks live in [`native/toolchain.json`](native/toolchain.json) and
   resources.
 - `scripts/native/` — system, user, trust and optional-proxy implementations.
 - `scripts/*.sh` — human entry points and read-only native checks.
-- `tests/native/` — focused installer-safety, manifest, environment and
-  retirement verifiers.
+- `tests/native/` — focused installer-safety, manifest and environment
+  verifiers.
 - `AGENTS.md` — agent operating contract.
 - `docs/` — native setup, isolation, launch, trust and dependency owner docs.
 
@@ -74,15 +70,14 @@ affected workers. The repeatable system/user preparation entry point is:
 ```
 
 It is for first preparation or an explicitly reviewed repair, not daily agent
-startup. It rejects containers, Mint, remote Docker endpoints, unsafe
-ownership, credential bridges and version collisions while preserving healthy
-guest Docker workloads.
+startup. It rejects unsupported operating systems, containers, remote Docker
+endpoints, unsafe ownership, credential bridges and version collisions while
+preserving healthy guest Docker workloads.
 
-Phase 5 changed the canonical helper/settings source and manifest. After these
-changes are reviewed and transferred, the human must end workers and rerun the
-focused normal-user installer/check sequence in
-[Native Guest User Tools](docs/native-user-tools.md#phase-5-native-source-refresh).
-This repository change does not claim that live-home refresh has occurred.
+After reviewed helper, settings or manifest changes are transferred, the human
+must end affected workers and rerun the focused normal-user installer/check
+sequence in
+[Native Guest User Tools](docs/native-user-tools.md#refresh-installed-user-resources).
 
 ## Run An AI Session Handler Plan
 
@@ -97,7 +92,8 @@ globally installed high-reasoning Codex wrapper and streams progress. Later
 arguments are forwarded to `ai-session-handler run`; use `--quiet` to suppress
 live output while retaining the transcript. Set `CODEX_MODEL` only when an
 explicit model is required. The editable handler install reflects reviewed
-source changes without an image rebuild.
+source changes immediately; dependency or entry-point changes require an
+explicit reinstall.
 
 ## Local Budget Analyzer HTTPS
 
@@ -135,8 +131,7 @@ the browser are not uploaded to the static server.
 ## Dependency Automation
 
 Renovate extends the shared Budget Analyzer preset. Native manifest checks own
-the checksum- and signing-key-coupled tool inputs; there is no retained
-workspace image build/scan job. See
+the checksum- and signing-key-coupled tool inputs. See
 [Dependency Automation](docs/dependency-automation.md).
 
 ## What Is Not Here

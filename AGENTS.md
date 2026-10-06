@@ -8,8 +8,8 @@
 and agent-facing workspace guidance
 
 This repository provides the supported native development environment. It does
-not own application code or active service architecture. The former container
-runtime is retired; do not reconstruct it from historical evidence.
+not own application code or active service architecture. Agents run directly
+as the normal development user inside the dedicated Ubuntu VM.
 
 ### Boundaries
 
@@ -104,7 +104,6 @@ test or workflow.
 - Native installed ensure/check trust commands are read-only. Missing trust
   requires the exact human installer command they report.
 - Preserve guest Docker, Kind, provider state, user work and host/runtime data.
-  Do not repeat completed migration bootstrap or retirement operations.
 - Stop and report missing tools, credentials or environment prerequisites
   instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation
@@ -125,9 +124,9 @@ test or workflow.
   from memory.
 - Keep native system/user/helper changes aligned with `native/toolchain.json`;
   do not create a second capability inventory.
-- The accepted runtime runs agents natively in the development VM. Migration
-  and runtime retirement are operator-confirmed complete. Do not rerun the old
-  migration or reconstruct retired agent containers.
+- Run agents natively in the development VM as its normal development user.
+  Reserve guest Docker for application workloads such as Kind and
+  Testcontainers.
 - Host audit collection and host policy changes are human-only. Review only
   explicitly supplied redacted evidence; do not acquire host access.
 - Keep documentation updates in the same change set as behavior or workflow

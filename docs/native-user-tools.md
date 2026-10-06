@@ -1,23 +1,9 @@
-# Native Guest User Tools And Checkpoint B
+# Native Guest User Tools
 
-**Status:** Human Checkpoint B completed on 2026-10-05. Native installation,
-repeat-run verification, trust, provider proof, destructive cutover and clean
-application rebuild passed. All eight native phases and human C–D acceptance
-are now operator-confirmed complete in the
-[canonical acceptance record](../../orchestration/docs/plans/agent-host-isolation-acceptance.md#native-human-acceptance).
-
-Phase 2 supplies reviewed installers and focused offline safety checks. The
-human runs the following sequence from the Ubuntu development VM OS as its
-normal development user after both authoring phases and all old workers end.
-These instructions complete workspace's part of the companion
-[Checkpoint B](../../orchestration/docs/plans/agent-vm-native-manual-plan.md#checkpoint-b-install-and-launch-native-agents).
-The companion remains read-only under this worker's repository boundary.
-Completed live installation, authentication, permission-mode, sandbox-mechanism
-and verified browser evidence is recorded in
-[host-isolation.md](host-isolation.md#native-execution-handoff-evidence).
-Offline checks alone do not establish human acceptance. The additional
-[security remediation review](../../orchestration/docs/plans/agent-vm-security-review-remediation-plan.md)
-is separate from the completed migration.
+This guide owns human installation, trust, authentication and verification for
+the normal development user in the Ubuntu VM. Run live installation commands
+only after source review and after affected workers have stopped. Offline checks
+alone do not establish the live VM state.
 
 ## Review And System Preparation
 
@@ -26,9 +12,9 @@ Privately preserve existing guest configuration. Review `git diff`, new files,
 `native/npm/package-lock.json`, and the native installation entry points. The
 system stage must complete first, including Chromium shared libraries/fonts,
 JDK 25, Node 24, Python, pipx and bubblewrap. Preserve Docker, Kind, Tilt, all
-container volumes and provider state. Do not run orchestration `setup.sh`.
+application volumes and provider state. Do not run orchestration `setup.sh`.
 
-The repeatable B.1 workflow lives in the tracked
+The repeatable workflow lives in the tracked
 [preparation runner](../scripts/prepare-agent-vm-native.sh). After source review
 and all workers exit, run from the guest OS workspace checkout:
 
@@ -45,7 +31,8 @@ environment fragment, and repeats user installation. It stops on the first
 failure. Each invocation keeps a private log under
 `tmp/native-preparation/prepare-*.log`; no operational source lives in `tmp/`.
 Reruns retain the existing installations and unrelated configuration. Trust
-import, provider login and the full tools verifier remain B.2 steps below.
+import, provider login and the full tools verifier remain separate actions
+below.
 
 The individual tracked entry points remain available for focused repair.
 From the guest OS workspace checkout:
@@ -74,8 +61,6 @@ config values or credentials. Missing prerequisites stop the installer.
 
 Current [official OpenAI guidance](https://learn.chatgpt.com/docs/agent-approvals-security#os-level-sandbox),
 fetched on 2026-10-04, states that Linux uses bubblewrap and seccomp by default.
-The former `developers.openai.com/codex/security` page now refers to a separate
-security product; its link to Agent approvals & security is the relevant source.
 The official page establishes the Linux mechanism; it does not prescribe the
 Ubuntu profile below. This is workspace's narrowly scoped Ubuntu setup for the
 kernel's restricted unprivileged-user-namespace setting.
@@ -131,7 +116,7 @@ The explicit built-in profiles follow current
 [OpenAI permission-profile guidance](https://learn.chatgpt.com/docs/permissions).
 Inspect installed CLI help/config if the syntax changes; do not substitute a
 permission bypass to claim sandbox acceptance. Run the native provider probe in
-the mode actually selected and record that mode in the human handoff.
+the mode actually selected and record that mode with the installation evidence.
 
 ## Install User Tools And Environment
 
@@ -156,20 +141,19 @@ section. Installation does not authenticate, launch proxies or generate CAs.
 
 The reviewed `native/npm/package-lock.json` has SHA-256
 `f42dff943f668e927407f16ef214f43ea2e88f319c9d0deae13e5b27f6df8b91`.
-That value matches the completed native installation report. The focused input
-checker validates every locked package's registry HTTPS URL and SHA-512
-integrity, direct versions against both `package.json` and the toolchain
-manifest, and required-input Git ignore/publication state. Before publication,
+The focused input checker validates every locked package's registry HTTPS URL
+and SHA-512 integrity, direct versions against both `package.json` and the
+toolchain manifest, and required-input Git ignore/publication state. Before publication,
 its `proposed` mode builds a disposable source-only tree from tracked
-working-tree source plus the explicitly reviewed new lock and native settings
-overlay; that proves proposed closure, not committed-source availability. After
-the human commits the reviewed change, run the `committed` mode and require its
-true `git archive HEAD` proof before reporting that an ordinary Git transfer is
+working-tree source plus explicitly reviewed uncommitted required inputs. That
+proves proposed closure, not committed-source availability. After the human
+commits the reviewed change, run the `committed` mode and require its true
+`git archive HEAD` proof before reporting that an ordinary Git transfer is
 reproducible.
 
 One normal development home owns `.m2/repository`, `.gradle`, `.claude`, `.codex`,
-`.gemini`, `.pki/nssdb` and `.cache/ms-playwright`. No container cache/provider
-volume is copied. Managed tools live under `.local/share/budget-analyzer-native`:
+`.gemini`, `.pki/nssdb` and `.cache/ms-playwright`. Do not import provider state
+from another environment. Managed tools live under `.local/share/budget-analyzer-native`:
 locked local npm packages, dedicated pipx environments, portable helper resources,
 private inspection resources only if human-created, and an installation report.
 Commands in `.local/bin` source the small environment fragment themselves, so
@@ -205,13 +189,11 @@ installation. An explicit npm refresh requires reviewing both manifest and lock,
 then privately removing only this managed npm environment and rerunning; the
 installer refuses to perform that removal or upgrade automatically.
 
-## Phase 5 Native Source Refresh
+## Refresh Installed User Resources
 
-Phase 5 retired the tracked container sources and made `native/helpers/` the
-only canonical location for helper, settings, prompt and skill resources. It
-also changed manifest helper identities from historical source paths to
-installed command names. No system package, tool release, provider credential,
-inspection identity or trust input changed.
+`native/helpers/` is the canonical location for helper, settings, prompt and
+skill resources. The manifest maps installed command names directly to those
+sources or to the native adapters under `scripts/native/`.
 
 After the reviewed source is transferred and every affected worker has ended,
 the human must rerun the focused normal-user installation sequence in
@@ -222,10 +204,9 @@ system provisioning solely for this source refresh, and do not remove provider
 state or the human-created optional inspection directory.
 
 Afterward, run the read-only tool verifier from a fresh shell. If the separate
-Phase 3/4 trust convergence has not yet occurred, complete the human trust
-procedure in the next section before the full verifier. Repository fixtures in
-this phase do not update the live home and are not evidence that the refresh
-occurred.
+trust installation is incomplete, complete the human trust procedure in the
+next section before the full verifier. Repository fixtures do not update the
+live home and are not evidence that the refresh occurred.
 
 ## Establish Exact Ingress Trust
 
@@ -246,10 +227,8 @@ three-file transfer workflow, not a new guest CA or host `setup.sh` rerun.
 Trust responsibilities are intentionally singular: the personal host signs
 browser certificates, orchestration validates the transferred files and
 reconciles the Kubernetes TLS Secret, and workspace installs/verifies guest OS
-and NSS trust. During this remediation rollout, wait until orchestration Phase
-4 has removed its `--install-system-trust` writer and every affected worker has
-exited before running the command below. This avoids racing the legacy writer
-while repository revisions are mixed.
+and NSS trust. Run the command below only from mutually reviewed workspace and
+orchestration revisions after every affected worker has exited.
 
 From the guest workspace OS shell, with the environment fragment loaded:
 
@@ -352,12 +331,12 @@ Playwright's default browser launch permissions are upstream defaults; this
 probe does not claim Chromium OS sandbox acceptance. No client uses an insecure
 TLS option. Record real command exits, not merely browser-cache presence.
 
-## Authentication, Permissions And Native Handoff
+## Authentication, Permissions And Verification
 
 Authenticate only selected providers natively: `codex login`, `claude auth login`
-or interactive `gemini`. Keep those inputs out of logs. Do not import container
-state or authenticate GitHub. Run a benign read of a workspace file and record
-which provider, model selection and permission mode actually ran.
+or interactive `gemini`. Keep those inputs out of logs and do not authenticate
+GitHub. Run a benign read of a workspace file and record which provider, model
+selection and permission mode actually ran.
 
 | Command | Actual permission behavior |
 | --- | --- |
@@ -365,8 +344,8 @@ which provider, model selection and permission mode actually ran.
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
 | `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
 | `claude-with-proxy` | Plain Claude permission arguments, inspection only |
-| Claude custom-prompt/model wrappers | Existing explicit `--dangerously-skip-permissions`; optional selection retains the old permission behavior |
-| Optional aliases | Original explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
+| Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
+| Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
 Explicit CLI model choices survive forwarding; `CODEX_MODEL` remains supported.
@@ -388,21 +367,18 @@ check-budget-analyzer-local-ca-trust
   --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
 ```
 
-Record the installation report, live rerun/config preservation, trust matrix,
-actual sandbox mode, native provider proof and host boundary evidence in the
-human-owned Native Execution Handoff. Follow the canonical
-[B.3 cutover](../../orchestration/docs/plans/agent-vm-native-manual-plan.md#b3-destroy-guest-docker-state-clean-rebuild-and-resume)
-for the human-owned destructive reset, clean rebuild and native runner resume.
-At the end of the authoring run, stop its handler at the two-phase limit. The
-completed human handoff and native Phase 3 evidence are recorded in
-[host isolation](host-isolation.md#native-phase-3-execution-evidence).
+Record the installation report, repeat-run configuration preservation, trust
+matrix, actual sandbox mode, provider proof and host-boundary evidence. Follow
+[Development VM And Native Agent Runtime](host-isolation.md) for the current
+runtime and repository-transfer boundaries.
 
 ## Optional Human Inspection Setup
 
 Normal sessions remain unproxied. mitmproxy/mitmweb/mitmdump and all flow/prompt
-helpers are installed for parity, but no signing key or inspection CA is
-created, copied or trusted during installation or safety checks. If inspection is
-wanted, the human creates a separate **guest-owned** CA after source review:
+helpers are installed as optional capabilities, but no signing key or inspection
+CA is created, copied or trusted during installation or safety checks. If
+inspection is wanted, the human creates a separate **guest-owned** CA after
+source review:
 
 ```bash
 . "$HOME/.config/budget-analyzer-native/env.sh"
@@ -423,7 +399,7 @@ for path in root.iterdir():
 PY
 ```
 
-Never copy a proxy signing key from the host/container. `start-proxy` and optional
+Never copy a proxy signing key from another machine. `start-proxy` and optional
 provider wrappers require this private CA/token, bind proxy/UI to 127.0.0.1 and
 keep upstream TLS verification on. They refuse occupied ports rather than
 reusing an unidentified proxy or assuming the correct addon is loaded. Provider
@@ -437,9 +413,8 @@ are private files under workspace `tmp/`. Full captured requests can contain
 secrets; inspect/clean those directories privately after stopping listeners.
 
 Remove only the human-created inspection directory and private capture/dump
-files after review to retire interception. Existing container CA/state remains
-untouched. Optional real interception is a separate human test, not required
-for ordinary native acceptance; Phase 2 validates its offline argv/lifecycle.
+files after review to disable interception. Optional real interception is a
+separate human test; automated checks validate its offline argv and lifecycle.
 
 ## Offline Validation
 
@@ -473,5 +448,5 @@ rejection, missing browser/trust reporting, quoted path forwarding, runner
 sequencing and short-circuit behavior. It invokes no real trust, provider,
 package, Docker or AppArmor command and generates no CA. The static source checker renders
 generated wrappers into `tmp/`, validates native mappings/locks/links and runs
-shell syntax/ShellCheck. Human B owns real package/browser behavior, loaded
+shell syntax/ShellCheck. The human owns real package/browser behavior, loaded
 AppArmor proof, authentication, HTTPS and installed-helper smoke checks.

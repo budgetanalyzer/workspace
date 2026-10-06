@@ -91,7 +91,7 @@
     "libxkbcommon0",
     "libxrandr2"
   ],
-  "chromium_apt_source": "playwright-core 1.63.0 Ubuntu 24.04 tools+chromium native dependency lists; same list for x64/arm64. Browser download belongs to Phase 2.",
+  "chromium_apt_source": "playwright-core 1.63.0 Ubuntu 24.04 tools+chromium native dependency lists; same list for x64/arm64. The normal-user installer owns the browser download.",
   "repositories": {
     "nodesource": {
       "key_url": "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key",
@@ -363,63 +363,63 @@
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "read-only trust fixture and Checkpoint B verified HTTPS matrix",
+      "check": "read-only trust fixture and human-verified HTTPS matrix",
       "native_source": "scripts/native/local_ca.py"
     },
     "claude-45-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "claude-46-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "claude-with-custom-system-prompt": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "claude-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "codex-lean": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/codex-lean.sh"
     },
     "codex-max-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "codex-with-proxy": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "ensure-budget-analyzer-local-ca-trust": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "mocked trust fixture; explicit Checkpoint B trust activation for the exact local origin",
+      "check": "mocked trust fixture; explicit human trust activation for the exact local origin",
       "native_source": "scripts/native/local_ca.py"
     },
     "mitmflow-body": {
@@ -440,7 +440,7 @@
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/mitmflow-render.py"
     },
     "mitmflows": {
@@ -454,14 +454,14 @@
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
     "statusline-command": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "Phase 2 offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "native/helpers/statusline-command.sh"
     },
     "via-annotator": {
@@ -573,7 +573,7 @@
     "helm_contract": "../orchestration/scripts/bootstrap/check-tilt-prerequisites.sh",
     "orchestration_tools": "../orchestration/scripts/lib/pinned-tool-versions.sh",
     "go_checksums": "https://go.dev/dl/?mode=json&include=all",
-    "npm_snapshot": "Registry latest metadata resolved once on 2026-10-04; installation must use exact versions, never latest. Phase 2 owns transitive locks and explicit refresh.",
+    "npm_snapshot": "Registry metadata resolved on 2026-10-04; installation must use exact versions, never latest. The normal-user toolchain owns transitive locks and explicit refresh.",
     "npm_lock": "native/npm/package-lock.json"
   }
 }

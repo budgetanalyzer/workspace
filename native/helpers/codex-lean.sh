@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Codex with the sandbox's lean defaults.
+# Launch Codex with the workspace's lean defaults.
 set -euo pipefail
 
 REAL_CODEX="${CODEX_REAL_BIN:-$(command -v codex)}"

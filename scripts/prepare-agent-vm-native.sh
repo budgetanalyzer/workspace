@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Human Checkpoint B.1; workers must not invoke live installers.
+# Human-only VM preparation; workers must not invoke live installers.
 set -Eeuo pipefail
 
 usage() {
@@ -11,7 +11,7 @@ Runs system provisioning, scoped bwrap profile setup, and user installation
 twice. Existing installers enforce VM/user/repository/Docker boundaries.
 Defaults worktree parent to this workspace's parent; prompts for bare parent
 when omitted. Logs stay under workspace tmp/native-preparation/.
-No reboot, trust import, provider login or full B.2 verification runs.
+No reboot, trust import, provider login or full verification runs.
 EOF
 }
 
@@ -74,6 +74,6 @@ sudo -v
 . "$HOME/.config/budget-analyzer-native/env.sh"
 "$script_dir/install-agent-vm-user-tools.sh" \
     --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
-printf '\nB.1 preparation completed. Open a fresh guest terminal for the installed environment.\n'
-printf 'Continue B.2 trust and provider setup in docs/native-user-tools.md, then run check-agent-vm-tools.sh.\n'
+printf '\nPreparation completed. Open a fresh guest terminal for the installed environment.\n'
+printf 'Continue trust and provider setup in docs/native-user-tools.md, then run check-agent-vm-tools.sh.\n'
 printf 'Preparation log: %s\n' "$log_file"

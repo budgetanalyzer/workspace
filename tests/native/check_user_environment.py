@@ -24,7 +24,7 @@ for module in ('user_tools.py', 'proxy.py', 'local_ca.py'):
     for forbidden in ('shell=True', 'verify=False', 'ssl_insecure=true', 'ignore_https_errors', 'NOPASSWD', "'sudo', '-n'", 'git clone', '/home/vscode', ':-/workspace'):
         assert forbidden not in text, f'unsafe/container-specific construct in {module}: {forbidden}'
 
-scratch = REPO / 'tmp/native-phase-2/rendered'
+scratch = REPO / 'tmp/native-user-tools/rendered'
 scratch.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='shells-', dir=scratch) as name:
     home = Path(name)

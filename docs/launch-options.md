@@ -32,8 +32,8 @@ and uses upstream behavior plus the user's configuration.
 
 The native user installer exposes the sibling AI Session Handler checkout
 through an editable pipx environment. Current reviewed Python source changes
-are visible without an image rebuild or reinstall. Dependency or entry-point
-changes still require an explicit human reinstall after review.
+are visible without reinstalling. Dependency or entry-point changes still
+require an explicit human reinstall after review.
 
 Run a plan from the repository that owns it:
 
@@ -97,4 +97,4 @@ require bypassing all permission checks.
 - Gemini: run `gemini` interactively
 
 Authenticate only the selected provider in the guest. Do not authenticate
-GitHub, forward host agents or import retired runtime credentials.
+GitHub or forward host agents or credentials.

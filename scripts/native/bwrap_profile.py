@@ -71,7 +71,7 @@ class BwrapProfileInstaller(Provisioner):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Human Checkpoint B only: prepare the scoped /usr/bin/bwrap AppArmor profile in the Ubuntu 24.04 QEMU/KVM guest. Run sudo -v first. Existing profiles are preserved; no sysctl, sudoers, reboot or Docker changes.')
+    parser = argparse.ArgumentParser(description='Human-only setup for the scoped /usr/bin/bwrap AppArmor profile in the Ubuntu 24.04 QEMU/KVM guest. Run sudo -v first. Existing profiles are preserved; no sysctl, sudoers, reboot or Docker changes.')
     parser.add_argument('--docker-user', default=pwd.getpwuid(os.getuid()).pw_name)
     args = parser.parse_args()
     try:

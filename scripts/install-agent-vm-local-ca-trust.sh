@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Human Checkpoint B only; agents use the read-only installed ensure/check commands.
+# Human-only trust installation; agents use the read-only ensure/check commands.
 set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PYTHONDONTWRITEBYTECODE=1

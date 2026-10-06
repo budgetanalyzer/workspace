@@ -118,7 +118,7 @@ class Provisioner:
                 key, value = line.split('=', 1)
                 release[key] = value.strip('"')
         require(release.get('ID') == 'ubuntu' and release.get('VERSION_ID') == '24.04',
-                'requires Ubuntu 24.04; Linux Mint/personal hosts are rejected')
+                'requires Ubuntu 24.04; other distributions and personal hosts are rejected')
         for name in ('systemd-detect-virt', 'sudo', 'curl', 'gpg', 'dpkg', 'dpkg-query', 'apt-get', 'install', 'systemctl', 'usermod', 'id', 'cp', 'ln', 'chmod'):
             require(self.which(name), f'required bootstrap command missing: {name}')
         require(not self.path('/.dockerenv').exists() and not self.path('/run/.containerenv').exists(),
@@ -397,11 +397,11 @@ class Provisioner:
         scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='provision-', dir=scratch) as directory:
             self.install(self.stage(Path(directory)))
-        print(f'System tools ready. Reconnect as {self.user} if Docker membership changed. Phase 2 owns user tools/configuration.')
+        print(f'System tools ready. Reconnect as {self.user} if Docker membership changed, then install user tools/configuration.')
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='provision-agent-vm-guest.sh', description='Human-run system installer for a native Ubuntu 24.04 QEMU/KVM development VM. Run as USER, not root; authorize sudo first with sudo -v in the human shell. Never run in an agent container. Existing Docker/workloads are preserved.')
+    parser = argparse.ArgumentParser(prog='provision-agent-vm-guest.sh', description='Human-run system installer for a native Ubuntu 24.04 QEMU/KVM development VM. Run as USER, not root; authorize sudo first with sudo -v in the human shell. Non-VM and container execution are rejected. Existing Docker/workloads are preserved.')
     parser.add_argument('--docker-user', required=True, metavar='USER')
     args = parser.parse_args()
     try:

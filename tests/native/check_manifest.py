@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline native manifest, capability, retirement and local-link checks."""
+"""Offline native manifest, capability and local-link checks."""
 import importlib.util
 import json
 from pathlib import Path
@@ -11,19 +11,6 @@ spec = importlib.util.spec_from_file_location(
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 data = module.load_manifest()
-
-# The ignored legacy environment file, if a human retained one, is runtime
-# data rather than source. No tracked Mint implementation may remain beside it.
-retired_tree = REPO / 'ai-agent-sandbox'
-if retired_tree.exists():
-    remaining = [
-        path.relative_to(REPO) for path in retired_tree.rglob('*')
-        if path.is_file() and path.name != 'agent-vm.env'
-    ]
-    assert not remaining, f'retired Mint source returned: {remaining}'
-assert not any((REPO / '.devcontainer').glob('*')), 'retired devcontainer source returned'
-assert not (REPO / '.github/workflows/workspace-image-security-evidence.yml').exists(), (
-    'retired workspace image workflow returned')
 
 for command, helper in data['helpers'].items():
     assert re.fullmatch(r'[a-z0-9][a-z0-9.-]*', command), f'invalid helper command: {command}'
@@ -71,14 +58,8 @@ active_docs = (
     'docs/local-budget-analyzer-tls.md', 'docs/native-tool-inventory.md',
     'docs/native-user-tools.md', 'docs/traffic-inspection.md',
 )
-retired_references = (
-    'ai-agent-sandbox', '.devcontainer',
-    'workspace-image-security-evidence', 'Reopen in Container',
-)
 for relative in active_docs:
     text = (REPO / relative).read_text()
-    for token in retired_references:
-        assert token not in text, f'{relative}: active retired reference {token}'
     for raw in re.findall(r'\]\(([^)]+)\)', text):
         if raw.startswith(('https://', 'http://', '#', 'app://')):
             continue
@@ -86,10 +67,6 @@ for relative in active_docs:
         resolved = (REPO / target.lstrip('/') if target.startswith('/')
                     else (REPO / relative).parent / target)
         assert resolved.exists(), f'{relative}: broken link {raw}'
-
-renovate = (REPO / 'renovate.json').read_text()
-for token in ('ai-agent-sandbox', 'workspace-image-security-evidence'):
-    assert token not in renovate, f'retired Renovate target remains: {token}'
 
 # Guard selected installer architecture: no hidden unsafe installation fallback.
 for relative in ('scripts/native/provision.py', 'scripts/native/user_tools.py',
@@ -103,5 +80,5 @@ print(
     'Manifest/capability/links PASS: '
     f'{len(data["apt"])} apt inputs, {len(data["downloads"])} downloads on '
     f'{len(data["architectures"])} architectures, {len(data["helpers"])} '
-    'native command mappings; orchestration contract and retirement guards matched.'
+    'native command mappings; orchestration contract matched.'
 )

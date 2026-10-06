@@ -367,7 +367,7 @@ class UserTools:
         self.write(self.root / 'managed-files.json', json.dumps({str(p): digest(p) for p in files}, indent=2) + '\n')
         self.env = env
         self.verify(require_trust=False)
-        print('User tools installed. Trust/authentication are separate human Checkpoint B actions.')
+        print('User tools installed. Trust and authentication are separate human actions.')
 
     def validate_lock(self, lock):
         packages = json.loads(lock.read_text())['packages']

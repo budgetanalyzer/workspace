@@ -193,7 +193,7 @@ class ProvisionSafetyTests(unittest.TestCase):
     def test_invalid_targets_reject_before_sudo_or_download(self):
         cases = (
             ('wrong OS', lambda p: p.path('/etc/os-release').write_text(
-                'ID=linuxmint\nVERSION_ID="22"\n'), 'Ubuntu'),
+                'ID=debian\nVERSION_ID="12"\n'), 'Ubuntu'),
             ('container', lambda p: setattr(p, 'container', 'docker'),
              'native execution'),
             ('non-VM', lambda p: setattr(p, 'vm', 'none'), 'QEMU/KVM'),
