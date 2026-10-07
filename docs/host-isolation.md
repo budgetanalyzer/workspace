@@ -46,7 +46,7 @@ tools or apply host configuration. Offline fixtures are not live evidence.
 The accepted setup uses an Ubuntu Server 24.04 QEMU/KVM VM named
 `budget-analyzer-agent`, with guest project root `/srv/budget-analyzer`, Docker
 data under `/var/lib/docker`, and a dedicated libvirt NAT network. The host SSH
-aliases are `budget-agent-vm` and the separately selected
+profiles are `budget-agent-vm` and the separately selected
 `budget-agent-vm-forward` for explicit forwarding.
 
 Capacity, addresses and host storage locations are operator choices. They are
@@ -55,9 +55,9 @@ network, firewall or host SSH policy require human review.
 
 ## SSH Clients And Optional VS Code Profile
 
-The host SSH aliases must retain strict host-key checking, the dedicated VM
+The host SSH profiles must retain strict host-key checking, the dedicated VM
 identity, `IdentitiesOnly yes`, `ForwardAgent no`, `ForwardX11 no`, and no
-automatic forwarding. Any SSH client or editor may use these aliases, provided
+automatic forwarding. Any SSH client or editor may use these profiles, provided
 it does not weaken those controls or add credential, agent, socket or port
 forwarding.
 
@@ -255,12 +255,126 @@ preparation and repository setup, transfer only the approved TLS leaf, key and
 public CA, and bootstrap from tracked configuration. Do not transfer databases,
 Kind state, caches or VM snapshots into the replacement environment.
 
-When a personal-host browser is needed, the human uses the separately reviewed
-`budget-agent-vm-forward` SSH alias to establish the explicit loopback HTTPS
-forward to VM port 443. Keep that host process separate from agent sessions;
-it does not forward host SSH/Git authority or certificate private keys, though
-browser session traffic necessarily traverses the encrypted tunnel.
+## Personal-Host Access
+
+Workspace owns the explicit loopback-only SSH **host tunnel** from the personal
+host to listeners on VM loopback. Orchestration owns **guest publication**:
+application and operator endpoints made available from Kubernetes services or
+processes on VM loopback. Application and cluster state, endpoint selection,
+and publication health remain orchestration concerns.
+
+`budget-agent-vm-forward` is the separately reviewed SSH host profile used as
+the tunnel target. It supplies connection identity and boundary controls; it
+does not establish a tunnel by itself and must retain no automatic
+`LocalForward`. Every tunnel is an explicit foreground `ssh -L` operation from
+the personal host. Keep it separate from agent and editor sessions. The host
+tunnel carries only the selected TCP streams; it does not forward host SSH/Git
+authority or certificate private keys, though browser traffic necessarily
+traverses the encrypted tunnel.
+
+### One-Time Narrow Host Authorization
+
+Personal-host port 443 is privileged. The selected host user performs this
+one-time setup on the personal host after reviewing the commands and without
+broadening any path or mode. It installs `authbind`, rejects the broader
+all-addresses port marker, and authorizes only that user to bind
+`127.0.0.1:443`:
+
+```bash
+host_user="$(id -un)"
+host_group="$(id -gn)"
+
+sudo apt update
+sudo apt install --yes authbind
+sudo test ! -e /etc/authbind/byport/443
+sudo install -o "$host_user" -g "$host_group" -m 0500 /dev/null \
+  /etc/authbind/byaddr/127.0.0.1,443
+sudo stat -c '%A %a %U %G %n' /etc/authbind/byaddr/127.0.0.1,443
+sudo test ! -e /etc/authbind/byport/443
+```
+
+The `stat` result must identify the selected user and group, permission value
+`500` (mode `0500`), and the exact
+`/etc/authbind/byaddr/127.0.0.1,443` path. The broader
+`/etc/authbind/byport/443` marker must not exist. Stop for human policy repair
+if either check fails; do not replace this narrow grant with `authbind --deep`,
+root-owned SSH execution, a capability grant to `ssh`, or a lower global
+unprivileged-port threshold. Host policy application remains human-only.
+
+### Default Application And Tilt Host Tunnel
+
+After orchestration has started the application and Tilt in the VM, run this
+on the personal host as the selected normal user:
+
+```bash
+authbind ssh -N -T -o ExitOnForwardFailure=yes \
+  -L 127.0.0.1:443:127.0.0.1:443 \
+  -L 127.0.0.1:10350:127.0.0.1:10350 \
+  budget-agent-vm-forward
+```
+
+This single foreground process carries application HTTPS and the Tilt UI.
+Press `Ctrl+C` to stop both forwards. `ExitOnForwardFailure=yes` makes a
+collision on either personal-host port prevent the combined host tunnel from
+starting; resolve the collision rather than changing the loopback bindings or
+restoring an automatic forward.
+
 The personal-host resolver must map `app.budgetanalyzer.localhost` to
-`127.0.0.1`; the human applies that host-OS-specific setting outside the guest.
-The exact certificate artifact handoff lives in
-[Local Budget Analyzer TLS Trust](local-budget-analyzer-tls.md#transfer-the-three-published-files).
+`127.0.0.1`. Apply that host-OS-specific setting outside the VM. The supported
+application origin remains exactly `https://app.budgetanalyzer.localhost`;
+never substitute HTTP or a TLS-verification bypass. Certificate creation,
+three-file transfer, and guest trust are separate from transport and remain in
+[Local Budget Analyzer TLS Trust](local-budget-analyzer-tls.md).
+
+Use these checks on the personal host while the foreground tunnel remains
+running:
+
+```bash
+ss -ltn '( sport = :443 or sport = :10350 )'
+getent ahostsv4 app.budgetanalyzer.localhost
+curl --fail --show-error --silent --output /dev/null \
+  https://app.budgetanalyzer.localhost
+curl --fail --show-error --silent --output /dev/null \
+  http://127.0.0.1:10350/
+```
+
+The listener output must show `127.0.0.1:443` and `127.0.0.1:10350`; missing
+listeners mean the host tunnel is absent or exited. Resolver output must
+include `127.0.0.1`; correct the personal-host mapping if it does not. The
+application request preserves hostname and certificate verification, so its
+error distinguishes name resolution, connection, and certificate failures.
+A successful application check alongside a failed Tilt request means the SSH
+transport exists but Tilt is unavailable on VM loopback; diagnose Tilt through
+orchestration rather than changing the host tunnel.
+
+### Optional Observability Host Tunnel
+
+Observability is not part of the default application/Tilt tunnel. First, in a
+separate foreground VM shell, have orchestration establish the guest
+publications:
+
+```bash
+cd /srv/budget-analyzer/worktrees/orchestration
+./scripts/ops/start-observability-port-forwards.sh
+```
+
+While that helper remains running, start this separate foreground command on
+the personal host:
+
+```bash
+ssh -N -T -o ExitOnForwardFailure=yes \
+  -L 127.0.0.1:3300:127.0.0.1:3300 \
+  -L 127.0.0.1:9090:127.0.0.1:9090 \
+  -L 127.0.0.1:16686:127.0.0.1:16686 \
+  -L 127.0.0.1:20001:127.0.0.1:20001 \
+  budget-agent-vm-forward
+```
+
+These ports are unprivileged, so this command deliberately does not use
+`authbind`. Press `Ctrl+C` in each foreground process when finished. Keeping
+observability separate prevents an optional port collision from taking down
+application/Tilt access and avoids publishing observability surfaces when they
+are not needed. Orchestration's
+[Observability](../../orchestration/docs/architecture/observability.md#access)
+owner document and foreground helper remain authoritative for component
+identity, guest publication ports, authentication, health checks, and URLs.
