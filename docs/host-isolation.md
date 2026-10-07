@@ -53,6 +53,12 @@ Capacity, addresses and host storage locations are operator choices. They are
 not installation inputs owned by this repository. Changes to the VM definition,
 network, firewall or host SSH policy require human review.
 
+Point-in-time VM backup is also a personal-host responsibility. Use the
+[Development VM Snapshot Runbook](development-vm-snapshot.md) for the
+human-only cold snapshot procedure, including disks at nonstandard host paths,
+UEFI NVRAM, virtual TPM state and validation. Keep concrete snapshot paths and
+inventories outside the repository and guest-accessible storage.
+
 ## SSH Clients And Optional VS Code Profile
 
 The host SSH profiles must retain strict host-key checking, the dedicated VM
