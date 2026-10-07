@@ -91,6 +91,7 @@ bower_components/
 
 # Package manager files
 package-lock.json
+!native/npm/package-lock.json
 yarn.lock
 pnpm-lock.yaml
 .pnp
@@ -281,6 +282,19 @@ kubectl
 # =============================================================================
 # TEMPORARY FILES & BACKUPS
 # =============================================================================
+
+# Personal-host isolation evidence is private operator material.
+candidate-report.md
+**/candidate-report.md
+budget-host-audit-*
+**/budget-host-audit-*
+**/budget-host-audit-*/*.txt
+**/budget-host-audit-*/index.json
+host-isolation-raw-*
+host-isolation-index.json
+tmp/host-isolation-audit/
+**/host-isolation-audit/raw/
+**/host-isolation-audit/index.json
 
 tmp/
 *.tmp

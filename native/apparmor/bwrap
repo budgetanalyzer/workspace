@@ -1,0 +1,7 @@
+# Ubuntu 24.04: allow user namespaces only for the system bubblewrap executable.
+# Human installs this only if the distribution profile is absent.
+abi <abi/4.0>,
+include <tunables/global>
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+}

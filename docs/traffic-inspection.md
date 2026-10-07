@@ -1,12 +1,25 @@
 # HTTPS Traffic Inspection
 
-mitmproxy is pre-installed with its CA cert trusted system-wide and by Node.js (`NODE_EXTRA_CA_CERTS`).
+Native installation includes mitmproxy and the flow helpers, but ordinary
+sessions remain unproxied. Installation does not generate, copy or trust an
+inspection CA. A human must explicitly initialize the separate guest-owned
+inspection identity by following
+[Optional Human Inspection Setup](native-user-tools.md#optional-human-inspection-setup).
 
-> **Note:** Claude Code is installed via npm (not the native binary) because the native Bun binary ignores `HTTP_PROXY` for streaming — see [anthropics/claude-code#14165](https://github.com/anthropics/claude-code/issues/14165).
+The wrappers require private CA/token files with safe ownership and modes,
+bind proxy and UI listeners only to `127.0.0.1`, reject occupied ports, and keep
+upstream TLS verification enabled. Provider wrappers create a temporary
+public-plus-inspection bundle under `tmp/mitmproxy-private`, scope proxy and
+trust variables to the child process, and remove the bundle on exit. They do
+not import the inspection root into system or NSS trust.
 
-## Quick Reference
+Claude remains installed through npm because optional proxy streaming depends
+on npm Claude's proxy behavior; see
+[anthropics/claude-code#14165](https://github.com/anthropics/claude-code/issues/14165).
 
-Start the proxy or launch a CLI through it:
+## Launch
+
+Start the foreground proxy UI or launch one provider through a child proxy:
 
 ```bash
 start-proxy
@@ -14,17 +27,18 @@ claude-with-proxy
 codex-with-proxy
 ```
 
-`codex-with-proxy` starts mitmproxy and then delegates to `codex-lean`, so it keeps the same web-search, MCP, subagent, connector, and UI defaults as direct `codex-lean` launches. Project instruction loading remains enabled, including applicable `AGENTS.md` files.
-
-Codex model selection still works directly on the CLI:
+`codex-with-proxy` delegates to `codex-lean`, including its explicit
+high-authority permission mode. Model and effort selection still forward:
 
 ```bash
-codex-with-proxy --model gpt-5.4
-codex-with-proxy --model gpt-5.4-mini
+codex-with-proxy --model MODEL
 CODEX_REASONING_EFFORT=xhigh codex-with-proxy
 ```
 
-## Inspecting Flows
+`start-proxy` starts only mitmweb; it does not proxy an ordinary provider
+session. Stop foreground listeners with `Ctrl+C`.
+
+## Inspect Flows
 
 List recent flows:
 
@@ -35,52 +49,43 @@ mitmflows --provider openai --json
 mitmflows --host openai --path /v1/responses
 ```
 
-Inspect request, response, or WebSocket payloads:
+Inspect request, response, SSE or WebSocket payloads:
 
 ```bash
-mitmflow-body <id> request --json
-mitmflow-body <id> response
-mitmflow-body <id> response --events
-mitmflow-body <id> response --raw
-mitmflow-body <id> messages --json
-mitmflow-body <id> messages --json --dedupe
+mitmflow-body FLOW_ID request --json
+mitmflow-body FLOW_ID response
+mitmflow-body FLOW_ID response --events
+mitmflow-body FLOW_ID response --raw
+mitmflow-body FLOW_ID messages --json
+mitmflow-body FLOW_ID messages --json --dedupe
 ```
 
-- Use `request` and `response` for normal HTTP and SSE inspection.
-- Use `messages` only for WebSocket-backed flows (currently most useful for OpenAI traffic).
-- `--dedupe` is only supported for OpenAI `messages` output and is rejected with `--raw`.
+Use `messages` only for WebSocket-backed flows. `--dedupe` is supported only
+for OpenAI message output and cannot be combined with `--raw`.
 
 Render a summary or full diagnostic view:
 
 ```bash
-mitmflow-detail <id>
-mitmflow-detail <id> --full
-mitmflow-detail <id> --raw
-mitmflow-detail <id> --md
+mitmflow-detail FLOW_ID
+mitmflow-detail FLOW_ID --full
+mitmflow-detail FLOW_ID --raw
+mitmflow-detail FLOW_ID --md
 ```
 
-## Exports
+Exports default to `tmp/mitmproxy-flows/`. An explicit export path must remain
+inside the workspace. Addon dumps use `tmp/claude-proxy-dumps/`; private proxy
+bundles use `tmp/mitmproxy-private/`. Captured requests can contain secrets, so
+inspect and clean these human-owned temporary files privately after listeners
+stop.
 
-Exports default to [`tmp/mitmproxy-flows/`](/workspace/workspace/tmp/mitmproxy-flows/):
+## Development And Validation
 
-```bash
-mitmflow-body <id> request --json --save anthropic-request.json
-mitmflow-detail <id> --md
-```
+Canonical portable flow/prompt resources live in `native/helpers/`; lifecycle,
+listener and scoped-trust behavior lives in `scripts/native/proxy.py`. Edit
+those sources directly and run the offline helper/environment checks in
+[Native Guest User Tools](native-user-tools.md#offline-validation).
 
-Pass an absolute path inside the workspace to override the default location.
-
-## Staged Improvements
-
-Because `ai-agent-sandbox/` is mounted read-only inside the devcontainer, mitmproxy helper changes are staged under [`tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`](/workspace/workspace/tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/) until a human copies them into `ai-agent-sandbox/` and rebuilds the container.
-
-The staged helpers add provider filtering, richer body/detail rendering, export support, and Codex proxy launcher wrappers.
-
-When validating staged Python helpers, direct bytecode into the workspace:
-
-```bash
-PYTHONPYCACHEPREFIX=/workspace/workspace/tmp/pycache python3 -m py_compile \
-  tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/scripts/mitmflow-render.py
-```
-
-After rollout and rebuild, the same commands are available in `PATH` without the `tmp/...` prefix.
+Do not test changes with real provider traffic unless the human explicitly
+requests optional interception and has privately reviewed the inspection
+identity and capture scope. Offline fixtures must not initialize a CA, start a
+listener, read real credentials or write outside repository `tmp/`.

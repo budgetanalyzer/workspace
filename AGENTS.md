@@ -4,16 +4,23 @@
 
 **Archetype:** gateway
 **Scope:** budgetanalyzer ecosystem
-**Role:** development environment entry point; owns devcontainer and sandbox configuration
+**Role:** owns native development-VM identity, provisioning, normal-user tools,
+guest-local repository and Docker boundaries, native trust readiness, helper
+resources and agent-facing workspace guidance
 
-This repo exists to provide the development environment. It owns the devcontainer, sandbox wiring, helper scripts, and agent-facing workspace guidance. It does not own application code or the active architecture docs for the services that live in sibling repositories.
+This repository provides the supported native development environment. It does
+not own application code or active service architecture. Agents run directly
+as the normal development user inside the dedicated Ubuntu VM.
 
 ### Boundaries
-- Read sibling repositories under `../` when work in this repo needs their current docs or manifests.
+
+- Read sibling repositories under `../` when current docs or manifests are
+  required.
 - Write only within this repository.
-- `ai-agent-sandbox/` is a read-only bind mount in the running devcontainer. You cannot modify, overwrite, or delete files there in place.
-- Stage sandbox-derived edits, tests, and generated files under `tmp/`.
-- **NO GIT WRITE OPERATIONS:** Do not run git write commands such as `commit`, `push`, `checkout`, or `reset` unless the user explicitly requests them. The user controls git operations entirely.
+- Keep temporary tests and generated files under `tmp/`; retain reusable
+  verifiers in tracked test directories.
+- Do not run Git write commands such as `commit`, `push`, `checkout`, `reset`,
+  `clean`, `stash` or branch creation unless the user explicitly requests them.
 
 ## Discovery
 
@@ -23,123 +30,180 @@ Use discovery commands instead of maintaining static inventories.
 # Workspace siblings
 ls -d ../*/
 
-# Repo structure
+# Repository structure and native sources
 find . -maxdepth 2 -type f | sort
+rg --files native scripts/native tests/native
 
-# Available sandbox launchers and helpers
-find ai-agent-sandbox/scripts -maxdepth 1 -type f | sort
-find ai-agent-sandbox/skills -maxdepth 2 -type f | sort
+# Human-only host-audit sources and offline fixtures
+rg --files scripts/host-isolation tests/host-isolation-audit
 
-# Staged mitmproxy helper work
-find tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+# Native helper, settings, prompt and skill resources
+find native/helpers -type f | sort
 
-# Staged Site Modeler image-tracing prerequisites
-find tmp/site-modeler-image-tracing/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+# Native entry points and focused checks
+find scripts -maxdepth 1 -type f | sort
+find tests/native -maxdepth 1 -type f | sort
 
-# Staged AI Session Handler global commands
-find tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox -maxdepth 3 -type f | sort
+# Relevant native behavior
+rg -n "proxy|system-prompt|SessionStart|statusline" native scripts docs
 
-# Relevant config and hook surfaces
-rg -n "proxy|system-prompt|SessionStart|statusline" ai-agent-sandbox .devcontainer README.md docs
-
-# Dependency automation configuration and evidence workflow
+# Dependency automation configuration
 find .github/workflows -maxdepth 1 -type f | sort
-
-# Sandbox compose services
-docker compose -f ai-agent-sandbox/docker-compose.yml config --services
 ```
 
 ## Source Of Truth
 
-- Workspace purpose and human-facing usage live in `README.md`. Read it before changing setup assumptions, launch guidance, or repository purpose.
-- Wider system startup and local environment expectations live in `../orchestration/docs/development/getting-started.md`. Read it before changing how this workspace relates to the rest of the ecosystem.
-- Local Budget Analyzer trust ownership and lazy command behavior live in `docs/local-budget-analyzer-tls.md`. Read it before changing container trust configuration or diagnosing verified HTTPS access to the exact local ingress.
-- Devcontainer settings live in `.devcontainer/devcontainer.json`. Read it before changing editor container behavior, remote environment variables, or installed extensions.
-- Sandbox mounts and isolation rules live in `ai-agent-sandbox/docker-compose.yml`. Read it before changing volume mounts, networking, or runtime write boundaries.
-- Installed CLIs and launcher provisioning live in `ai-agent-sandbox/Dockerfile` and `ai-agent-sandbox/entrypoint.sh`. Read them before changing what is installed in `PATH` or how helper commands are exposed.
-- Session-start hooks and AI context injection live in `ai-agent-sandbox/settings-overlay.json`. Read it before changing startup behavior or how agent context files are injected.
-- Custom prompt replacement lives in `ai-agent-sandbox/system-prompt.md` and `ai-agent-sandbox/system-prompt-addon.py`. Read them before changing proxy-based system prompt behavior.
-- Current sandbox launchers, proxy helpers, and utility scripts live in `ai-agent-sandbox/scripts/`. Discover them with the commands above, then read the specific script before documenting or changing its behavior.
-- Dependency update discovery and the no-start workspace image scan live in
-  `renovate.json`, `.github/workflows/workspace-image-security-evidence.yml`, and
-  `docs/dependency-automation.md`. Read them before changing dependency
-  extraction, image builds, scan evidence, production events, caches, uploads,
-  or artifact limits.
-- Staged mitmproxy helper work lives in `tmp/mitmproxy-flow-improvements/proposed/ai-agent-sandbox/`. Use that tree when testing sandbox-derived changes locally.
-- Staged AI Session Handler global installation and `ai-run` launcher work lives in `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
-- Available skills live in `ai-agent-sandbox/skills/`. Read the relevant `SKILL.md` before changing skill behavior or documenting a skill workflow.
+- Read `README.md` before changing repository purpose, setup assumptions or
+  human launch guidance.
+- Read `../orchestration/docs/development/getting-started.md` before changing
+  how this workspace relates to ecosystem startup.
+- Read `docs/host-isolation.md` before changing repository transport, guest
+  Docker selection, credentials, SSH-client guidance or native runtime
+  boundaries. Keep initial bulk repository setup and later single-repository
+  additions aligned through `scripts/setup-agent-vm-repositories.sh` and
+  `scripts/add-agent-vm-repository.sh`.
+- Read `docs/host-isolation-audit.md` before changing personal-host audit
+  collection, private configuration, verifier, protocol fixtures, evidence
+  handling or host-policy handoff. Keep concrete topology, policy and evidence
+  outside the repository.
+- Read `docs/native-tool-inventory.md`, `native/toolchain.json`,
+  `scripts/provision-agent-vm-guest.sh` and `scripts/native/provision.py` before
+  changing system installation, versions, checksums or capability ownership.
+- Read `docs/native-user-tools.md` before changing normal-user setup, helpers,
+  settings merge, proxy behavior, permissions, trust ownership or the canonical
+  read-only native runtime verifier.
+- Read `docs/local-budget-analyzer-tls.md` before changing or diagnosing exact
+  local ingress trust.
+- Read `docs/dependency-automation.md` and `renovate.json` before changing
+  dependency discovery. Native checksum/fingerprint relationships remain
+  manual reviewed inputs.
+- Canonical helper resources live in `native/helpers/`; native CA and proxy
+  adapters live in `scripts/native/`. Read the specific implementation and its
+  focused tests before changing behavior.
+- Session-start settings live in `native/helpers/settings-overlay.json`.
+  Custom prompt replacement lives in `native/helpers/system-prompt.md` and
+  `native/helpers/system-prompt-addon.py`.
 
 ## Code Exploration
 
-- Use direct repo search and file reads for exploration. Do not use Agent or subagent tools for code exploration in this workspace.
-- Prefer `rg`, `find`, and targeted file reads over static inventories or guesswork.
-- When launching Claude Code for focused work in a small repo, prefer disabling the Agent tool with `--disallowedTools "Agent"`. Autonomous subagent exploration is useful in larger monorepos, but in small focused repos it usually adds overhead and indirection compared with direct search.
+- Use direct repository search and file reads. Do not use Agent or subagent
+  tools for code exploration in this small focused repository.
+- Prefer `rg`, `find` and targeted reads over static inventories or guesswork.
+- When launching Claude Code for focused work here, prefer
+  `--disallowedTools "Agent"`.
 
 ## Custom System Prompt
 
-Using `claude-with-custom-system-prompt` is optional. The standard `claude` command and the inspection-only `claude-with-proxy` flow are fine for normal development.
+Using `claude-with-custom-system-prompt` is optional. Plain `claude` and the
+inspection-only `claude-with-proxy` flow are the normal alternatives.
 
-This custom launcher exists because Claude Code's `--system-prompt` flags append to Anthropic's default system prompt instead of replacing it. The mitmproxy addon in `ai-agent-sandbox/system-prompt-addon.py` swaps only the main prompt body in flight and preserves the required prefix blocks. The custom prompt text lives in `ai-agent-sandbox/system-prompt.md`.
-
-Read those files before changing prompt replacement behavior. Use `claude-with-proxy` when you only need traffic inspection. Use `claude-with-custom-system-prompt` when you specifically want the lean prompt behavior as part of the test or workflow.
+Claude Code's prompt flags append rather than replace its default main prompt.
+The native mitmproxy addon replaces only the main prompt body while preserving
+required prefix blocks. Read the native prompt and addon before changing this
+behavior. Use the custom launcher only when lean-prompt behavior is part of the
+test or workflow.
 
 ## Operating Rules
 
-- Keep all work products inside this repository. Do not install, copy, or move files into system paths except by explicitly invoking the workspace-owned `ensure-budget-analyzer-local-ca-trust` command for its exact local target.
-- When you need to test a file that originates in `ai-agent-sandbox/`, copy it into `tmp/` and test from there.
-- Redirect Python bytecode from sandbox-derived validation into `tmp/pycache`, for example: `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <file>`.
-- Stop and report missing tools, credentials, or environment prerequisites instead of inventing workarounds.
-- Do not treat archived or plan-oriented docs as active implementation authority unless the user explicitly asks for that context.
-- Keep workspace image-evidence pull-request execution limited to
-  same-repository PRs targeting `main`. Preserve read-only permissions, normal
-  Trivy caching, the complete `workspace-image-scan` allowlist, and the single
-  seven-day evidence artifact.
-  Read `docs/dependency-automation.md` before changing any of these controls.
-- Before live work against exactly `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
-- If the host publication is missing, stop and ask the user to run orchestration `./setup.sh` on the host. Never generate or rotate browser-facing certificates in the container.
-- Never use HTTP, `--insecure`, `verify=False`, or `ignore_https_errors` to bypass a local trust failure. Do not run the lazy trust command for staging, production, arbitrary origins, or non-certificate failures.
+- Keep every work product inside this repository. Do not install, copy or move
+  files into system paths except when the user explicitly invokes the exact
+  workspace-owned local CA trust command for its scoped target.
+- Live native system/user installation belongs only to the human after workers
+  stop. Workers must not run the preparation runner, provisioner, bwrap profile
+  installer, user installer, authenticate providers, initialize inspection
+  CAs, change sudo/AppArmor policy or copy provider state.
+- Native installed ensure/check trust commands are read-only. Missing trust
+  requires the exact human installer command they report.
+- Preserve guest Docker, Kind, provider state, user work and host/runtime data.
+- Treat `scripts/check-agent-vm-tools.sh` as the single read-only contract for
+  native VM, normal-user, repository, credential, tool, trust and guest-Docker
+  readiness. Do not add a weaker sibling-specific mode or another native
+  preflight implementation.
+- Stop and report missing tools, credentials or environment prerequisites
+  instead of inventing workarounds.
+- Do not treat archived or plan-oriented docs as active implementation
+  authority unless the user explicitly asks for that context.
+- Before live work against exactly
+  `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure
+  for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use
+  `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
+- If host publication is missing, ask the user to run orchestration
+  `scripts/bootstrap/setup-k8s-tls.sh` on the personal host and repeat the
+  documented three-file transfer. Never generate or rotate browser-facing
+  certificates in the VM.
+- Never use HTTP, `--insecure`, `verify=False` or `ignore_https_errors` to
+  bypass local trust failures. Do not use the lazy trust command for staging,
+  production, arbitrary origins or non-certificate failures.
 
 ## Development Workflow
 
-- Read the relevant source-of-truth file before changing setup assumptions, sandbox configuration, launchers, hooks, or staged mitmproxy helpers.
-- Prefer checked-in scripts and config files over reconstructing commands from memory.
-- When continuing staged sandbox work, make and test changes in that proposal's tree under `tmp/`; for AI Session Handler global commands, use `tmp/ai-session-handler-global-cli-installation/proposed/ai-agent-sandbox/`.
-- Keep documentation updates in the same change set as the behavior or workflow change that required them.
+- Use checked-in scripts and configuration rather than reconstructing commands
+  from memory.
+- Keep native system/user/helper changes aligned with `native/toolchain.json`;
+  do not create a second capability inventory.
+- Keep application bootstrap, the exact local Kind target, Tilt and Kubernetes
+  mutation in orchestration. Workspace checks native readiness and must not
+  absorb application or cluster-state checks.
+- Run agents natively in the development VM as its normal development user.
+  Reserve guest Docker for application workloads such as Kind and
+  Testcontainers.
+- Host audit collection, private configuration, live verification, policy
+  repair, reboot and protocol testing are human-only. Review only explicitly
+  supplied redacted evidence; do not acquire host access. Run only the offline
+  host-isolation fixtures as an agent.
+- Keep documentation updates in the same change set as behavior or workflow
+  changes.
 
 ## Validation
 
-- Run `docker compose -f ai-agent-sandbox/docker-compose.yml config` after changing sandbox compose or related container configuration.
-- Run `shellcheck <changed shell scripts>` after changing shell scripts.
-- After changing the dependency-automation evidence workflow, run
-  `actionlint .github/workflows/workspace-image-security-evidence.yml`.
-- Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile <changed python files>` after changing Python helpers that would otherwise write bytecode outside `tmp/`.
-- After rebuilding image-tracing prerequisites, verify `node --version`, `via-annotator --version`, `via-annotator --check`, `identify -version`, `convert -version`, `playwright --version`, and `playwright install --list`; confirm VIA binds only to `127.0.0.1` and stops cleanly.
-- If a touched file has pre-existing validation failures, report them explicitly and do not claim full verification.
-- If a required verifier cannot run because a tool or dependency is unavailable, report that explicitly and stop short of claiming the work is fully verified.
+- After native installer or manifest changes, run the safety, manifest and link
+  checks listed in `docs/native-tool-inventory.md`.
+- After user setup/helper/settings changes, also run the static environment,
+  shell and Python checks in `docs/native-user-tools.md`.
+- Keep mocked safety checks under repository `tmp/`; never touch real
+  credentials, provider homes or trust stores.
+- Run `bash -n` and ShellCheck for changed shell scripts.
+- Run `PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile ...` for changed
+  Python files.
+- After host-isolation audit changes, run `PYTHONDONTWRITEBYTECODE=1 python3 -m
+  unittest discover -s tests/host-isolation-audit -v`; never run the live
+  collector or verifier for validation.
+- Run `actionlint <workflow>` after changing a retained GitHub Actions workflow.
+- Validate dependency configuration with the command in
+  `docs/dependency-automation.md` after changing `renovate.json`.
+- After changing image-tracing prerequisites, verify `node --version`,
+  `via-annotator --version`, `via-annotator --check`, `identify -version`,
+  `convert -version`, `playwright --version` and `playwright install --list`;
+  confirm VIA binds only to `127.0.0.1` and stops cleanly.
+- Report pre-existing failures explicitly. If a required verifier cannot run,
+  do not claim full verification.
 
 ## Documentation Maintenance
 
-- Keep documentation updates in the same change set as the behavior or workflow change that required them. Do not leave doc updates as follow-up work.
-- Update `AGENTS.md` when repository instructions, guardrails, workflows, or discovery commands change.
-- Before updating `AGENTS.md`, read and apply the
-  [AGENTS.md checkstyle](https://github.com/budgetanalyzer/orchestration/blob/main/docs/agents-md-checkstyle.md).
-- Update `README.md` when setup, launch usage, or repository purpose changes.
-- Update active docs under `docs/` when operating procedures or staged helper behavior changes.
-- Update the nearest affected owner doc rather than duplicating the same detail across multiple docs.
-- Do not update `docs/plans/` unless the user explicitly asks to revise plan or history documents.
+- Update `AGENTS.md` when repository instructions, guardrails, workflows or
+  discovery commands change.
+- Before updating `AGENTS.md`, read and apply
+  `../orchestration/docs/agents-md-checkstyle.md`.
+- Update `README.md` when setup, launch usage or repository purpose changes.
+- Update the nearest owner doc under `docs/` when operating procedures or
+  helper behavior changes; do not duplicate detailed procedures.
+- Do not update `docs/plans/` unless the user explicitly asks to revise plan or
+  history documents.
 
 ## Plans
-- When creating an implementation or execution plan intended for AI Session Handler, follow the [AI Session Handler plan format](../ai-session-handler/docs/plan-format.md), use its canonical template, replace every placeholder, and retain the numbered `## Phase N: Title` headings.
 
-  Run a specific plan from the repository that owns it with:
+When creating an implementation or execution plan for AI Session Handler,
+follow `../ai-session-handler/docs/plan-format.md`, use its canonical template,
+replace every placeholder and retain numbered `## Phase N: Title` headings.
 
-  ```bash
-  cd /workspace/REPOSITORY
-  ai-run PLAN_NAME
-  ```
+Run a plan from the repository that owns it:
 
-  `PLAN_NAME` is the bare filename stem for `./docs/plans/PLAN_NAME.md`. Append runner options such
-  as `--max-phases 1` or `--retry-stopped` after the name. Set `CODEX_MODEL` only when an explicit
-  model is needed.
+```bash
+cd ../REPOSITORY
+ai-run PLAN_NAME
+```
+
+`PLAN_NAME` is the bare filename stem under `docs/plans/`. Append runner options
+after the name and set `CODEX_MODEL` only when an explicit model is required.
 
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->

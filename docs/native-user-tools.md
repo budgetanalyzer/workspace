@@ -1,0 +1,498 @@
+# Native Guest User Tools
+
+This guide owns human installation, trust, authentication and verification for
+the normal development user in the Ubuntu VM. Run live installation commands
+only after source review and after affected workers have stopped. Offline checks
+alone do not establish the live VM state.
+
+## Review And System Preparation
+
+Privately preserve existing guest configuration. Review `git diff`, new files,
+[native tool inventory](native-tool-inventory.md), `native/toolchain.json`,
+`native/npm/package-lock.json`, and the native installation entry points. The
+system stage must complete first, including Chromium shared libraries/fonts,
+JDK 25, Node 24, Python, pipx and bubblewrap. Preserve Docker, Kind, Tilt, all
+application volumes and provider state. Do not run orchestration `setup.sh`.
+
+The repeatable workflow lives in the tracked
+[preparation runner](../scripts/prepare-agent-vm-native.sh). After source review
+and all workers exit, run from the guest OS workspace checkout:
+
+```bash
+./scripts/prepare-agent-vm-native.sh
+```
+
+It derives this workspace's worktree parent and prompts for the existing bare
+parent. For unattended path selection, pass `--bare-parent` and optionally
+`--worktree-parent`; both must be canonical absolute directories. The runner
+uses the normal guest user, validates sudo authorization, runs the system
+provisioner and scoped bwrap profile installer, installs user tools, loads the
+environment fragment, and repeats user installation. It stops on the first
+failure. Each invocation keeps a private log under
+`tmp/native-preparation/prepare-*.log`; no operational source lives in `tmp/`.
+Reruns retain the existing installations and unrelated configuration. Trust
+import, provider login and the full tools verifier remain separate actions
+below.
+
+The individual tracked entry points remain available for focused repair.
+From the guest OS workspace checkout:
+
+```bash
+native_worktree_parent=$(cd .. && pwd -P)
+read -r -p 'Existing guest bare-repository parent: ' native_bare_parent
+test -d "$native_bare_parent"
+sudo -v
+./scripts/provision-agent-vm-guest.sh --docker-user "$(id -un)"
+```
+
+Reconnect if the system stage changed Docker-group membership. Run as the same
+normal account; never put `sudo` before either user installer or verifier.
+The scripts derive home from the account database and reject containers,
+non-QEMU/KVM machines, wrong owners, missing local clones/bare origins,
+additional remotes/push URLs, Git credential helpers/includes/rewrites,
+forwarded sockets, credential stores and endpoint/proxy overrides. Repositories
+may retain their existing owner-controlled group-write mode. Managed home
+resources reject world writes, symlinks and group writes unless the group is
+verified as the account's same-name private primary group. No Git configuration
+repair or recursive ownership change runs. Diagnostic errors never print Git
+config values or credentials. Missing prerequisites stop the installer.
+
+## Codex Sandbox Prerequisites
+
+Current [official OpenAI guidance](https://learn.chatgpt.com/docs/agent-approvals-security#os-level-sandbox),
+fetched on 2026-10-04, states that Linux uses bubblewrap and seccomp by default.
+The official page establishes the Linux mechanism; it does not prescribe the
+Ubuntu profile below. This is workspace's narrowly scoped Ubuntu setup for the
+kernel's restricted unprivileged-user-namespace setting.
+
+When the restriction is `1`, keep Ubuntu's packaged `/etc/apparmor.d/bwrap`
+profile if present. If it is absent, review the workspace
+[profile](../native/apparmor/bwrap). The tracked
+[bwrap installer](../scripts/install-agent-vm-bwrap-profile.sh) installs only
+that missing profile, loads it and runs an unprivileged namespace smoke check.
+The preparation runner invokes it automatically after system provisioning. For
+a focused human rerun from the guest OS:
+
+```bash
+sudo -v
+./scripts/install-agent-vm-bwrap-profile.sh --docker-user "$(id -un)"
+```
+
+The installer reuses the system provisioner's Ubuntu/QEMU/KVM, normal-user,
+ownership and guest Docker checks, rejects profile symlinks, and requires
+AppArmor to be enabled when the restriction is active. Existing profile bytes
+are preserved. If an identical workspace profile exists but the namespace
+check fails, it retries loading that reviewed profile; a distribution/custom
+profile needing reload remains a private human review. A failed smoke check
+stops rather than changing the global restriction. Repeated successful runs
+do not rewrite or reload an already working profile, reboot the VM, or change
+Docker workloads. No restriction means only the namespace check runs.
+
+The profile grants user namespaces to `/usr/bin/bwrap`; it does not disable
+AppArmor, change the global user-namespace sysctl, add sudoers permissions or
+attach to other programs. Reload an existing distro profile only after private
+review. User preflight checks for the profile when the kernel restriction is
+active; loaded-policy and real command sandbox proof remain human gates.
+
+After user installation, test plain Codex's actual Linux sandbox without a
+provider call from workspace `tmp/`:
+
+```bash
+mkdir -p tmp/native-sandbox-proof
+cd tmp/native-sandbox-proof
+codex sandbox -P :workspace -- sh -c 'printf "native sandbox command passed\n"'
+cd ../..
+
+test ! -e tmp/native-sandbox-proof/read-only-denied
+if codex sandbox -P :read-only -C tmp/native-sandbox-proof -- \
+  sh -c 'printf "must not exist\n" > read-only-denied'; then
+  printf 'ERROR: read-only sandbox allowed a write\n' >&2
+  exit 1
+fi
+test ! -e tmp/native-sandbox-proof/read-only-denied
+```
+
+The explicit built-in profiles follow current
+[OpenAI permission-profile guidance](https://learn.chatgpt.com/docs/permissions).
+Inspect installed CLI help/config if the syntax changes; do not substitute a
+permission bypass to claim sandbox acceptance. Run the native provider probe in
+the mode actually selected and record that mode with the installation evidence.
+
+## Install User Tools And Environment
+
+After reconnecting, derive paths again in the guest workspace checkout:
+
+```bash
+native_worktree_parent=$(cd .. && pwd -P)
+read -r -p 'Existing guest bare-repository parent: ' native_bare_parent
+./scripts/install-agent-vm-user-tools.sh \
+  --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+. "$HOME/.config/budget-analyzer-native/env.sh"
+./scripts/install-agent-vm-user-tools.sh \
+  --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+```
+
+The second run retains installed packages, configuration, credentials and the
+single managed hook/shell line. Chromium installation is rechecked by the
+pinned Playwright installer; it may recover a missing payload, never upgrades
+the npm selection. Trust is not required to finish user tool installation; the
+full read-only verifier requires established system/NSS trust after the next
+section. Installation does not authenticate, launch proxies or generate CAs.
+
+The reviewed `native/npm/package-lock.json` has SHA-256
+`f42dff943f668e927407f16ef214f43ea2e88f319c9d0deae13e5b27f6df8b91`.
+The focused input checker validates every locked package's registry HTTPS URL
+and SHA-512 integrity, direct versions against both `package.json` and the
+toolchain manifest, and required-input Git ignore/publication state. Before publication,
+its `proposed` mode builds a disposable source-only tree from tracked
+working-tree source plus explicitly reviewed uncommitted required inputs. That
+proves proposed closure, not committed-source availability. After the human
+commits the reviewed change, run the `committed` mode and require its true
+`git archive HEAD` proof before reporting that an ordinary Git transfer is
+reproducible.
+
+One normal development home owns `.m2/repository`, `.gradle`, `.claude`, `.codex`,
+`.gemini`, `.pki/nssdb` and `.cache/ms-playwright`. Do not import provider state
+from another environment. Managed tools live under `.local/share/budget-analyzer-native`:
+locked local npm packages, dedicated pipx environments, portable helper resources,
+private inspection resources only if human-created, and an installation report.
+Commands in `.local/bin` source the small environment fragment themselves, so
+noninteractive handler workers do not depend on interactive aliases or shell
+startup. Existing Bash startup files receive one source line; login and Remote
+SSH Bash terminals use the same fragment. For a zsh login account the installer
+also appends that line to `.zprofile`/`.zshrc`, preserving existing contents.
+The fragment uses POSIX shell syntax; startup files are never replaced with an
+entire managed shell configuration. It resolves `JAVA_HOME` from installed `javac`, sets Maven's
+system home, consistent browser/package paths and the combined system CA bundle
+for Python, requests and Node. It exports no proxy or credentials.
+
+Claude configuration merges only `promptSuggestionEnabled`, `autoCompactEnabled`
+and the AGENTS SessionStart command from the reviewed overlay. Other settings,
+permission/model choices and user hooks survive. The file-only conversation
+skill is retained byte-for-byte. An unrelated existing skill/command, changed
+managed resource, symlink or altered npm lock stops for private human review.
+The statusline helper is installed but remains optional and is never activated
+or invoked during installation; an explicit invocation can use this user's
+Claude OAuth state. Its private cache stays under workspace `tmp/`.
+
+`installation.json` records source revisions/dirty paths, home/user, repository
+parents, reviewed versions, npm-lock SHA256 and resolved mitmproxy dependencies.
+The handler is editable from the local checkout; the verifier checks its import
+origin, global command resolution and high wrapper help. Ordinary source edits
+remain visible; handler dependency/entry-point changes require an explicit
+human pipx reinstall after review. mitmproxy's exact top-level release is pinned;
+pipx resolves transitive PyPI dependencies on first install and records them.
+Reruns retain that environment. npm uses the tracked full integrity lock with
+`npm ci`, isolated config/cache and verified HTTPS. Reviewed npm lifecycle scripts
+may compile their locked optional dependencies. Never resolve `latest` during
+installation. An explicit npm refresh requires reviewing both manifest and lock,
+then privately removing only this managed npm environment and rerunning; the
+installer refuses to perform that removal or upgrade automatically.
+
+## Canonical Read-Only Native Runtime Contract
+
+`scripts/check-agent-vm-tools.sh` is the sole native runtime interface for
+sibling application bootstrap and daily startup. From the reviewed workspace
+checkout, after native preparation and exact ingress trust are complete, run:
+
+```bash
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+The two explicit arguments are required canonical absolute directories. They
+identify the reviewed guest working-clone parent and its existing guest-local
+bare-repository parent; the verifier does not guess or repair either path.
+Sibling orchestration must invoke this public wrapper rather than its Python
+implementation or a reduced compatibility mode.
+
+Success proves the complete workspace-owned runtime contract:
+
+- Ubuntu 24.04 running directly under QEMU/KVM, with the canonical normal
+  account home and safe ownership.
+- No forwarded credential socket, token, askpass, Git configuration injection,
+  proxy, TLS bypass or Docker/Testcontainers endpoint override.
+- Standalone guest-local working clones with only matching guest-local bare
+  origins and no credential/include/rewrite/forwarding Git configuration.
+- The default Docker context, `unix:///var/run/docker.sock`, a real guest Unix
+  socket and `/var/lib/docker` data root.
+- All manifest packages, Node major 24, npm 10 or newer, JDK/Javac major 25,
+  exact manifest download releases and exact managed user-tool releases.
+- Current managed user resources, fresh-shell command resolution, the reviewed
+  AI Session Handler checkout, Playwright Chromium and read-only exact ingress
+  OS/NSS trust verification.
+
+The verifier performs no writes. It never invokes sudo, installs packages,
+mutates trust, authenticates providers, edits Git configuration, repairs
+repositories, or changes Docker, Kind or application state. A nonzero result is
+a failed prerequisite for both first bootstrap and daily startup; use the
+reported human preparation or trust procedure after workers stop. Do not weaken
+the contract to permit an application-only Node baseline or partial credential
+check. `native/toolchain.json` remains the sole version and capability
+inventory.
+
+## Refresh Installed User Resources
+
+`native/helpers/` is the canonical location for helper, settings, prompt and
+skill resources. The manifest maps installed command names directly to those
+sources or to the native adapters under `scripts/native/`.
+
+After the reviewed source is transferred and every affected worker has ended,
+the human must rerun the focused normal-user installation sequence in
+[Install User Tools And Environment](#install-user-tools-and-environment),
+including its repeat run. That refresh converges the installed manifest,
+settings overlay and helper resources, then proves idempotence. Do not rerun
+system provisioning solely for this source refresh, and do not remove provider
+state or the human-created optional inspection directory.
+
+Afterward, run the read-only tool verifier from a fresh shell. If the separate
+trust installation is incomplete, complete the human trust procedure in the
+next section before the full verifier. Repository fixtures do not update the
+live home and are not evidence that the refresh occurred.
+
+## Establish Exact Ingress Trust
+
+First validate the three existing human-transferred TLS inputs, without
+changing Kubernetes or creating certificates:
+
+```bash
+"$native_worktree_parent/orchestration/scripts/bootstrap/install-imported-ingress-tls.sh" --validate-only
+openssl x509 -in "$native_worktree_parent/orchestration/nginx/certs/k8s/_mkcert-rootCA.pem" \
+  -noout -sha256 -fingerprint
+```
+
+Compare the public root fingerprint privately with the approved host transfer.
+Only the public ingress root is imported. The mkcert signing key remains on the
+personal host. A stale publication requires the host-only certificate
+preparation or renewal command and three-file transfer workflow, not a new
+guest CA or a VM `setup.sh` run.
+
+Trust responsibilities are intentionally singular: the personal host signs
+browser certificates, orchestration validates the transferred files and
+reconciles the Kubernetes TLS Secret, and workspace installs/verifies guest OS
+and NSS trust. Run the command below only from mutually reviewed workspace and
+orchestration revisions after every affected worker has exited.
+
+From the guest workspace OS shell, with the environment fragment loaded:
+
+```bash
+./scripts/install-agent-vm-local-ca-trust.sh \
+  --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+ensure-budget-analyzer-local-ca-trust
+check-budget-analyzer-local-ca-trust
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+```
+
+The human-only trust installer verifies CA validity, exact hostname/leaf chain,
+normal-user/VM identity and guest-local repositories before using explicit
+interactive `sudo install` and `sudo update-ca-certificates` for the one public
+root. Its sole managed system destination is
+`/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt`. If the
+exact legacy `budget-analyzer-local-ingress-ca.crt` path exists, it is removed
+only after regular-file, no-symlink, root ownership, safe-mode and certificate
+identity checks prove it is the approved root; identity is rechecked just
+before removal. A different or unparseable legacy root reports both relevant
+SHA-256 identities when available and stops before any `sudo` or NSS mutation.
+The human must review that unexplained root explicitly; do not rename, retain
+as stale managed trust or delete it through an unattended invocation.
+
+NSS imports use this user's database and only the managed nickname;
+public roots and other NSS entries remain. NSS path checks use the native
+preflight's same verified private-primary-group exception: a group-writable
+path is accepted only when that group belongs exclusively to this account;
+shared-group and world-writable paths still stop. Password-protected NSS
+databases stop for private human review. No command receives blanket
+passwordless sudo.
+Installed `ensure` and `check` are read-only in native execution. Missing/stale
+system or NSS trust fails with the exact human installer command; agents never
+silently run privileged trust repair. Missing OpenSSL/certutil maps to status
+12; publication/system/environment/NSS failures retain statuses 10/11/13/14/15.
+
+After the installer succeeds, the final state can be checked without changing
+trust:
+
+```bash
+canonical_ca=/usr/local/share/ca-certificates/budget-analyzer-local-mkcert.crt
+legacy_ca=/usr/local/share/ca-certificates/budget-analyzer-local-ingress-ca.crt
+test -f "$canonical_ca" && test ! -L "$canonical_ca"
+test ! -e "$legacy_ca" && test ! -L "$legacy_ca"
+stat -c '%U:%G %a %F' "$canonical_ca" # expected: root:root 644 regular file
+check-budget-analyzer-local-ca-trust
+openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt \
+  "$native_worktree_parent/orchestration/nginx/certs/k8s/_wildcard.budgetanalyzer.localhost.pem"
+certutil -L -d "sql:$HOME/.pki/nssdb" -n 'Budget Analyzer local mkcert CA' -a \
+  | openssl x509 -noout -sha256 -fingerprint
+```
+
+The read-only helper verifies the canonical certificate and combined bundle,
+requires the legacy source to be absent, and checks the managed NSS nickname
+and CA flags. The direct commands make the expected one-source state visible;
+compare the displayed NSS fingerprint privately with the approved publication.
+
+Human verified HTTPS matrix, from a fresh guest shell:
+
+```bash
+. "$HOME/.config/budget-analyzer-native/env.sh"
+curl --fail --show-error https://app.budgetanalyzer.localhost/ >/dev/null
+python3 - <<'PY'
+import urllib.request
+with urllib.request.urlopen('https://app.budgetanalyzer.localhost/', timeout=20) as response:
+    print('Python verified HTTPS:', response.status)
+PY
+node - <<'JS'
+fetch('https://app.budgetanalyzer.localhost/', {redirect: 'manual'})
+  .then(r => {if (r.status >= 500) throw Error('ingress unavailable'); console.log('Node verified HTTPS:', r.status)})
+  .catch(e => {console.error(e.message); process.exitCode = 1});
+JS
+node - <<'JS'
+const {chromium} = require('playwright');
+(async () => {
+  const browser = await chromium.launch({headless: true});
+  try {
+    const page = await browser.newPage();
+    let ingressResponse;
+    page.on('response', r => {
+      if (r.url() === 'https://app.budgetanalyzer.localhost/') ingressResponse = r;
+    });
+    await page.route('**/*', route => {
+      const url = new URL(route.request().url());
+      return url.origin === 'https://app.budgetanalyzer.localhost' ? route.continue() : route.abort();
+    });
+    try {await page.goto('https://app.budgetanalyzer.localhost/', {waitUntil: 'domcontentloaded', timeout: 20000})}
+    catch (e) {if (!ingressResponse) throw e}
+    if (!ingressResponse || ingressResponse.status() >= 500) throw Error('ingress response missing/unavailable');
+    console.log('Chromium verified HTTPS:', ingressResponse.status());
+  } finally {await browser.close()}
+})().catch(e => {console.error(e.message); process.exitCode = 1});
+JS
+```
+
+The browser probe proves the launching user's NSS trust and blocks navigation
+to other origins; a verified local authentication redirect is acceptable.
+Playwright's default browser launch permissions are upstream defaults; this
+probe does not claim Chromium OS sandbox acceptance. No client uses an insecure
+TLS option. Record real command exits, not merely browser-cache presence.
+
+## Authentication, Permissions And Verification
+
+Authenticate only selected providers natively: `codex login`, `claude auth login`
+or interactive `gemini`. Keep those inputs out of logs and do not authenticate
+GitHub. Run a benign read of a workspace file and record which provider, model
+selection and permission mode actually ran.
+
+| Command | Actual permission behavior |
+| --- | --- |
+| Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers only load environment and forward arguments |
+| `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
+| `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
+| `claude-with-proxy` | Plain Claude permission arguments, inspection only |
+| Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
+| Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
+
+Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
+Explicit CLI model choices survive forwarding; `CODEX_MODEL` remains supported.
+The `xhigh` proxy effort spelling is corrected. Docker-group membership gives
+all these processes broad guest-root-equivalent authority regardless of native
+command sandboxing. The VM and host policy remain the personal-host boundary.
+
+Open a fresh login shell and a fresh terminal through the SSH client or editor
+you intend to use, then check in each (using this shell's derived parents). If
+you use the tested VS Code Remote SSH workflow, include a fresh Remote SSH
+terminal:
+
+```bash
+id -un
+printf '%s\n' "$HOME"
+command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-run playwright
+ai-session-handler --version
+ai-session-handler-codex-high --help
+check-budget-analyzer-local-ca-trust
+./scripts/check-agent-vm-tools.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+Record the installation report, repeat-run configuration preservation, trust
+matrix, actual sandbox mode, provider proof and host-boundary evidence. Follow
+[Development VM And Native Agent Runtime](host-isolation.md) for the current
+runtime and repository-transfer boundaries.
+
+## Optional Human Inspection Setup
+
+Normal sessions remain unproxied. mitmproxy/mitmweb/mitmdump and all flow/prompt
+helpers are installed as optional capabilities, but no signing key or inspection
+CA is created, copied or trusted during installation or safety checks. If
+inspection is wanted, the human creates a separate **guest-owned** CA after
+source review:
+
+```bash
+. "$HOME/.config/budget-analyzer-native/env.sh"
+umask 077
+inspection_dir="$HOME/.local/share/budget-analyzer-native/inspection"
+mkdir -m 700 "$inspection_dir"
+mitmdump --listen-host 127.0.0.1 --listen-port 19080 \
+  --set "confdir=$inspection_dir" --set ssl_insecure=false
+# Stop with Ctrl+C after initial CA creation; do not send provider traffic yet.
+python3 - <<'PY'
+import os
+from pathlib import Path
+import secrets
+root = Path.home() / '.local/share/budget-analyzer-native/inspection'
+(root / 'web-token').write_text(secrets.token_urlsafe(32) + '\n')
+for path in root.iterdir():
+    if path.is_file(): path.chmod(0o600)
+PY
+```
+
+Never copy a proxy signing key from another machine. `start-proxy` and optional
+provider wrappers require this private CA/token, bind proxy/UI to 127.0.0.1 and
+keep upstream TLS verification on. They refuse occupied ports rather than
+reusing an unidentified proxy or assuming the correct addon is loaded. Provider
+wrappers own/stop their child, assemble a private public+inspection CA bundle
+under workspace `tmp/mitmproxy-private`, and scope proxy/trust variables to that
+provider process. Their bundle is removed on exit. No system/NSS inspection-root
+import, global proxy export or upstream bypass runs. Raw `start-proxy` starts
+only the UI/proxy; it does not proxy ordinary sessions. Flow renderer exports
+stay under workspace `tmp/mitmproxy-flows`; addon dumps and statusline caches
+are private files under workspace `tmp/`. Full captured requests can contain
+secrets; inspect/clean those directories privately after stopping listeners.
+
+Remove only the human-created inspection directory and private capture/dump
+files after review to disable interception. Optional real interception is a
+separate human test; automated checks validate its offline argv and lifecycle.
+
+## Offline Validation
+
+Run from workspace, without actual provider calls, homes or trust changes:
+
+```bash
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py
+bash -n scripts/install-agent-vm-user-tools.sh
+bash -n scripts/check-agent-vm-tools.sh
+bash -n scripts/install-agent-vm-local-ca-trust.sh
+bash -n scripts/install-agent-vm-bwrap-profile.sh
+bash -n scripts/prepare-agent-vm-native.sh
+shellcheck scripts/install-agent-vm-user-tools.sh scripts/check-agent-vm-tools.sh scripts/install-agent-vm-local-ca-trust.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh native/helpers/*.sh native/helpers/mitmflows native/helpers/mitmflow-detail native/helpers/mitmflow-body
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/system-prompt-addon.py native/helpers/mitmflow-render.py
+git diff --check
+```
+
+Once the lock and checker are committed, replace `--publication proposed` with
+`--publication committed`. The latter fails unless every required input is in
+`HEAD` and validates only the extracted `git archive HEAD` source.
+
+The compact harness uses disposable homes, trust stores and command shims under
+workspace `tmp/`. It checks exact duplicate convergence, unknown-root refusal
+before mutation, symlink/ownership rejection, idempotence, preservation of
+unrelated NSS entries, read-only trust verification, repeat installation
+without credential/settings loss, pre-mutation origin and credential-bridge
+rejection, missing browser/trust reporting, quoted path forwarding, runner
+sequencing and short-circuit behavior. It invokes no real trust, provider,
+package, Docker or AppArmor command and generates no CA. The static source checker renders
+generated wrappers into `tmp/`, validates native mappings/locks/links and runs
+shell syntax/ShellCheck. The human owns real package/browser behavior, loaded
+AppArmor proof, authentication, HTTPS and installed-helper smoke checks.

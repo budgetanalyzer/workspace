@@ -1,0 +1,579 @@
+{
+  "schema": 1,
+  "os": {
+    "id": "ubuntu",
+    "release": "24.04"
+  },
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "policy": "Exact release downloads; installed apt patches retained, missing apt packages resolve from signed repositories. Refresh reviewed inputs explicitly; never resolve latest during installation.",
+  "apt": [
+    "bash",
+    "coreutils",
+    "findutils",
+    "grep",
+    "sed",
+    "gawk",
+    "util-linux",
+    "procps",
+    "tar",
+    "gzip",
+    "xz-utils",
+    "zip",
+    "unzip",
+    "curl",
+    "wget",
+    "git",
+    "jq",
+    "sudo",
+    "ca-certificates",
+    "gnupg",
+    "lsb-release",
+    "build-essential",
+    "libnss3-tools",
+    "vim",
+    "nano",
+    "poppler-utils",
+    "imagemagick",
+    "tree",
+    "dnsutils",
+    "iputils-ping",
+    "traceroute",
+    "netcat-openbsd",
+    "iproute2",
+    "lsof",
+    "openssl",
+    "ripgrep",
+    "shellcheck",
+    "python3",
+    "python3-pip",
+    "python3-venv",
+    "python3-yaml",
+    "pipx",
+    "bubblewrap",
+    "maven",
+    "apparmor"
+  ],
+  "chromium_apt": [
+    "xvfb",
+    "fonts-noto-color-emoji",
+    "fonts-unifont",
+    "libfontconfig1",
+    "libfreetype6",
+    "xfonts-cyrillic",
+    "xfonts-scalable",
+    "fonts-liberation",
+    "fonts-ipafont-gothic",
+    "fonts-wqy-zenhei",
+    "fonts-tlwg-loma-otf",
+    "fonts-freefont-ttf",
+    "libasound2t64",
+    "libatk-bridge2.0-0t64",
+    "libatk1.0-0t64",
+    "libatspi2.0-0t64",
+    "libcairo2",
+    "libcups2t64",
+    "libdbus-1-3",
+    "libdrm2",
+    "libgbm1",
+    "libglib2.0-0t64",
+    "libnspr4",
+    "libnss3",
+    "libpango-1.0-0",
+    "libx11-6",
+    "libxcb1",
+    "libxcomposite1",
+    "libxdamage1",
+    "libxext6",
+    "libxfixes3",
+    "libxkbcommon0",
+    "libxrandr2"
+  ],
+  "chromium_apt_source": "playwright-core 1.63.0 Ubuntu 24.04 tools+chromium native dependency lists; same list for x64/arm64. The normal-user installer owns the browser download.",
+  "repositories": {
+    "nodesource": {
+      "key_url": "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key",
+      "fingerprint": "6F71F525282841EEDAF851B42F59B5F99B1BE0B4",
+      "key_path": "/etc/apt/keyrings/nodesource.gpg",
+      "source_path": "/etc/apt/sources.list.d/nodesource.list",
+      "source": "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main",
+      "policy": "Node major 24 / Azul Zulu JDK major 25; signed apt resolves missing packages, existing patches retained"
+    },
+    "azul": {
+      "key_url": "https://repos.azul.com/azul-repo.key",
+      "fingerprint": "27BC0C8CB3D81623F59BDADCB1998361219BD9C9",
+      "key_path": "/etc/apt/keyrings/azul.gpg",
+      "source_path": "/etc/apt/sources.list.d/zulu.list",
+      "source": "deb [signed-by=/etc/apt/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main",
+      "policy": "Node major 24 / Azul Zulu JDK major 25; signed apt resolves missing packages, existing patches retained"
+    }
+  },
+  "downloads": {
+    "kubectl": {
+      "owner": "system",
+      "version": "v1.35.4",
+      "policy": "explicit-reviewed-refresh",
+      "method": "binary",
+      "destination": "/usr/local/bin/kubectl",
+      "platforms": {
+        "amd64": {
+          "url": "https://dl.k8s.io/release/v1.35.4/bin/linux/amd64/kubectl",
+          "sha256": "b529430df69a688fd61b64ad2299edb5fd71cb58be2a4779dba624c7d3510efd"
+        },
+        "arm64": {
+          "url": "https://dl.k8s.io/release/v1.35.4/bin/linux/arm64/kubectl",
+          "sha256": "6a5a4cc4e396d7626a7a693a3044b51c75520f81db30fe6816c2554e53be336f"
+        }
+      },
+      "check": [
+        "kubectl",
+        "version",
+        "--client",
+        "--output=json"
+      ],
+      "version_pattern": "(?<![0-9.])1\\.35\\.4(?![0-9.])"
+    },
+    "helm": {
+      "owner": "system",
+      "version": "v3.20.1",
+      "policy": "explicit-reviewed-refresh",
+      "method": "tar-binary",
+      "destination": "/usr/local/bin/helm",
+      "platforms": {
+        "amd64": {
+          "url": "https://get.helm.sh/helm-v3.20.1-linux-amd64.tar.gz",
+          "sha256": "0165ee4a2db012cc657381001e593e981f42aa5707acdd50658326790c9d0dc3"
+        },
+        "arm64": {
+          "url": "https://get.helm.sh/helm-v3.20.1-linux-arm64.tar.gz",
+          "sha256": "56b9d1b0e0efbb739be6e68a37860ace8ec9c7d3e6424e3b55d4c459bc3a0401"
+        }
+      },
+      "check": [
+        "helm",
+        "version",
+        "--template",
+        "{{.Version}}"
+      ],
+      "version_pattern": "(?<![0-9.])3\\.20\\.1(?![0-9.])",
+      "member": "linux-{arch}/helm"
+    },
+    "tilt": {
+      "owner": "system",
+      "version": "0.37.3",
+      "policy": "explicit-reviewed-refresh",
+      "method": "tar-binary",
+      "destination": "/usr/local/bin/tilt",
+      "platforms": {
+        "amd64": {
+          "url": "https://github.com/tilt-dev/tilt/releases/download/v0.37.3/tilt.0.37.3.linux.x86_64.tar.gz",
+          "sha256": "e90bc6cf70882bc7579d8174a27cab2de0284612ec7339e4b32f669cd5de4e5c"
+        },
+        "arm64": {
+          "url": "https://github.com/tilt-dev/tilt/releases/download/v0.37.3/tilt.0.37.3.linux.arm64.tar.gz",
+          "sha256": "826f48198f368ef5edb684e9ae4c87ff76eca84c904f72b2376b29b93bffc019"
+        }
+      },
+      "check": [
+        "tilt",
+        "version"
+      ],
+      "version_pattern": "(?<![0-9.])0\\.37\\.3(?![0-9.])",
+      "member": "tilt"
+    },
+    "kind": {
+      "owner": "system",
+      "version": "v0.31.0",
+      "policy": "explicit-reviewed-refresh",
+      "method": "binary",
+      "destination": "/usr/local/bin/kind",
+      "platforms": {
+        "amd64": {
+          "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-amd64",
+          "sha256": "eb244cbafcc157dff60cf68693c14c9a75c4e6e6fedaf9cd71c58117cb93e3fa"
+        },
+        "arm64": {
+          "url": "https://github.com/kubernetes-sigs/kind/releases/download/v0.31.0/kind-linux-arm64",
+          "sha256": "8e1014e87c34901cc422a1445866835d1e666f2a61301c27e722bdeab5a1f7e4"
+        }
+      },
+      "check": [
+        "kind",
+        "version"
+      ],
+      "version_pattern": "(?<![0-9.])0\\.31\\.0(?![0-9.])"
+    },
+    "actionlint": {
+      "owner": "system",
+      "version": "1.7.12",
+      "policy": "explicit-reviewed-refresh",
+      "method": "tar-binary",
+      "destination": "/usr/local/bin/actionlint",
+      "platforms": {
+        "amd64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+          "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+        },
+        "arm64": {
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_arm64.tar.gz",
+          "sha256": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
+        }
+      },
+      "check": [
+        "actionlint",
+        "--version"
+      ],
+      "version_pattern": "(?<![0-9.])1\\.7\\.12(?![0-9.])",
+      "member": "actionlint"
+    },
+    "go": {
+      "owner": "system",
+      "version": "1.24.1",
+      "policy": "explicit-reviewed-refresh",
+      "method": "go",
+      "destination": "/opt/budget-analyzer-native/go-1.24.1",
+      "platforms": {
+        "amd64": {
+          "url": "https://go.dev/dl/go1.24.1.linux-amd64.tar.gz",
+          "sha256": "cb2396bae64183cdccf81a9a6df0aea3bce9511fc21469fb89a0c00470088073"
+        },
+        "arm64": {
+          "url": "https://go.dev/dl/go1.24.1.linux-arm64.tar.gz",
+          "sha256": "8df5750ffc0281017fb6070fba450f5d22b600a02081dceef47966ffaf36a3af"
+        }
+      },
+      "check": [
+        "go",
+        "version"
+      ],
+      "version_pattern": "(?<![0-9.])1\\.24\\.1(?![0-9.])"
+    },
+    "via": {
+      "owner": "system",
+      "version": "3.0.13",
+      "policy": "explicit-reviewed-refresh",
+      "method": "via",
+      "destination": "/opt/via-annotator",
+      "platforms": {
+        "amd64": {
+          "url": "https://www.robots.ox.ac.uk/~vgg/software/via/downloads/via3/via-3.0.13.zip",
+          "sha256": "d16fac5ac83507587845c04644bdbe81896865f2cb963d570bf0f52d48e7d793"
+        },
+        "arm64": {
+          "url": "https://www.robots.ox.ac.uk/~vgg/software/via/downloads/via3/via-3.0.13.zip",
+          "sha256": "d16fac5ac83507587845c04644bdbe81896865f2cb963d570bf0f52d48e7d793"
+        }
+      },
+      "asset_sha256": "44de1edcee45a0c442dcd028316cdce1647b4fb1a3ca3669b07cd77f39e5fc98"
+    }
+  },
+  "user_tools": {
+    "@anthropic-ai/claude-code": {
+      "owner": "normal-user",
+      "method": "npm",
+      "version": "2.1.289",
+      "integrity": "sha512-RQWjAlalf9aomgI3JaXDCdFPvmNVnRdjwMtYk5L+Lw1NWxCxbhY5T9F+w1xukqvJh/I2rR2+3hICZxhk0al1nA==",
+      "tarball": "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-2.1.289.tgz",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "claude",
+        "--version"
+      ]
+    },
+    "@openai/codex": {
+      "owner": "normal-user",
+      "method": "npm",
+      "version": "0.160.0",
+      "integrity": "sha512-kEtVGzjRAYAMOwJxN39bGcna7LT3IDQgq64NNJ/dDTfu4OzZaocJcyNb5/gGJ/IVF/Vj7oK7E2m3nmTan7lpjg==",
+      "tarball": "https://registry.npmjs.org/@openai/codex/-/codex-0.160.0.tgz",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "codex",
+        "--version"
+      ]
+    },
+    "@google/gemini-cli": {
+      "owner": "normal-user",
+      "method": "npm",
+      "version": "0.62.0",
+      "integrity": "sha512-A1rw0Tf2sHLpGncfYdaq5WaJIufKAP8il4BmHD5Yw4ewmB/Wo0vRQb2bEvx7OqyaPFPZCh0hVhcMKsICZyIBww==",
+      "tarball": "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-0.62.0.tgz",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "gemini",
+        "--version"
+      ]
+    },
+    "playwright": {
+      "owner": "normal-user",
+      "method": "npm",
+      "version": "1.63.0",
+      "integrity": "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==",
+      "tarball": "https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "playwright",
+        "--version"
+      ]
+    },
+    "mitmproxy": {
+      "owner": "normal-user",
+      "method": "pipx",
+      "version": "12.2.3",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "mitmproxy",
+        "--version"
+      ]
+    },
+    "ai-session-handler": {
+      "owner": "normal-user",
+      "method": "pipx-editable-guest-checkout",
+      "source": "../ai-session-handler",
+      "version": "checkout-revision",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "ai-session-handler",
+        "--version"
+      ]
+    },
+    "chromium": {
+      "owner": "normal-user",
+      "method": "playwright-install",
+      "version": "selected-by-playwright-1.63.0",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "playwright",
+        "install",
+        "--list"
+      ]
+    }
+  },
+  "helpers": {
+    "ai-run": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "ai-run --help; mocked argument-forwarding fixture",
+      "native_source": "native/helpers/ai-run.sh"
+    },
+    "check-budget-analyzer-local-ca-trust": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "read-only trust fixture and human-verified HTTPS matrix",
+      "native_source": "scripts/native/local_ca.py"
+    },
+    "claude-45-custom-system-prompt": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "claude-46-custom-system-prompt": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "claude-with-custom-system-prompt": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "claude-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "codex-lean": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "native/helpers/codex-lean.sh"
+    },
+    "codex-max-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "codex-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "ensure-budget-analyzer-local-ca-trust": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mocked trust fixture; explicit human trust activation for the exact local origin",
+      "native_source": "scripts/native/local_ca.py"
+    },
+    "mitmflow-body": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflow-body --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflow-body"
+    },
+    "mitmflow-detail": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflow-detail --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflow-detail"
+    },
+    "mitmflow-render.py": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "native/helpers/mitmflow-render.py"
+    },
+    "mitmflows": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflows --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflows"
+    },
+    "start-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py"
+    },
+    "statusline-command": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "native/helpers/statusline-command.sh"
+    },
+    "via-annotator": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "via-annotator --version; via-annotator --check; human foreground bind/stop proof",
+      "native_source": "native/helpers/via-annotator.sh"
+    }
+  },
+  "system_checks": [
+    [
+      "git",
+      "--version"
+    ],
+    [
+      "curl",
+      "--version"
+    ],
+    [
+      "wget",
+      "--version"
+    ],
+    [
+      "jq",
+      "--version"
+    ],
+    [
+      "rg",
+      "--version"
+    ],
+    [
+      "gcc",
+      "--version"
+    ],
+    [
+      "make",
+      "--version"
+    ],
+    [
+      "openssl",
+      "version"
+    ],
+    [
+      "certutil",
+      "-H"
+    ],
+    [
+      "shellcheck",
+      "--version"
+    ],
+    [
+      "python3",
+      "-c",
+      "import yaml, venv; print(yaml.__version__)"
+    ],
+    [
+      "pipx",
+      "--version"
+    ],
+    [
+      "node",
+      "--version"
+    ],
+    [
+      "npm",
+      "--version"
+    ],
+    [
+      "java",
+      "-version"
+    ],
+    [
+      "mvn",
+      "--version"
+    ],
+    [
+      "docker",
+      "--version"
+    ],
+    [
+      "docker",
+      "compose",
+      "version"
+    ],
+    [
+      "bwrap",
+      "--version"
+    ],
+    [
+      "identify",
+      "-version"
+    ],
+    [
+      "convert",
+      "-version"
+    ],
+    [
+      "pdftotext",
+      "-v"
+    ]
+  ],
+  "reviewed_sources": {
+    "aliases": "native/helpers/bash_aliases.sh",
+    "settings": "native/helpers/settings-overlay.json",
+    "skill": "native/helpers/skills/save-conversation/SKILL.md",
+    "system_prompt": "native/helpers/system-prompt.md",
+    "system_prompt_addon": "native/helpers/system-prompt-addon.py",
+    "helm_contract": "../orchestration/scripts/bootstrap/check-tilt-prerequisites.sh",
+    "orchestration_tools": "../orchestration/scripts/lib/pinned-tool-versions.sh",
+    "go_checksums": "https://go.dev/dl/?mode=json&include=all",
+    "npm_snapshot": "Registry metadata resolved on 2026-10-04; installation must use exact versions, never latest. The normal-user toolchain owns transitive locks and explicit refresh.",
+    "npm_lock": "native/npm/package-lock.json"
+  }
+}

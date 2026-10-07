@@ -1,0 +1,11 @@
+{
+  "name": "budget-analyzer-native-tools",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.289",
+    "@openai/codex": "0.160.0",
+    "@google/gemini-cli": "0.62.0",
+    "playwright": "1.63.0"
+  }
+}

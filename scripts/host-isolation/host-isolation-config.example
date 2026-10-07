@@ -1,0 +1,15 @@
+# Copy this template to a private host-only path, replace every placeholder,
+# review the values against the live VM, then make the file root-owned and
+# remove group/world write permission. This tracked file is not live policy.
+vm_domain=<LIBVIRT_DOMAIN>
+vm_network=<DEDICATED_LIBVIRT_NETWORK>
+vm_bridge=<DEDICATED_HOST_BRIDGE>
+vm_mac=<GUEST_MAC_ADDRESS>
+vm_ipv4=<GUEST_IPV4_CIDR>
+vm_gateway=<LIBVIRT_IPV4_GATEWAY>
+dhcp_broadcast=<REVIEWED_DHCP_BROADCAST>
+policy_service=<POLICY_SYSTEMD_SERVICE>
+policy_file=<ABSOLUTE_PRIVATE_NFT_POLICY_PATH>
+policy_loader=<ABSOLUTE_ROOT_OWNED_LOADER_PATH>
+policy_unit=<ABSOLUTE_ROOT_OWNED_UNIT_PATH>
+required_units=<COMMA_SEPARATED_DISCOVERED_LIBVIRT_UNITS>
