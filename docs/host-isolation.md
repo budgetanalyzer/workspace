@@ -1,10 +1,12 @@
 # Development VM And Native Agent Runtime
 
 Budget Analyzer agents run directly as the normal development user in a
-dedicated Ubuntu VM. VS Code connects through Remote SSH, repositories and
-provider state live in the guest, and the VM boundary separates agent processes
-from personal-host credentials and data. Guest Docker is reserved for
-application workloads such as Kind and Testcontainers.
+dedicated Ubuntu VM. Users may connect through SSH with any client or editor
+that preserves the boundary documented here. VS Code Remote SSH with the
+dedicated profile is the tested editor workflow, but it is not required.
+Repositories and provider state live in the guest, and the VM boundary
+separates agent processes from personal-host credentials and data. Guest Docker
+is reserved for application workloads such as Kind and Testcontainers.
 
 This repository owns native VM identity, the normal user/home, guest-local
 repository topology, forwarded-authority rejection, guest Docker selection,
@@ -31,8 +33,8 @@ high-authority launcher. Treat the complete VM as agent-compromise scope.
 
 Do not forward an SSH agent, Git askpass helper, GitHub token, personal-host
 Docker socket or credential store into the guest. Do not install GitHub
-authentication or publishing extensions in the Remote SSH environment. GitHub
-publication remains a personal-host operation.
+authentication or publishing extensions in any editor environment running in
+the guest. GitHub publication remains a personal-host operation.
 
 Host audit collection, live verification, host policy changes, reboot and
 protocol testing are human-only. Workspace agents may review explicitly
@@ -51,21 +53,26 @@ Capacity, addresses and host storage locations are operator choices. They are
 not installation inputs owned by this repository. Changes to the VM definition,
 network, firewall or host SSH policy require human review.
 
-## Remote SSH Profile
+## SSH Clients And Optional VS Code Profile
 
 The host SSH aliases must retain strict host-key checking, the dedicated VM
 identity, `IdentitiesOnly yes`, `ForwardAgent no`, `ForwardX11 no`, and no
-automatic forwarding. The dedicated VS Code profile must disable automatic and
-restored port forwarding.
+automatic forwarding. Any SSH client or editor may use these aliases, provided
+it does not weaken those controls or add credential, agent, socket or port
+forwarding.
 
-In that profile, disable **Git: Terminal Authentication** and **Git: Use
-Integrated Ask Pass**. Their setting IDs are `git.terminalAuthentication` and
-`git.useIntegratedAskPass`; both must be `false`. Close existing integrated
-terminals and open fresh ones after changing these settings.
+For the tested VS Code Remote SSH workflow, use the dedicated VS Code profile
+and disable automatic and restored port forwarding. Also disable **Git:
+Terminal Authentication** and **Git: Use Integrated Ask Pass**. Their setting
+IDs are `git.terminalAuthentication` and `git.useIntegratedAskPass`; both must
+be `false`. Close existing integrated terminals and open fresh ones after
+changing these settings.
 
-Connect with Remote SSH and open `/srv/budget-analyzer/worktrees`. The extension
-host, terminals, tasks and language servers then run inside the VM. In every new
-Remote SSH terminal, this command must print nothing:
+Connect with your chosen SSH client or editor and work under
+`/srv/budget-analyzer/worktrees`. With VS Code Remote SSH, open that directory;
+the extension host, terminals, tasks and language servers then run inside the
+VM. In every new SSH-connected terminal, regardless of client, this command
+must print nothing:
 
 ```bash
 env | rg '^(SSH_AUTH_SOCK|GITHUB_TOKEN|GH_TOKEN|GIT_ASKPASS|SSH_ASKPASS)=' || true

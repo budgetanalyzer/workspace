@@ -4,7 +4,7 @@ Development-environment entry point for Budget Analyzer and its AI coding
 tools. The supported workflow runs agents directly in the Ubuntu development
 VM as its normal development user. See
 [Development VM And Native Agent Runtime](docs/host-isolation.md) for the
-current host/guest boundary, repository transport and Remote SSH requirements.
+current host/guest boundary, repository transport and SSH-client requirements.
 
 Workspace owns native VM identity, the normal user and home, guest-local
 repository topology, rejection of forwarded authority, guest Docker selection,
@@ -15,9 +15,10 @@ reconciliation.
 
 ## Native Daily Workflow
 
-Use the dedicated VS Code Remote SSH profile, open the guest-local working
-clones under `/srv/budget-analyzer/worktrees`, and start the application from a
-fresh normal-user guest shell:
+Connect to the VM with your preferred SSH client or editor and open the
+guest-local working clones under `/srv/budget-analyzer/worktrees`. VS Code
+Remote SSH with the dedicated profile is the tested editor workflow, but it is
+optional. Start the application from a fresh normal-user guest shell:
 
 ```bash
 cd /srv/budget-analyzer/worktrees/orchestration
@@ -30,10 +31,12 @@ you want to work. Do not run `setup.sh` for ordinary daily startup; it recreates
 Kind. The complete bootstrap, daily-use and troubleshooting procedures live in
 [Getting Started](../orchestration/docs/development/getting-started.md#development-vm-native-workflow).
 
-The Remote SSH profile must not forward host credentials, restore ports or
-inject Git askpass. Agents use guest-local working clones and bare origins,
-the guest's default Docker socket, and the normal guest home. Git publication
-remains a personal-host operation.
+Every SSH client must preserve the documented host boundary: do not forward
+host credentials or an SSH agent, restore or create automatic port forwards,
+or inject Git askpass. The validated VS Code profile applies these controls for
+Remote SSH. Agents use guest-local working clones and bare origins, the guest's
+default Docker socket, and the normal guest home. Git publication remains a
+personal-host operation.
 
 ## Canonical Native Runtime Contract
 

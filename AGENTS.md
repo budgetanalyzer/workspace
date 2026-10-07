@@ -58,7 +58,7 @@ find .github/workflows -maxdepth 1 -type f | sort
 - Read `../orchestration/docs/development/getting-started.md` before changing
   how this workspace relates to ecosystem startup.
 - Read `docs/host-isolation.md` before changing repository transport, guest
-  Docker selection, credentials, Remote SSH guidance or native runtime
+  Docker selection, credentials, SSH-client guidance or native runtime
   boundaries. Keep initial bulk repository setup and later single-repository
   additions aligned through `scripts/setup-agent-vm-repositories.sh` and
   `scripts/add-agent-vm-repository.sh`.

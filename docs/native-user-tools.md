@@ -396,8 +396,10 @@ The `xhigh` proxy effort spelling is corrected. Docker-group membership gives
 all these processes broad guest-root-equivalent authority regardless of native
 command sandboxing. The VM and host policy remain the personal-host boundary.
 
-Open a fresh login shell and a VS Code Remote SSH terminal in the guest, then
-check in each (using this shell's derived parents):
+Open a fresh login shell and a fresh terminal through the SSH client or editor
+you intend to use, then check in each (using this shell's derived parents). If
+you use the tested VS Code Remote SSH workflow, include a fresh Remote SSH
+terminal:
 
 ```bash
 id -un
