@@ -127,8 +127,10 @@ test or workflow.
   `https://app.budgetanalyzer.localhost`, or after a certificate-chain failure
   for that origin, run `ensure-budget-analyzer-local-ca-trust`. Use
   `check-budget-analyzer-local-ca-trust` for read-only diagnosis.
-- If host publication is missing, ask the user to run orchestration `./setup.sh`
-  on the host. Never generate or rotate browser-facing certificates in the VM.
+- If host publication is missing, ask the user to run orchestration
+  `scripts/bootstrap/setup-k8s-tls.sh` on the personal host and repeat the
+  documented three-file transfer. Never generate or rotate browser-facing
+  certificates in the VM.
 - Never use HTTP, `--insecure`, `verify=False` or `ignore_https_errors` to
   bypass local trust failures. Do not use the lazy trust command for staging,
   production, arbitrary origins or non-certificate failures.

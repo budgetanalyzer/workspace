@@ -17,6 +17,54 @@ CA material at startup or weaken HTTPS verification.
 5. `ensure-budget-analyzer-local-ca-trust` and
    `check-budget-analyzer-local-ca-trust` perform read-only diagnosis.
 
+There is no personal-host Kind cluster or "host container" in this flow. Kind,
+Tilt, the ingress listener and the Kubernetes TLS Secret all live in the
+development VM. The personal host retains the mkcert CA signing key because it
+also owns browser trust. The VM receives only these three ignored files:
+
+| Artifact | Personal host | Development VM |
+| --- | --- | --- |
+| mkcert CA signing key | Retained in the host mkcert store | Never copied |
+| Public CA | Trusted by the host browser and staged for transfer | Checkout publication plus OS/NSS trust |
+| Wildcard leaf | Staged for transfer | Checkout publication and Kubernetes TLS Secret |
+| Wildcard leaf key | Staged for transfer | Mode `0600` checkout publication and Kubernetes TLS Secret |
+
+### Transfer The Three Published Files
+
+Git intentionally does not carry these files. After workspace repository setup
+has established the reviewed `budget-agent-vm` SSH alias, the human may stage
+the exact three files from the personal-host orchestration checkout:
+
+```bash
+ssh budget-agent-vm 'install -d -m 0700 "$HOME/.cache/budget-analyzer-tls-transfer"'
+scp \
+  nginx/certs/k8s/_wildcard.budgetanalyzer.localhost.pem \
+  nginx/certs/k8s/_wildcard.budgetanalyzer.localhost-key.pem \
+  nginx/certs/k8s/_mkcert-rootCA.pem \
+  budget-agent-vm:.cache/budget-analyzer-tls-transfer/
+```
+
+Then, from the normal-user guest shell with the managed environment loaded:
+
+```bash
+transfer_dir="$HOME/.cache/budget-analyzer-tls-transfer"
+cert_dir="$BUDGET_ANALYZER_WORKTREE_PARENT/orchestration/nginx/certs/k8s"
+install -m 0644 "$transfer_dir/_wildcard.budgetanalyzer.localhost.pem" "$cert_dir/"
+install -m 0600 "$transfer_dir/_wildcard.budgetanalyzer.localhost-key.pem" "$cert_dir/"
+install -m 0644 "$transfer_dir/_mkcert-rootCA.pem" "$cert_dir/"
+rm -f \
+  "$transfer_dir/_wildcard.budgetanalyzer.localhost.pem" \
+  "$transfer_dir/_wildcard.budgetanalyzer.localhost-key.pem" \
+  "$transfer_dir/_mkcert-rootCA.pem"
+```
+
+The existing pre-migration files are valid migration inputs when
+orchestration's `install-imported-ingress-tls.sh --validate-only` accepts them.
+Do not rotate a working CA merely because Kind moved into the VM. For a fresh
+or stale host publication, the human runs orchestration
+`scripts/bootstrap/setup-k8s-tls.sh` on the personal host; that command prepares
+browser trust and transfer files without accessing Kubernetes.
+
 The native environment sets `BUDGET_ANALYZER_WORKTREE_PARENT` to its reviewed
 guest working-clone parent. Helpers resolve the orchestration publication under
 that parent rather than relying on a fixed checkout location.
@@ -60,9 +108,10 @@ arbitrary HTTPS origins, staging, production, or public Internet trust errors.
 
 ## Missing Publication And Other Failures
 
-If the publication is missing, invalid or stale, stop. Renew only on the
-personal host using the established orchestration workflow, transfer the three
-approved files again, validate them, and rerun the human guest import workflow.
+If the publication is missing, invalid or stale, stop. Prepare or renew it only
+on the personal host using the established orchestration workflow, transfer the
+three approved files again, validate them, and rerun the human guest import
+workflow.
 Never run mkcert in the guest or copy the mkcert CA signing key.
 
 A DNS failure, connection refusal, gateway readiness failure, or
@@ -85,8 +134,9 @@ The commands use these exit statuses:
 ## Native Development VM
 
 The personal host alone owns the mkcert signing key and browser-certificate
-generation. Orchestration validates the three transferred files and reconciles
-the local Kubernetes TLS Secret. Workspace alone owns human-operated guest OS
+generation. Host certificate preparation does not require Kind. Orchestration
+validates the three transferred files and reconciles the local Kubernetes TLS
+Secret. Workspace alone owns human-operated guest OS
 and NSS trust installation plus read-only verification.
 
 The native user environment points Python, requests and Node at the combined

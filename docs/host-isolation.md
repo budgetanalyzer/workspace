@@ -247,10 +247,20 @@ clone. Agent exit and reentry are independent of Tilt, Docker and Kind.
 
 For first bootstrap or an intentional clean application rebuild, follow the
 [Getting Started guide](../../orchestration/docs/development/getting-started.md#development-vm-first-bootstrap).
-Orchestration `./setup.sh --guest-local` recreates Kind and is not a daily-start
+Orchestration `./setup.sh` recreates Kind and is not a daily-start
 command. Do not import host Docker state or move Docker data into a shared path.
 
 For a fully clean environment, create a new reviewed Ubuntu VM, rerun native
 preparation and repository setup, transfer only the approved TLS leaf, key and
 public CA, and bootstrap from tracked configuration. Do not transfer databases,
 Kind state, caches or VM snapshots into the replacement environment.
+
+When a personal-host browser is needed, the human uses the separately reviewed
+`budget-agent-vm-forward` SSH alias to establish the explicit loopback HTTPS
+forward to VM port 443. Keep that host process separate from agent sessions;
+it does not forward host SSH/Git authority or certificate private keys, though
+browser session traffic necessarily traverses the encrypted tunnel.
+The personal-host resolver must map `app.budgetanalyzer.localhost` to
+`127.0.0.1`; the human applies that host-OS-specific setting outside the guest.
+The exact certificate artifact handoff lives in
+[Local Budget Analyzer TLS Trust](local-budget-analyzer-tls.md#transfer-the-three-published-files).

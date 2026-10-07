@@ -264,8 +264,9 @@ openssl x509 -in "$native_worktree_parent/orchestration/nginx/certs/k8s/_mkcert-
 
 Compare the public root fingerprint privately with the approved host transfer.
 Only the public ingress root is imported. The mkcert signing key remains on the
-personal host. A stale publication requires the existing host-only renewal and
-three-file transfer workflow, not a new guest CA or host `setup.sh` rerun.
+personal host. A stale publication requires the host-only certificate
+preparation or renewal command and three-file transfer workflow, not a new
+guest CA or a VM `setup.sh` run.
 
 Trust responsibilities are intentionally singular: the personal host signs
 browser certificates, orchestration validates the transferred files and

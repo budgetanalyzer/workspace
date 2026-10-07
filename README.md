@@ -168,8 +168,9 @@ check-budget-analyzer-local-ca-trust
 `ensure-budget-analyzer-local-ca-trust` is also read-only in native execution;
 missing established trust reports the exact human installer command. Never use
 HTTP or TLS-verification bypasses. Certificate generation remains on the
-personal host, orchestration validates transferred files and reconciles the
-Kubernetes Secret, and workspace alone owns guest OS/NSS trust installation.
+personal host without a host Kind cluster, orchestration validates transferred
+files and reconciles the VM's Kubernetes Secret, and workspace owns the
+three-file transfer plus guest OS/NSS trust installation.
 See [Local Budget Analyzer TLS Trust](docs/local-budget-analyzer-tls.md).
 
 ## Human-Reviewed Image Tracing
