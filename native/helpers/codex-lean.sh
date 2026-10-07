@@ -18,7 +18,6 @@ args=(
     -c 'include_environment_context=false'
     -c 'include_permissions_instructions=false'
     -c 'include_apps_instructions=false'
-    -c 'include_apply_patch_tool=true'
     -c 'features.apps=false'
     -c 'features.browser_use=false'
     -c 'features.browser_use_external=false'
