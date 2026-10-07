@@ -28,6 +28,17 @@ def require(condition, message):
         raise ProvisionError(message)
 
 
+def node_major(data):
+    source = data['repositories']['nodesource']['source']
+    match = re.fullmatch(
+        r'deb \[signed-by=/etc/apt/keyrings/nodesource\.gpg\] '
+        r'https://deb\.nodesource\.com/node_(\d+)\.x nodistro main',
+        source,
+    )
+    require(match, 'invalid NodeSource major selection')
+    return match.group(1)
+
+
 def load_manifest(path=MANIFEST):
     data = json.loads(path.read_text())
     require(data['schema'] == 1, 'unsupported tool manifest schema')
@@ -47,16 +58,36 @@ def load_manifest(path=MANIFEST):
             require(re.fullmatch(r'[0-9a-f]{64}', tool['asset_sha256']), 'invalid VIA asset SHA-256')
         else:
             require(tool['check'][0] == name, 'tool validation command mismatch')
+            release = tool['version'].removeprefix('v')
+            for arch in data['architectures']:
+                require(release in tool['platforms'][arch]['url'],
+                        f'{name}/{arch}: URL does not match reviewed version')
+            expected_pattern = rf'(?<![0-9.]){re.escape(release)}(?![0-9.])'
+            require(tool['version_pattern'] == expected_pattern,
+                    f'{name}: validation pattern does not match reviewed version')
+            if tool['method'] == 'go':
+                require(tool['destination'].endswith(f'/go-{release}'),
+                        'go: destination does not match reviewed version')
     for repository in data['repositories'].values():
         require(repository['key_url'].startswith('https://'), 'repository key requires HTTPS')
         require(re.fullmatch(r'[A-F0-9]{40}', repository['fingerprint']), 'invalid repository fingerprint')
         require('signed-by=' in repository['source'], 'apt repository must scope its key')
+    selected_node_major = node_major(data)
+    for name, repository in data['repositories'].items():
+        require(re.findall(r'Node major (\d+)', repository['policy']) ==
+                [selected_node_major],
+                f'{name}: policy does not match NodeSource major selection')
     for tool in data['user_tools'].values():
         require(tool['owner'] == 'normal-user', 'user tool assigned to system installer')
         require(tool['policy'] == 'explicit-reviewed-refresh', 'moving user tool release')
         if tool['method'] == 'npm':
             require(re.fullmatch(r'\d+\.\d+\.\d+', tool['version']), 'unresolved npm release')
             require(tool['integrity'].startswith('sha512-'), 'missing npm integrity input')
+    playwright = data['user_tools']['playwright']['version']
+    require(f'playwright-core {playwright} ' in data['chromium_apt_source'],
+            'Chromium apt source does not match reviewed Playwright version')
+    require(data['user_tools']['chromium']['version'] == f'selected-by-playwright-{playwright}',
+            'Chromium selection does not match reviewed Playwright version')
     return data
 
 
@@ -167,7 +198,8 @@ class Provisioner:
         else:
             require(not self.path('/var/run/docker.sock').exists() and not self.installed('docker.io') and
                     not self.installed('docker-ce'), 'partial Docker installation needs human repair')
-        self.check_major('node', ['node', '--version'], r'^v24\.')
+        self.check_major(
+            'node', ['node', '--version'], rf'^v{node_major(self.manifest)}\.')
         self.check_major('java', ['java', '-version'], r'(?:openjdk|java) version "25(?:[."])')
         if self.which('npm'):
             version = self.command(['npm', '--version']).stdout.strip()
@@ -361,7 +393,8 @@ class Provisioner:
 
     def validate(self):
         require(self.which('node') and self.which('java') and self.which('npm'), 'installed Node/JDK/npm missing from PATH')
-        self.check_major('node', ['node', '--version'], r'^v24\.')
+        self.check_major(
+            'node', ['node', '--version'], rf'^v{node_major(self.manifest)}\.')
         self.check_major('java', ['java', '-version'], r'(?:openjdk|java) version "25(?:[."])')
         require(int(self.command(['npm', '--version']).stdout.strip().split('.')[0]) >= 10, 'npm must be 10 or newer')
         require(self.command(['docker', 'info', '--format', '{{.DockerRootDir}}'], privileged=True).stdout.strip() == '/var/lib/docker', 'Docker data-root drift')

@@ -1,0 +1,431 @@
+name: Native Dependency Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/native-dependency-validation.yml'
+      - 'renovate.json'
+      - 'native/**'
+      - 'scripts/native/**'
+      - 'scripts/provision-agent-vm-guest.sh'
+      - 'scripts/install-agent-vm-user-tools.sh'
+      - 'scripts/check-agent-vm-tools.sh'
+      - 'scripts/install-agent-vm-local-ca-trust.sh'
+      - 'scripts/install-agent-vm-bwrap-profile.sh'
+      - 'scripts/prepare-agent-vm-native.sh'
+      - 'tests/native/**'
+      - 'docs/dependency-automation.md'
+      - 'docs/native-tool-inventory.md'
+      - 'docs/native-user-tools.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/native-dependency-validation.yml'
+      - 'renovate.json'
+      - 'native/**'
+      - 'scripts/native/**'
+      - 'scripts/provision-agent-vm-guest.sh'
+      - 'scripts/install-agent-vm-user-tools.sh'
+      - 'scripts/check-agent-vm-tools.sh'
+      - 'scripts/install-agent-vm-local-ca-trust.sh'
+      - 'scripts/install-agent-vm-bwrap-profile.sh'
+      - 'scripts/prepare-agent-vm-native.sh'
+      - 'tests/native/**'
+      - 'docs/dependency-automation.md'
+      - 'docs/native-tool-inventory.md'
+      - 'docs/native-user-tools.md'
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-dependency-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  # renovate: datasource=npm depName=renovate
+  RENOVATE_VERSION: '44.65.5'
+  EVIDENCE_DIR: tmp/native-dependency-evidence
+  DOWNLOAD_DIR: tmp/native-release-downloads
+
+jobs:
+  validate-native-dependencies:
+    if: >-
+      ${{
+        github.event_name != 'pull_request' ||
+        (github.base_ref == 'main' &&
+          github.event.pull_request.head.repo.full_name == github.repository)
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Initialize bounded evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${EVIDENCE_DIR}" "${DOWNLOAD_DIR}"
+          jq -n '{schema: 1, status: "incomplete", checks: []}' \
+            > "${EVIDENCE_DIR}/source-validation-status.json"
+          jq -n '{schema: 1, status: "incomplete", scopes: []}' \
+            > "${EVIDENCE_DIR}/npm-audit-status.json"
+          jq -n '{schema: 1, status: "incomplete"}' \
+            > "${EVIDENCE_DIR}/overall-status.json"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: native/npm/package-lock.json
+
+      - name: Record tool metadata and manual lifecycle inputs
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node_version="$(node --version)"
+          npm_version="$(npm --version)"
+          python_version="$(python3 --version)"
+          shellcheck_version="$(shellcheck --version | sed -n 's/^version: //p')"
+          manifest_sha256="$(sha256sum native/toolchain.json | cut -d ' ' -f 1)"
+          lock_sha256="$(sha256sum native/npm/package-lock.json | cut -d ' ' -f 1)"
+          jq -n \
+            --slurpfile manifest native/toolchain.json \
+            --arg node "${node_version}" \
+            --arg npm "${npm_version}" \
+            --arg python "${python_version}" \
+            --arg shellcheck "${shellcheck_version}" \
+            --arg renovate "${RENOVATE_VERSION}" \
+            --arg manifest_sha256 "${manifest_sha256}" \
+            --arg lock_sha256 "${lock_sha256}" \
+            '{
+              schema: 1,
+              tools: {
+                node: $node,
+                npm: $npm,
+                python: $python,
+                shellcheck: $shellcheck,
+                renovate: $renovate
+              },
+              inputs: {
+                manifest_sha256: $manifest_sha256,
+                npm_lock_sha256: $lock_sha256
+              },
+              manual_lifecycle_inventory: ([
+                {input: "ubuntu", selection: $manifest[0].os},
+                {input: "ubuntu-apt-packages", selection: {count: ($manifest[0].apt | length), policy: "signed Ubuntu repositories; installed patches retained"}},
+                {input: "chromium-apt-packages", selection: {count: ($manifest[0].chromium_apt | length), source: $manifest[0].chromium_apt_source, policy: "signed Ubuntu repositories; installed patches retained"}},
+                ($manifest[0].repositories | to_entries[] | {input: .key, selection: {source: .value.source, fingerprint: .value.fingerprint, policy: .value.policy}}),
+                {input: "via", selection: {version: $manifest[0].downloads.via.version, policy: $manifest[0].downloads.via.policy}},
+                {input: "ai-session-handler", selection: $manifest[0].user_tools["ai-session-handler"]},
+                {input: "chromium", selection: $manifest[0].user_tools.chromium}
+              ])
+            }' > "${EVIDENCE_DIR}/tool-metadata.json"
+
+      - name: Validate committed native sources
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          failed=0
+
+          record_check() {
+            local name="$1"
+            shift
+            set +e
+            "$@"
+            local result=$?
+            set -e
+            local status=passed
+            if [[ "${result}" -ne 0 ]]; then
+              status=failed
+              failed=1
+            fi
+            local temporary
+            temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"
+            jq \
+              --arg name "${name}" \
+              --arg status "${status}" \
+              --argjson exit_code "${result}" \
+              '.checks += [{name: $name, status: $status, exit_code: $exit_code}]' \
+              "${EVIDENCE_DIR}/source-validation-status.json" > "${temporary}"
+            mv "${temporary}" "${EVIDENCE_DIR}/source-validation-status.json"
+          }
+
+          record_check renovate-config \
+            npx --yes --package="renovate@${RENOVATE_VERSION}" \
+              renovate-config-validator --strict --no-global renovate.json
+          record_check native-unit-tests \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 -m unittest discover -s tests/native -v
+          record_check native-manifest \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_manifest.py --workspace-only
+          record_check committed-install-inputs \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_install_inputs.py --publication committed
+          record_check static-user-environment \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_user_environment.py
+          record_check bash-syntax bash -n \
+            scripts/provision-agent-vm-guest.sh \
+            scripts/install-agent-vm-user-tools.sh \
+            scripts/check-agent-vm-tools.sh \
+            scripts/install-agent-vm-local-ca-trust.sh \
+            scripts/install-agent-vm-bwrap-profile.sh \
+            scripts/prepare-agent-vm-native.sh
+          record_check shellcheck shellcheck \
+            scripts/provision-agent-vm-guest.sh \
+            scripts/install-agent-vm-user-tools.sh \
+            scripts/check-agent-vm-tools.sh \
+            scripts/install-agent-vm-local-ca-trust.sh \
+            scripts/install-agent-vm-bwrap-profile.sh \
+            scripts/prepare-agent-vm-native.sh \
+            native/helpers/ai-run.sh \
+            native/helpers/bash_aliases.sh \
+            native/helpers/codex-lean.sh \
+            native/helpers/statusline-command.sh \
+            native/helpers/via-annotator.sh \
+            native/helpers/mitmflows \
+            native/helpers/mitmflow-detail \
+            native/helpers/mitmflow-body
+          record_check python-syntax \
+            env PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile \
+              scripts/native/provision.py \
+              scripts/native/user_tools.py \
+              scripts/native/local_ca.py \
+              scripts/native/proxy.py \
+              scripts/native/bwrap_profile.py \
+              scripts/native/verify_release_inputs.py \
+              tests/native/test_provision.py \
+              tests/native/test_user_tools.py \
+              tests/native/test_local_ca.py \
+              tests/native/test_native_preparation.py \
+              tests/native/test_install_inputs.py \
+              tests/native/test_dependency_discovery.py \
+              tests/native/test_release_inputs.py \
+              tests/native/check_manifest.py \
+              tests/native/check_install_inputs.py \
+              tests/native/check_user_environment.py \
+              native/helpers/system-prompt-addon.py \
+              native/helpers/mitmflow-render.py
+
+          temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"
+          jq --arg status "$([[ "${failed}" -eq 0 ]] && echo complete || echo failed)" \
+            '.status = $status' "${EVIDENCE_DIR}/source-validation-status.json" \
+            > "${temporary}"
+          mv "${temporary}" "${EVIDENCE_DIR}/source-validation-status.json"
+          exit "${failed}"
+
+      - name: Verify both architecture release inputs
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          python3 scripts/native/verify_release_inputs.py \
+            --manifest native/toolchain.json \
+            --output "${EVIDENCE_DIR}/release-verification.json" \
+            --download-dir "${DOWNLOAD_DIR}"
+          verification_result=$?
+
+          actionlint_result=1
+          runner_arch=
+          case "$(uname -m)" in
+            x86_64) runner_arch=amd64 ;;
+            aarch64 | arm64) runner_arch=arm64 ;;
+          esac
+          if [[ "${verification_result}" -eq 0 && -n "${runner_arch}" ]]; then
+            actionlint_path="${RUNNER_TEMP}/verified-actionlint"
+            tar -xOf "${DOWNLOAD_DIR}/actionlint-${runner_arch}.download" actionlint \
+              > "${actionlint_path}"
+            chmod 0755 "${actionlint_path}"
+            "${actionlint_path}" .github/workflows/native-dependency-validation.yml
+            actionlint_result=$?
+          fi
+
+          temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"
+          if [[ "${actionlint_result}" -eq 0 ]]; then
+            actionlint_status=passed
+          else
+            actionlint_status=failed
+          fi
+          jq \
+            --arg status "${actionlint_status}" \
+            --argjson exit_code "${actionlint_result}" \
+            '.checks += [{name: "actionlint", status: $status, exit_code: $exit_code}] |
+             if $status == "failed" then .status = "failed" else . end' \
+            "${EVIDENCE_DIR}/source-validation-status.json" > "${temporary}"
+          mv "${temporary}" "${EVIDENCE_DIR}/source-validation-status.json"
+
+          if [[ "${verification_result}" -ne 0 || "${actionlint_result}" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Produce npm audit evidence without lifecycle scripts
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          audit_failed=0
+
+          run_audit() {
+            local scope="$1"
+            shift
+            local report="${EVIDENCE_DIR}/npm-audit-${scope}.json"
+            local temporary="${RUNNER_TEMP}/npm-audit-${scope}.json"
+            local stderr_file="${RUNNER_TEMP}/npm-audit-${scope}.stderr"
+            set +e
+            (cd native/npm && npm audit --json --package-lock-only --ignore-scripts "$@") \
+              > "${temporary}" 2> "${stderr_file}"
+            local result=$?
+            set -e
+
+            local valid=false
+            local status=operational-failure
+            local findings=0
+            if jq -e '
+                type == "object" and
+                (.auditReportVersion | type == "number") and
+                (.metadata.vulnerabilities | type == "object") and
+                (.metadata.vulnerabilities.total | type == "number")
+              ' "${temporary}" > /dev/null 2>&1; then
+              valid=true
+              cp "${temporary}" "${report}"
+              findings="$(jq '.metadata.vulnerabilities.total' "${temporary}")"
+              if [[ "${result}" -eq 0 && "${findings}" -eq 0 ]]; then
+                status=clean
+              elif [[ "${result}" -eq 1 && "${findings}" -gt 0 ]]; then
+                status=findings
+              else
+                status=operational-failure
+              fi
+            else
+              jq -n \
+                --arg status malformed-output \
+                --argjson exit_code "${result}" \
+                --arg output_sha256 "$(sha256sum "${temporary}" | cut -d ' ' -f 1)" \
+                --argjson output_bytes "$(wc -c < "${temporary}")" \
+                '{status: $status, exit_code: $exit_code, output_sha256: $output_sha256, output_bytes: $output_bytes}' \
+                > "${report}"
+            fi
+
+            report_bytes="$(wc -c < "${report}")"
+            if [[ "${report_bytes}" -gt 20971520 ]]; then
+              report_sha256="$(sha256sum "${report}" | cut -d ' ' -f 1)"
+              jq -n \
+                --arg status report-size-limit-exceeded \
+                --arg report_sha256 "${report_sha256}" \
+                --argjson report_bytes "${report_bytes}" \
+                '{status: $status, report_sha256: $report_sha256, report_bytes: $report_bytes}' \
+                > "${report}"
+              status=operational-failure
+            fi
+            if [[ "${status}" == operational-failure ]]; then
+              audit_failed=1
+            fi
+
+            local status_tmp
+            status_tmp="$(mktemp "${EVIDENCE_DIR}/audit-status.XXXXXX")"
+            jq \
+              --arg scope "${scope}" \
+              --arg status "${status}" \
+              --argjson exit_code "${result}" \
+              --argjson valid_json "${valid}" \
+              --argjson findings "${findings}" \
+              '.scopes += [{scope: $scope, status: $status, exit_code: $exit_code, valid_audit_report: $valid_json, vulnerability_total: $findings}]' \
+              "${EVIDENCE_DIR}/npm-audit-status.json" > "${status_tmp}"
+            mv "${status_tmp}" "${EVIDENCE_DIR}/npm-audit-status.json"
+          }
+
+          run_audit full
+          run_audit production --omit=dev
+
+          status_tmp="$(mktemp "${EVIDENCE_DIR}/audit-status.XXXXXX")"
+          jq --arg status "$([[ "${audit_failed}" -eq 0 ]] && echo complete || echo failed)" \
+            '.status = $status' "${EVIDENCE_DIR}/npm-audit-status.json" \
+            > "${status_tmp}"
+          mv "${status_tmp}" "${EVIDENCE_DIR}/npm-audit-status.json"
+          exit "${audit_failed}"
+
+      - name: Finalize evidence status
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_status="$(jq -r '.status // "missing"' \
+            "${EVIDENCE_DIR}/source-validation-status.json" 2> /dev/null || echo missing)"
+          release_status="$(jq -r '.status // "missing"' \
+            "${EVIDENCE_DIR}/release-verification.json" 2> /dev/null || echo missing)"
+          audit_status="$(jq -r '.status // "missing"' \
+            "${EVIDENCE_DIR}/npm-audit-status.json" 2> /dev/null || echo missing)"
+          metadata_status=missing
+          if jq -e '.schema == 1 and (.manual_lifecycle_inventory | length > 0)' \
+              "${EVIDENCE_DIR}/tool-metadata.json" > /dev/null 2>&1; then
+            metadata_status=complete
+          fi
+          overall=failed
+          if [[ "${source_status}" == complete &&
+                "${release_status}" == complete &&
+                "${audit_status}" == complete &&
+                "${metadata_status}" == complete ]]; then
+            overall=complete
+          fi
+          jq -n \
+            --arg status "${overall}" \
+            --arg source_validation "${source_status}" \
+            --arg release_verification "${release_status}" \
+            --arg npm_audit "${audit_status}" \
+            --arg tool_metadata "${metadata_status}" \
+            '{
+              schema: 1,
+              status: $status,
+              components: {
+                source_validation: $source_validation,
+                release_verification: $release_verification,
+                npm_audit: $npm_audit,
+                tool_metadata: $tool_metadata
+              },
+              limitation: "Repository-input evidence only; not installed VM patch or lifecycle state."
+            }' > "${EVIDENCE_DIR}/overall-status.json"
+
+          {
+            echo '## Native dependency validation'
+            echo
+            printf 'Overall evidence status: **%s**\n\n' "${overall}"
+            echo 'This validates checked-in repository inputs and public release assets; it does not inspect or modify the development VM.'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload seven-day native dependency evidence
+        id: evidence-artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-dependency-validation-${{ github.run_id }}
+          path: |
+            ${{ env.EVIDENCE_DIR }}/overall-status.json
+            ${{ env.EVIDENCE_DIR }}/source-validation-status.json
+            ${{ env.EVIDENCE_DIR }}/release-verification.json
+            ${{ env.EVIDENCE_DIR }}/npm-audit-status.json
+            ${{ env.EVIDENCE_DIR }}/npm-audit-full.json
+            ${{ env.EVIDENCE_DIR }}/npm-audit-production.json
+            ${{ env.EVIDENCE_DIR }}/tool-metadata.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Link the retained evidence
+        if: ${{ always() && steps.evidence-artifact.outputs.artifact-url != '' }}
+        env:
+          ARTIFACT_URL: ${{ steps.evidence-artifact.outputs.artifact-url }}
+        run: |
+          echo >> "${GITHUB_STEP_SUMMARY}"
+          printf '[Download the seven-day evidence artifact](%s)\n' "${ARTIFACT_URL}" \
+            >> "${GITHUB_STEP_SUMMARY}"

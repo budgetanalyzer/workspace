@@ -29,7 +29,7 @@ tilt up
 Then launch `codex`, `claude`, `gemini`, or `ai-run` from the repository where
 you want to work. Do not run `setup.sh` for ordinary daily startup; it recreates
 Kind. The complete bootstrap, daily-use and troubleshooting procedures live in
-[Getting Started](../orchestration/docs/development/getting-started.md#development-vm-native-workflow).
+[Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-native-workflow).
 
 For personal-host browser access after the guest application is running, start
 the documented foreground host tunnel for application HTTPS and the Tilt UI.

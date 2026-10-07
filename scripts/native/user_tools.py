@@ -202,7 +202,12 @@ class UserTools:
             result = self.command(['dpkg-query', '-W', '-f=${Status}', package], check=False)
             require(result.returncode == 0 and result.stdout.strip() == 'install ok installed',
                     f'missing system package {package}; human: ./scripts/provision-agent-vm-guest.sh --docker-user {self.user}')
-        require(self.command(['node', '--version']).stdout.startswith('v24.'), 'requires reviewed Node major 24')
+        source = self.manifest['repositories']['nodesource']['source']
+        selected_node = re.search(r'/node_(\d+)\.x ', source)
+        require(selected_node, 'invalid reviewed NodeSource major selection')
+        node_major = selected_node.group(1)
+        require(self.command(['node', '--version']).stdout.startswith(f'v{node_major}.'),
+                f'requires reviewed Node major {node_major}')
         require(int(self.command(['npm', '--version']).stdout.split('.')[0]) >= 10, 'requires npm >=10')
         for command in ('java', 'javac'):
             result = self.command([command, '-version'])

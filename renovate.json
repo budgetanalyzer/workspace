@@ -2,5 +2,159 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>budgetanalyzer/orchestration//renovate-presets/default"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed kubectl release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"kubectl\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed Helm release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"helm\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "helm/helm",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed Tilt release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"tilt\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "tilt-dev/tilt",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed Kind release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"kind\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "kubernetes-sigs/kind",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed actionlint release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"actionlint\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "rhysd/actionlint",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed Go release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"go\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "go",
+      "datasourceTemplate": "golang-version",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the reviewed mitmproxy release",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"mitmproxy\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"normal-user\",\\s*\"method\"\\s*:\\s*\"pipx\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "mitmproxy",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440"
+    },
+    {
+      "customType": "regex",
+      "description": "Discover the NodeSource major line",
+      "managerFilePatterns": [
+        "/^native\\/toolchain\\.json$/"
+      ],
+      "matchStrings": [
+        "\"nodesource\"\\s*:\\s*\\{[^{}]*\"source\"\\s*:\\s*\"deb \\[signed-by=/etc/apt/keyrings/nodesource\\.gpg\\] https://deb\\.nodesource\\.com/node_(?<currentValue>\\d+)\\.x nodistro main\""
+      ],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version",
+      "versioningTemplate": "node"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Require complete checksum-coupled native binary review",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchPackageNames": [
+        "kubernetes/kubernetes",
+        "helm/helm",
+        "tilt-dev/tilt",
+        "kubernetes-sigs/kind",
+        "rhysd/actionlint",
+        "go"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "dependencies",
+        "checksum-required"
+      ],
+      "prBodyNotes": [
+        "This version-only proposal is intentionally incomplete. Review and update the amd64 and arm64 release URLs and SHA-256 values, `version_pattern`, versioned `destination` where applicable, architecture support, lifecycle compatibility, and any matching orchestration contract before merge. Renovate does not calculate or verify these companion inputs."
+      ]
+    },
+    {
+      "description": "Keep native npm snapshots review-complete",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchFileNames": [
+        "native/npm/package.json"
+      ],
+      "prBodyNotes": [
+        "Before merge, keep the direct version, lock entries, registry tarball URLs, integrity values, and matching `native/toolchain.json` records aligned. Playwright updates must also refresh its Chromium-derived reviewed inputs."
+      ]
+    },
+    {
+      "description": "Keep NodeSource major selection review-complete",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchPackageNames": [
+        "node"
+      ],
+      "prBodyNotes": [
+        "Review the NodeSource repository policy text, native runtime major checks, npm compatibility, and lifecycle support together with this declared major-line change."
+      ]
+    }
   ]
 }

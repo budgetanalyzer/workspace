@@ -180,6 +180,10 @@ test or workflow.
 - Run `actionlint <workflow>` after changing a retained GitHub Actions workflow.
 - Validate dependency configuration with the command in
   `docs/dependency-automation.md` after changing `renovate.json`.
+- After changing the native dependency evidence workflow or release verifier,
+  run actionlint, the offline verifier tests and the local evidence commands in
+  `docs/dependency-automation.md`. Keep public downloads under `tmp/`; never
+  treat hosted repository evidence as installed-VM state.
 - After changing image-tracing prerequisites, verify `node --version`,
   `via-annotator --version`, `via-annotator --check`, `identify -version`,
   `convert -version`, `playwright --version` and `playwright install --list`;

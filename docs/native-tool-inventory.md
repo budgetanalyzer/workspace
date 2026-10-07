@@ -36,7 +36,7 @@ The native manifest and orchestration both select Helm **3.20.1**.
 Orchestration's `check-tilt-prerequisites.sh` supports >=3.20.0 and <4.0.0;
 Helm 4 must not replace this selection. Workspace carries reviewed Linux
 kubectl/Kind/Tilt/Helm inputs matching orchestration's
-[`pinned-tool-versions.sh`](../../orchestration/scripts/lib/pinned-tool-versions.sh).
+[`pinned-tool-versions.sh`](https://github.com/budgetanalyzer/orchestration/blob/main/scripts/lib/pinned-tool-versions.sh).
 That repository also owns `install-verified-tool.sh` for focused installation,
 including its guardrail tools. Never run destructive `setup.sh` to obtain a
 binary. The manifest verifier detects divergence; resolve owner-contract
@@ -90,9 +90,10 @@ conversation skill and prompt resources also live under `native/helpers/`.
 Every command
 gets an executable user wrapper that loads the same small environment fragment.
 The read-only source/environment checker renders those wrappers under `tmp/`
-and validates shell syntax and ShellCheck. Every path in the manifest's
-`reviewed_sources` map now resolves to an active native or sibling contract.
-Native
+and validates shell syntax and ShellCheck. Every workspace-owned path in the
+manifest's `reviewed_sources` map resolves in a standalone checkout. Local
+cross-repository validation additionally resolves the sibling orchestration
+contracts. Native
 `ensure` diagnoses established ingress trust; only the explicit human trust
 installer performs privileged imports. Optional proxy
 wrappers refuse unidentified occupied listeners, keep TLS verification on and
@@ -130,17 +131,31 @@ relaxes AppArmor/native sandboxing.
 
 ## Native Verification
 
+`scripts/native/verify_release_inputs.py` is the read-only network verifier for
+the hosted dependency evidence workflow. It consumes the existing manifest,
+requires the complete `amd64`/`arm64` table, permits only credential-free HTTPS
+and HTTPS redirects, checks exact SHA-256 values and inspects tar/zip members
+without installation or execution. Its report is written incrementally so an
+unavailable or malformed later asset preserves earlier results. Keep its
+download directory under `tmp/`; never substitute its repository-input report
+for the canonical installed-VM readiness check.
+
 Run the tracked checks from the workspace root:
 
 ```bash
 PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
+PYTHONPYCACHEPREFIX=tmp/pycache python3 scripts/native/verify_release_inputs.py \
+  --manifest native/toolchain.json \
+  --output tmp/native-release-validation/release-verification.json \
+  --download-dir tmp/native-release-validation/downloads
 bash -n scripts/provision-agent-vm-guest.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/provision-agent-vm-guest.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/bwrap_profile.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_manifest.py tests/native/check_install_inputs.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/user_tools.py scripts/native/bwrap_profile.py scripts/native/verify_release_inputs.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/test_dependency_discovery.py tests/native/test_release_inputs.py tests/native/check_manifest.py tests/native/check_install_inputs.py
+actionlint .github/workflows/native-dependency-validation.yml
 git diff --check
 ```
 
