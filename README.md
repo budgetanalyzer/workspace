@@ -8,10 +8,10 @@ current host/guest boundary, repository transport and SSH-client requirements.
 
 Workspace owns native VM identity, the normal user and home, guest-local
 repository topology, rejection of forwarded authority, guest Docker selection,
-native tool versions, guest trust readiness and reusable personal-host
-isolation audit tooling. Orchestration owns application bootstrap, the exact
-local Kind target, Tilt, ingress-file validation and Kubernetes Secret
-reconciliation.
+native tool versions, guest trust readiness, personal-host-to-VM host tunnels
+and reusable personal-host isolation audit tooling. Orchestration owns
+application bootstrap, the exact local Kind target, Tilt, ingress-file
+validation and Kubernetes Secret reconciliation.
 
 ## Native Daily Workflow
 
@@ -30,6 +30,12 @@ Then launch `codex`, `claude`, `gemini`, or `ai-run` from the repository where
 you want to work. Do not run `setup.sh` for ordinary daily startup; it recreates
 Kind. The complete bootstrap, daily-use and troubleshooting procedures live in
 [Getting Started](../orchestration/docs/development/getting-started.md#development-vm-native-workflow).
+
+For personal-host browser access after the guest application is running, start
+the documented foreground host tunnel for application HTTPS and the Tilt UI.
+The one-time narrow host authorization, daily command, checks, and separate
+optional observability path live in
+[Personal-Host Access](docs/host-isolation.md#personal-host-access).
 
 Every SSH client must preserve the documented host boundary: do not forward
 host credentials or an SSH agent, restore or create automatic port forwards,

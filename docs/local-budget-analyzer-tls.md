@@ -17,6 +17,12 @@ CA material at startup or weaken HTTPS verification.
 5. `ensure-budget-analyzer-local-ca-trust` and
    `check-budget-analyzer-local-ca-trust` perform read-only diagnosis.
 
+Certificate creation, artifact transfer, guest trust, and browser transport
+are distinct concerns. This document owns the first three; the explicit
+personal-host-to-VM SSH transport is owned by
+[Personal-Host Access](host-isolation.md#personal-host-access). Establishing a
+host tunnel neither creates nor repairs certificate trust.
+
 There is no personal-host Kind cluster or "host container" in this flow. Kind,
 Tilt, the ingress listener and the Kubernetes TLS Secret all live in the
 development VM. The personal host retains the mkcert CA signing key because it

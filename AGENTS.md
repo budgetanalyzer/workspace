@@ -6,7 +6,7 @@
 **Scope:** budgetanalyzer ecosystem
 **Role:** owns native development-VM identity, provisioning, normal-user tools,
 guest-local repository and Docker boundaries, native trust readiness, helper
-resources and agent-facing workspace guidance
+resources, personal-host-to-VM host tunnels and agent-facing workspace guidance
 
 This repository provides the supported native development environment. It does
 not own application code or active service architecture. Agents run directly
@@ -58,10 +58,15 @@ find .github/workflows -maxdepth 1 -type f | sort
 - Read `../orchestration/docs/development/getting-started.md` before changing
   how this workspace relates to ecosystem startup.
 - Read `docs/host-isolation.md` before changing repository transport, guest
-  Docker selection, credentials, SSH-client guidance or native runtime
-  boundaries. Keep initial bulk repository setup and later single-repository
-  additions aligned through `scripts/setup-agent-vm-repositories.sh` and
+  Docker selection, credentials, SSH-client guidance, personal-host tunnels,
+  host-loopback exposure or native runtime boundaries. Keep initial bulk
+  repository setup and later single-repository additions aligned through
+  `scripts/setup-agent-vm-repositories.sh` and
   `scripts/add-agent-vm-repository.sh`.
+- Read `../orchestration/docs/OWNERSHIP.md` and the nearest orchestration owner
+  document before changing a cross-repository access boundary. Workspace owns
+  explicit personal-host-to-VM host tunnels and host-loopback exposure;
+  orchestration owns guest publication plus application and cluster state.
 - Read `docs/host-isolation-audit.md` before changing personal-host audit
   collection, private configuration, verifier, protocol fixtures, evidence
   handling or host-policy handoff. Keep concrete topology, policy and evidence
@@ -144,6 +149,10 @@ test or workflow.
 - Keep application bootstrap, the exact local Kind target, Tilt and Kubernetes
   mutation in orchestration. Workspace checks native readiness and must not
   absorb application or cluster-state checks.
+- Keep SSH profile, host-tunnel and host-loopback transport guidance in
+  workspace. Keep endpoint selection, guest publication lifecycle, health and
+  authentication in orchestration; coordinate owner-document changes when the
+  boundary changes.
 - Run agents natively in the development VM as its normal development user.
   Reserve guest Docker for application workloads such as Kind and
   Testcontainers.
