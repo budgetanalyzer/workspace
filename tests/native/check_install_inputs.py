@@ -103,6 +103,14 @@ def validate_source(root):
         require(entry.get('integrity') == tool.get('integrity'),
                 f'{name}: reviewed integrity mismatch')
 
+    playwright = npm_tools.get('playwright', {}).get('version')
+    require(isinstance(playwright, str), 'reviewed Playwright version missing')
+    require(f'playwright-core {playwright} ' in manifest.get('chromium_apt_source', ''),
+            'Chromium apt source and Playwright version mismatch')
+    require(manifest.get('user_tools', {}).get('chromium', {}).get('version') ==
+            f'selected-by-playwright-{playwright}',
+            'Chromium selection and Playwright version mismatch')
+
     for package_path, entry in packages.items():
         if not package_path:
             continue

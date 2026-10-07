@@ -1,6 +1,7 @@
 """Focused safety checks for the human-run system provisioner."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -190,6 +191,14 @@ class ProvisionSafetyTests(unittest.TestCase):
             self.assertFalse(any(privileged for _, privileged in probe.calls))
             self.assertFalse(any(args[0] == 'curl' for args, _ in probe.calls))
 
+    def assert_manifest_rejected(self, mutate, message):
+        manifest = json.loads(provision.MANIFEST.read_text())
+        mutate(manifest)
+        path = self.root / 'toolchain.json'
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(provision.ProvisionError, message):
+            provision.load_manifest(path)
+
     def test_invalid_targets_reject_before_sudo_or_download(self):
         cases = (
             ('wrong OS', lambda p: p.path('/etc/os-release').write_text(
@@ -221,6 +230,43 @@ class ProvisionSafetyTests(unittest.TestCase):
         self.assertEqual([], probe.privileged)
         self.assertEqual(1, len(probe.downloads))
         self.assertEqual(work / 'kind.download', probe.downloads[0][1])
+
+    def test_download_version_requires_matching_urls(self):
+        self.assert_manifest_rejected(
+            lambda manifest: manifest['downloads']['kind'].update(
+                {'version': 'v0.31.1'}),
+            'kind/amd64: URL does not match reviewed version',
+        )
+
+    def test_download_version_requires_matching_validation_pattern(self):
+        def mutate(manifest):
+            tool = manifest['downloads']['kind']
+            tool['version'] = 'v0.31.1'
+            for release in tool['platforms'].values():
+                release['url'] = release['url'].replace('0.31.0', '0.31.1')
+
+        self.assert_manifest_rejected(
+            mutate, 'kind: validation pattern does not match reviewed version')
+
+    def test_go_version_requires_matching_destination(self):
+        def mutate(manifest):
+            tool = manifest['downloads']['go']
+            tool['version'] = '1.24.2'
+            tool['version_pattern'] = r'(?<![0-9.])1\.24\.2(?![0-9.])'
+            for release in tool['platforms'].values():
+                release['url'] = release['url'].replace('1.24.1', '1.24.2')
+
+        self.assert_manifest_rejected(
+            mutate, 'go: destination does not match reviewed version')
+
+    def test_node_major_requires_matching_repository_policy(self):
+        self.assert_manifest_rejected(
+            lambda manifest: manifest['repositories']['nodesource'].update({
+                'source': manifest['repositories']['nodesource']['source'].replace(
+                    'node_24.x', 'node_25.x'),
+            }),
+            'nodesource: policy does not match NodeSource major selection',
+        )
 
     def test_repeat_with_healthy_docker_never_installs_or_restarts(self):
         probe = RepeatProbe()

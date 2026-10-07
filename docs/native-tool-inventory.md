@@ -130,17 +130,31 @@ relaxes AppArmor/native sandboxing.
 
 ## Native Verification
 
+`scripts/native/verify_release_inputs.py` is the read-only network verifier for
+the hosted dependency evidence workflow. It consumes the existing manifest,
+requires the complete `amd64`/`arm64` table, permits only credential-free HTTPS
+and HTTPS redirects, checks exact SHA-256 values and inspects tar/zip members
+without installation or execution. Its report is written incrementally so an
+unavailable or malformed later asset preserves earlier results. Keep its
+download directory under `tmp/`; never substitute its repository-input report
+for the canonical installed-VM readiness check.
+
 Run the tracked checks from the workspace root:
 
 ```bash
 PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
+PYTHONPYCACHEPREFIX=tmp/pycache python3 scripts/native/verify_release_inputs.py \
+  --manifest native/toolchain.json \
+  --output tmp/native-release-validation/release-verification.json \
+  --download-dir tmp/native-release-validation/downloads
 bash -n scripts/provision-agent-vm-guest.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/provision-agent-vm-guest.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/bwrap_profile.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_manifest.py tests/native/check_install_inputs.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/provision.py scripts/native/user_tools.py scripts/native/bwrap_profile.py scripts/native/verify_release_inputs.py tests/native/test_provision.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/test_dependency_discovery.py tests/native/test_release_inputs.py tests/native/check_manifest.py tests/native/check_install_inputs.py
+actionlint .github/workflows/native-dependency-validation.yml
 git diff --check
 ```
 
