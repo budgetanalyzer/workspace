@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Offline native manifest, capability and local-link checks."""
+import argparse
 import importlib.util
 import json
 from pathlib import Path
 import re
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--workspace-only', action='store_true',
+    help='skip sibling orchestration source and contract checks')
+args = parser.parse_args()
 
 REPO = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
@@ -20,10 +27,14 @@ for command, helper in data['helpers'].items():
     assert helper['method'] == 'reviewed-native-user-helper-install'
 
 for key in ('aliases', 'settings', 'skill', 'system_prompt',
-            'system_prompt_addon', 'npm_lock', 'helm_contract',
-            'orchestration_tools'):
+            'system_prompt_addon', 'npm_lock'):
     source = REPO / data['reviewed_sources'][key]
     assert source.is_file(), f'reviewed source missing: {key}={source}'
+
+if not args.workspace_only:
+    for key in ('helm_contract', 'orchestration_tools'):
+        source = REPO / data['reviewed_sources'][key]
+        assert source.is_file(), f'reviewed source missing: {key}={source}'
 
 settings = json.loads((REPO / data['reviewed_sources']['settings']).read_text())
 hook = settings['hooks']['SessionStart'][0]['hooks'][0]
@@ -33,18 +44,20 @@ assert hook == {
                 'cat "$CLAUDE_PROJECT_DIR/AGENTS.md"; fi'),
 }, 'managed AGENTS.md SessionStart hook drift'
 
-# This repository consumes orchestration's current binary contract without
-# changing sibling source.
-contract = (REPO.parent / 'orchestration/scripts/lib/pinned-tool-versions.sh').read_text()
-for name in ('kubectl', 'helm', 'tilt', 'kind'):
-    match = re.search(rf'PHASE7_{name.upper()}_VERSION="([^"]+)"', contract)
-    assert match and data['downloads'][name]['version'] == match.group(1), (
-        f'orchestration {name} version drift')
-    for arch in data['architectures']:
-        release = data['downloads'][name]['platforms'][arch]
-        assert re.search(
-            rf'{name}:linux-{arch}\).*?{release["sha256"]}', contract), (
-            f'orchestration {name}/{arch} checksum drift')
+if not args.workspace_only:
+    # Local native validation consumes orchestration's current binary contract
+    # without changing sibling source. Standalone hosted CI validates only this
+    # repository's committed inputs.
+    contract = (REPO.parent / 'orchestration/scripts/lib/pinned-tool-versions.sh').read_text()
+    for name in ('kubectl', 'helm', 'tilt', 'kind'):
+        match = re.search(rf'PHASE7_{name.upper()}_VERSION="([^"]+)"', contract)
+        assert match and data['downloads'][name]['version'] == match.group(1), (
+            f'orchestration {name} version drift')
+        for arch in data['architectures']:
+            release = data['downloads'][name]['platforms'][arch]
+            assert re.search(
+                rf'{name}:linux-{arch}\).*?{release["sha256"]}', contract), (
+                f'orchestration {name}/{arch} checksum drift')
 
 for name in ('go', 'kind', 'kubectl', 'helm', 'tilt', 'actionlint'):
     for arch in data['architectures']:
@@ -80,5 +93,7 @@ print(
     'Manifest/capability/links PASS: '
     f'{len(data["apt"])} apt inputs, {len(data["downloads"])} downloads on '
     f'{len(data["architectures"])} architectures, {len(data["helpers"])} '
-    'native command mappings; orchestration contract matched.'
+    'native command mappings; '
+    + ('workspace-owned inputs checked.' if args.workspace_only
+       else 'orchestration contract matched.')
 )

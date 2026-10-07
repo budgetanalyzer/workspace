@@ -36,7 +36,7 @@ The native manifest and orchestration both select Helm **3.20.1**.
 Orchestration's `check-tilt-prerequisites.sh` supports >=3.20.0 and <4.0.0;
 Helm 4 must not replace this selection. Workspace carries reviewed Linux
 kubectl/Kind/Tilt/Helm inputs matching orchestration's
-[`pinned-tool-versions.sh`](../../orchestration/scripts/lib/pinned-tool-versions.sh).
+[`pinned-tool-versions.sh`](https://github.com/budgetanalyzer/orchestration/blob/main/scripts/lib/pinned-tool-versions.sh).
 That repository also owns `install-verified-tool.sh` for focused installation,
 including its guardrail tools. Never run destructive `setup.sh` to obtain a
 binary. The manifest verifier detects divergence; resolve owner-contract
@@ -90,9 +90,10 @@ conversation skill and prompt resources also live under `native/helpers/`.
 Every command
 gets an executable user wrapper that loads the same small environment fragment.
 The read-only source/environment checker renders those wrappers under `tmp/`
-and validates shell syntax and ShellCheck. Every path in the manifest's
-`reviewed_sources` map now resolves to an active native or sibling contract.
-Native
+and validates shell syntax and ShellCheck. Every workspace-owned path in the
+manifest's `reviewed_sources` map resolves in a standalone checkout. Local
+cross-repository validation additionally resolves the sibling orchestration
+contracts. Native
 `ensure` diagnoses established ingress trust; only the explicit human trust
 installer performs privileged imports. Optional proxy
 wrappers refuse unidentified occupied listeners, keep TLS verification on and

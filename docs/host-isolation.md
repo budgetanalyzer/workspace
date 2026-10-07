@@ -14,7 +14,7 @@ native tool versions, OS/NSS trust readiness and the complete read-only runtime
 check. Orchestration owns application bootstrap and daily startup, the exact
 local Kind target, Tilt, ingress-file validation and Kubernetes Secret
 reconciliation. The
-[Getting Started guide](../../orchestration/docs/development/getting-started.md#development-vm-native-workflow)
+[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-native-workflow)
 is the current end-to-end workflow. The
 [personal-host isolation audit](host-isolation-audit.md) owns human-only
 evidence collection, private topology review, the configurable live verifier,
@@ -252,7 +252,7 @@ Launch `codex`, `claude`, `gemini` or `ai-run` from the relevant guest working
 clone. Agent exit and reentry are independent of Tilt, Docker and Kind.
 
 For first bootstrap or an intentional clean application rebuild, follow the
-[Getting Started guide](../../orchestration/docs/development/getting-started.md#development-vm-first-bootstrap).
+[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-first-bootstrap).
 Orchestration `./setup.sh` recreates Kind and is not a daily-start
 command. Do not import host Docker state or move Docker data into a shared path.
 
@@ -381,6 +381,6 @@ These ports are unprivileged, so this command deliberately does not use
 observability separate prevents an optional port collision from taking down
 application/Tilt access and avoids publishing observability surfaces when they
 are not needed. Orchestration's
-[Observability](../../orchestration/docs/architecture/observability.md#access)
+[Observability](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/observability.md#access)
 owner document and foreground helper remain authoritative for component
 identity, guest publication ports, authentication, health checks, and URLs.

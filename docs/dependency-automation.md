@@ -82,8 +82,10 @@ manual dispatch. It has only `contents: read`, uses the Node 24 action baseline
 and never invokes a provisioner, `sudo`, Docker, Kind, Tilt, trust installation
 or a self-hosted runner.
 
-The job runs the strict pinned Renovate validator and the complete offline
-native validation contract, including committed-source lock closure. It then
+The job runs the strict pinned Renovate validator and the standalone,
+workspace-owned offline native validation contract, including committed-source
+lock closure. Sibling orchestration contract parity remains part of local
+native validation and is intentionally excluded from hosted CI. The job then
 downloads every `native/toolchain.json` public release asset for both `amd64`
 and `arm64` into temporary storage, verifies each declared SHA-256 and checks
 safe archive shape where installation extracts an archive. It never executes

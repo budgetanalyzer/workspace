@@ -169,7 +169,7 @@ jobs:
               python3 -m unittest discover -s tests/native -v
           record_check native-manifest \
             env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_manifest.py
+              python3 tests/native/check_manifest.py --workspace-only
           record_check committed-install-inputs \
             env PYTHONPYCACHEPREFIX=tmp/pycache \
               python3 tests/native/check_install_inputs.py --publication committed
