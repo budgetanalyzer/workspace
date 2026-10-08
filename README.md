@@ -69,6 +69,17 @@ documented human preparation or trust workflow; callers must not substitute a
 partial check. Exact versions and capabilities remain solely in
 [`native/toolchain.json`](native/toolchain.json).
 
+## Docker Sandboxes
+
+Docker Sandboxes (`sbx`) is being monitored as a possible future replacement
+for some of this repository's native VM and agent-runtime machinery. It offers
+promising microVM isolation, private Docker daemons and policy-controlled host
+integrations, but the product and those integration surfaces are still
+maturing. For now, the dedicated development VM remains the supported boundary:
+it relies on mature, inspectable virtualization components and deliberately
+exposes fewer filesystem, credential and host-service paths, making its
+security boundary less fragile for this environment.
+
 ## Personal-Host Isolation Audit
 
 Workspace owns the reusable human-only audit runbook, read-only evidence
