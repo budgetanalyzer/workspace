@@ -97,6 +97,11 @@ find .github/workflows -maxdepth 1 -type f | sort
 - When launching Claude Code for focused work here, prefer
   `--disallowedTools "Agent"`.
 
+## Path Portability
+
+Use repository-relative, sibling-relative, or dynamically resolved paths.
+Never hardcode machine-specific checkout locations such as `/workspace`.
+
 ## Custom System Prompt
 
 Using `claude-with-custom-system-prompt` is optional. Plain `claude` and the
