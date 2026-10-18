@@ -96,6 +96,12 @@ def sha256(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def semantic_version(value, context):
+    match = re.search(r'(?<![0-9.])v?(\d+)\.(\d+)\.(\d+)(?![0-9.])', value)
+    require(match, f'could not determine {context} semantic version')
+    return tuple(int(part) for part in match.groups())
+
+
 class Provisioner:
     """Fixtures substitute OS observations/commands, never production gates."""
     def __init__(self, manifest, user):
@@ -234,19 +240,33 @@ class Provisioner:
                     self.root_owned(destination)
                     require(not destination.is_symlink(), 'VIA directory symlink collision')
                     asset = destination / 'via_image_annotator.html'
-                    require(asset.is_file() and not asset.is_symlink() and sha256(asset) == tool['asset_sha256'], 'existing VIA asset collision')
+                    require(asset.is_file() and not asset.is_symlink(), 'existing VIA asset collision')
                     require((destination / 'LICENSE').is_file() and (destination / 'README.md').is_file(), 'incomplete VIA installation')
+                    via_version = re.search(r"const _VIA_VERSION = '([^']+)'", asset.read_text())
+                    require(via_version, 'could not determine installed VIA semantic version')
+                    installed = semantic_version(via_version.group(1), 'installed VIA')
+                    selected = semantic_version(tool['version'], 'selected VIA')
+                    require(installed <= selected,
+                            f"existing VIA {'.'.join(map(str, installed))} is newer than reviewed {tool['version']}")
+                    if installed < selected:
+                        self.pending[name] = tool
+                    else:
+                        require(sha256(asset) == tool['asset_sha256'], 'existing VIA asset collision')
                     continue
             elif self.which(name):
                 self.root_owned(Path(self.which(name)))
                 self.root_owned(Path(self.which(name)).resolve())
                 result = self.command(tool['check'])
-                require(re.search(tool['version_pattern'], result.stdout + result.stderr),
-                        f"existing {name} version collision; expected {tool['version']}; review before replacing")
+                installed = semantic_version(result.stdout + result.stderr, f'installed {name}')
+                selected = semantic_version(tool['version'], f'selected {name}')
+                require(installed <= selected,
+                        f"existing {name} {'.'.join(map(str, installed))} is newer than reviewed {tool['version']}")
                 if name == 'go':
                     require(self.which('gofmt'), 'existing Go installation lacks gofmt; review before repair')
                     self.root_owned(Path(self.which('gofmt')))
                     self.root_owned(Path(self.which('gofmt')).resolve())
+                if installed < selected:
+                    self.pending[name] = tool
                 continue
             require(not destination.exists() and not destination.is_symlink(), f'destination collision: {destination}')
             parent = destination.parent
@@ -283,8 +303,12 @@ class Provisioner:
         return sorted(result.stdout.splitlines())
 
     def download(self, url, destination):
-        self.command(['curl', '--fail', '--show-error', '--silent', '--location', '--proto', '=https',
-                      '--proto-redir', '=https', '--output', str(destination), url])
+        print(f'Downloading {url}', flush=True)
+        self.command(['curl', '--fail', '--show-error', '--silent', '--location',
+                      '--connect-timeout', '10', '--max-time', '45', '--retry', '2',
+                      '--retry-max-time', '90', '--retry-all-errors',
+                      '--proto', '=https', '--proto-redir', '=https',
+                      '--output', str(destination), url])
 
     def key_fingerprints(self, key, work):
         result = self.command(['gpg', '--homedir', str(work / 'gnupg'), '--batch', '--show-keys', '--with-colons', str(key)])
@@ -378,7 +402,7 @@ class Provisioner:
                 self.command(['install', '-d', '-m', '0755', str(destination)], privileged=True)
                 self.command(['cp', '-R', '--no-preserve=ownership', str(source / 'go') + '/.', str(destination)], privileged=True)
                 for binary in ('go', 'gofmt'):
-                    self.command(['ln', '-s', str(destination / 'bin' / binary), str(self.path('/usr/local/bin/' + binary))], privileged=True)
+                    self.command(['ln', '-sfn', str(destination / 'bin' / binary), str(self.path('/usr/local/bin/' + binary))], privileged=True)
             elif tool['method'] == 'via':
                 for filename in ('via_image_annotator.html', 'LICENSE', 'README.md'):
                     self.copy_file(source / filename, tool['destination'] + '/' + filename, '0444')

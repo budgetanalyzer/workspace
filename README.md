@@ -149,8 +149,9 @@ affected workers. The repeatable system/user preparation entry point is:
 
 It is for first preparation or an explicitly reviewed repair, not daily agent
 startup. It rejects unsupported operating systems, containers, remote Docker
-endpoints, unsafe ownership, credential bridges and version collisions while
-preserving healthy guest Docker workloads.
+endpoints, unsafe ownership, credential bridges and unreviewed newer tool
+versions while replacing older managed tools and preserving healthy guest
+Docker workloads.
 
 After reviewed helper, settings or manifest changes are transferred, the human
 must end affected workers and rerun the focused normal-user installer/check
