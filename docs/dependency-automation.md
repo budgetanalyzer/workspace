@@ -122,12 +122,12 @@ Run these checks after changing workspace dependency discovery:
 
 ```bash
 NPM_CONFIG_CACHE=tmp/renovate-npm-cache \
-  npx --yes --package renovate@44.65.5 renovate-config-validator \
+  npx --yes --package renovate@44.167.1 renovate-config-validator \
   --strict --no-global renovate.json
 NPM_CONFIG_CACHE=tmp/renovate-npm-cache \
 RENOVATE_CACHE_DIR=tmp/renovate-cache \
 LOG_LEVEL=debug \
-  npx --yes --package renovate@44.65.5 renovate \
+  npx --yes --package renovate@44.167.1 renovate \
   --platform=local --dry-run=full
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py

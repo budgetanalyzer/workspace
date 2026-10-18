@@ -234,16 +234,16 @@ class ProvisionSafetyTests(unittest.TestCase):
     def test_download_version_requires_matching_urls(self):
         self.assert_manifest_rejected(
             lambda manifest: manifest['downloads']['kind'].update(
-                {'version': 'v0.31.1'}),
+                {'version': 'v0.33.1'}),
             'kind/amd64: URL does not match reviewed version',
         )
 
     def test_download_version_requires_matching_validation_pattern(self):
         def mutate(manifest):
             tool = manifest['downloads']['kind']
-            tool['version'] = 'v0.31.1'
+            tool['version'] = 'v0.33.1'
             for release in tool['platforms'].values():
-                release['url'] = release['url'].replace('0.31.0', '0.31.1')
+                release['url'] = release['url'].replace('0.33.0', '0.33.1')
 
         self.assert_manifest_rejected(
             mutate, 'kind: validation pattern does not match reviewed version')

@@ -30,9 +30,13 @@ signing keys remain distribution-managed.
 Release tools use exact manifest pins and reviewed SHA-256 values. Go's
 lifecycle review remains the shared policy's human responsibility. Refresh
 versions, URLs, both architecture checksums and validation patterns together.
-Do not use an unverified architecture-specific download.
+Do not use an unverified architecture-specific download. The provisioner
+replaces an older managed release with the reviewed manifest release, retains
+an equal release, and rejects an installed release that is newer than the
+reviewed selection. Release downloads use bounded connection and transfer
+timeouts with bounded retries so an unavailable upstream fails visibly.
 
-The native manifest and orchestration both select Helm **3.20.1**.
+The native manifest and orchestration both select Helm **3.22.1**.
 Orchestration's `check-tilt-prerequisites.sh` supports >=3.20.0 and <4.0.0;
 Helm 4 must not replace this selection. Workspace carries reviewed Linux
 kubectl/Kind/Tilt/Helm inputs matching orchestration's
