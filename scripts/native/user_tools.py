@@ -49,15 +49,10 @@ def is_private_primary_group(user, primary_gid, path_gid):
 
 
 def merge_settings(settings, overlay):
-    """Own only the two controls and one hook; preserve all other user keys."""
+    """Own only the two controls; preserve all other user keys."""
     result = json.loads(json.dumps(settings))
     for key in ('promptSuggestionEnabled', 'autoCompactEnabled'):
         result[key] = overlay[key]
-    hooks = result.setdefault('hooks', {}).setdefault('SessionStart', [])
-    managed = overlay['hooks']['SessionStart'][0]
-    command = managed['hooks'][0]['command']
-    if not any(h.get('command') == command for group in hooks for h in group.get('hooks', [])):
-        hooks.append(managed)
     return result
 
 
@@ -273,7 +268,7 @@ class UserTools:
         targets.update({name: f'"{self.root}/pipx-bin/{name}"' for name in
                         ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump')})
         helper_sources = {'ai-run': 'ai-run.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
-                          'statusline-command': 'statusline-command.sh', 'mitmflows': 'mitmflows',
+                          'mitmflows': 'mitmflows',
                           'mitmflow-body': 'mitmflow-body', 'mitmflow-detail': 'mitmflow-detail',
                           'mitmflow-render.py': 'mitmflow-render.py'}
         for name, source in helper_sources.items():
@@ -403,10 +398,7 @@ class UserTools:
         settings_path = self.home / '.claude/settings.json'
         require(settings_path.is_file(), 'managed provider settings missing')
         settings = json.loads(settings_path.read_text())
-        require(merge_settings(settings, overlay) == settings, 'managed controls/hook missing or stale')
-        hook = overlay['hooks']['SessionStart'][0]['hooks'][0]['command']
-        require(sum(h.get('command') == hook for g in settings['hooks']['SessionStart'] for h in g.get('hooks', [])) == 1,
-                'duplicate managed SessionStart hook; inspect privately')
+        require(merge_settings(settings, overlay) == settings, 'managed controls missing or stale')
         skill = self.home / '.claude/skills/save-conversation/SKILL.md'
         require(skill.is_file() and skill.read_bytes() == (REPO / 'native/helpers/skills/save-conversation/SKILL.md').read_bytes(),
                 'managed conversation skill missing/stale')

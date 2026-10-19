@@ -457,13 +457,6 @@
       "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
       "native_source": "scripts/native/proxy.py"
     },
-    "statusline-command": {
-      "owner": "normal-user",
-      "method": "reviewed-native-user-helper-install",
-      "policy": "workspace-revision",
-      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
-      "native_source": "native/helpers/statusline-command.sh"
-    },
     "via-annotator": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",

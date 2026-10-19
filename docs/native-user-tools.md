@@ -166,14 +166,11 @@ entire managed shell configuration. It resolves `JAVA_HOME` from installed `java
 system home, consistent browser/package paths and the combined system CA bundle
 for Python, requests and Node. It exports no proxy or credentials.
 
-Claude configuration merges only `promptSuggestionEnabled`, `autoCompactEnabled`
-and the AGENTS SessionStart command from the reviewed overlay. Other settings,
+Claude configuration merges only `promptSuggestionEnabled` and
+`autoCompactEnabled` from the reviewed overlay. Other settings,
 permission/model choices and user hooks survive. The file-only conversation
 skill is retained byte-for-byte. An unrelated existing skill/command, changed
 managed resource, symlink or altered npm lock stops for private human review.
-The statusline helper is installed but remains optional and is never activated
-or invoked during installation; an explicit invocation can use this user's
-Claude OAuth state. Its private cache stays under workspace `tmp/`.
 
 `installation.json` records source revisions/dirty paths, home/user, repository
 parents, reviewed versions, npm-lock SHA256 and resolved mitmproxy dependencies.
@@ -454,7 +451,7 @@ under workspace `tmp/mitmproxy-private`, and scope proxy/trust variables to that
 provider process. Their bundle is removed on exit. No system/NSS inspection-root
 import, global proxy export or upstream bypass runs. Raw `start-proxy` starts
 only the UI/proxy; it does not proxy ordinary sessions. Flow renderer exports
-stay under workspace `tmp/mitmproxy-flows`; addon dumps and statusline caches
+stay under workspace `tmp/mitmproxy-flows`; addon dumps
 are private files under workspace `tmp/`. Full captured requests can contain
 secrets; inspect/clean those directories privately after stopping listeners.
 

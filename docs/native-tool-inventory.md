@@ -122,10 +122,9 @@ commands for its validation, not live help invocation.
 | `mitmflows`, `mitmflow-detail`, `mitmflow-body`, `mitmflow-render.py` | `native/helpers/`; Bash + Python stdlib rendering/export with repository-`tmp/` boundaries |
 | `ensure-budget-analyzer-local-ca-trust`, `check-budget-analyzer-local-ca-trust` | `scripts/native/local_ca.py`; read-only exact-origin diagnosis. The separate human installer owns scoped OS/NSS mutation and identity-checked legacy convergence |
 | `via-annotator` | `native/helpers/via-annotator.sh`; asset validation, strict `127.0.0.1` foreground serving and clean stop |
-| `statusline-command` | `native/helpers/statusline-command.sh`; optional normal-home credentials and repository-`tmp/` cache; never activated or invoked by installation |
 | Prompt addon and text | `native/helpers/system-prompt-addon.py` and `system-prompt.md`; required prefix/cache-control preservation, ancillary pass-through and private dumps |
 | Conversation skill | `native/helpers/skills/save-conversation/SKILL.md`; exact file-only installation with collision checks |
-| Settings overlay | `native/helpers/settings-overlay.json`; merges only the AGENTS SessionStart hook and two reviewed controls while preserving unrelated settings |
+| Settings overlay | `native/helpers/settings-overlay.json`; merges only two reviewed controls while preserving unrelated settings |
 | Optional aliases | `native/helpers/bash_aliases.sh`; explicit model/effort/permission choices. Shell startup loads only the environment; aliases remain opt-in |
 
 The inventory deliberately preserves optional proxy, annotation and browser

@@ -45,7 +45,7 @@ find scripts -maxdepth 1 -type f | sort
 find tests/native -maxdepth 1 -type f | sort
 
 # Relevant native behavior
-rg -n "proxy|system-prompt|SessionStart|statusline" native scripts docs
+rg -n "proxy|system-prompt" native scripts docs
 
 # Dependency automation configuration
 find .github/workflows -maxdepth 1 -type f | sort

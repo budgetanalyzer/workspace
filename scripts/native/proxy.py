@@ -85,7 +85,7 @@ def launch(action, user_args):
             env['CODEX_REASONING_EFFORT'] = 'xhigh'
         if action.startswith('claude'):
             env.update(CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS='true', ENABLE_CLAUDEAI_MCP_SERVERS='false',
-                       CLAUDE_CODE_EFFORT_LEVEL='max', CLAUDE_CODE_DISABLE_1M_CONTEXT='1')
+                       CLAUDE_CODE_DISABLE_1M_CONTEXT='1')
             if 'custom-system-prompt' in action:
                 env.update(CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING='1', MAX_THINKING_TOKENS='128000')
         proxy = subprocess.Popen(args, env=os.environ.copy(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
