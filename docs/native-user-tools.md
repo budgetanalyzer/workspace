@@ -186,6 +186,33 @@ installation. An explicit npm refresh requires reviewing both manifest and lock,
 then privately removing only this managed npm environment and rerunning; the
 installer refuses to perform that removal or upgrade automatically.
 
+### Claude Settings Replacement
+
+A separate, human-run script makes `~/.claude/settings.json` match the reviewed
+file `native/helpers/claude-settings.json`. It is not an installed command and
+not a `toolchain.json` entry, and it is independent of the user installer:
+
+```bash
+python3 scripts/native/claude_settings.py check    # read-only: 0 equal, 1 differs, 2 unreadable/invalid
+python3 scripts/native/claude_settings.py apply
+```
+
+`apply` is idempotent. If the parsed JSON already equals the canonical file it
+prints "already up to date" and changes nothing. Otherwise it copies the existing
+file to `settings.json.bak-YYYYmmddTHHMMSS` beside it, then atomically replaces
+it with the canonical content (mode `0600`). A missing file is created without a
+backup; a symlink or non-regular target is refused. Use `--settings-path PATH`
+to target another file.
+
+This is a full replacement: keys not in the canonical file are dropped, so edit
+`native/helpers/claude-settings.json` to keep a new setting. It removes the
+legacy `SessionStart` hook, so Claude Code's native `AGENTS.md` loading is the
+only source and the text appears once. The installer's overlay merge
+(`promptSuggestionEnabled`, `autoCompactEnabled`) leaves the replaced file
+unchanged, so the two do not conflict. See
+[Lean Inspection Launchers](launch-options.md#lean-inspection-launchers) for the
+launch side.
+
 ## Canonical Read-Only Native Runtime Contract
 
 `scripts/check-agent-vm-tools.sh` is the sole native runtime interface for
@@ -386,6 +413,7 @@ selection and permission mode actually ran.
 | `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
 | `claude-with-proxy` | Plain Claude permission arguments, inspection only |
 | Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
+| `claude-lean-proxy`, `lean-proxy-*` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; flags and environment scoped to the launch; opt-in through `aliases.sh` |
 | Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.

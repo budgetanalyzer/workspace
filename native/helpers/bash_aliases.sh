@@ -22,3 +22,38 @@ alias codex-max="env CODEX_REASONING_EFFORT=xhigh codex-lean"
 alias codex-proxy="codex-with-proxy"
 alias codex-high-proxy="env CODEX_REASONING_EFFORT=high codex-with-proxy"
 alias codex-max-proxy="codex-max-with-proxy"
+
+# -- Lean proxy inspection ----------------------------------------------------
+# claude-with-proxy with a minimal tool surface at a chosen effort level, for
+# capturing the full system prompt in mitmweb. Always bypasses permissions.
+# Usage: claude-lean-proxy EFFORT [claude args...]
+claude-lean-proxy() {
+  local effort="${1:-}"
+  case "$effort" in
+    low | medium | high | xhigh | max) shift ;;
+    *)
+      echo "claude-lean-proxy: effort must be one of low|medium|high|xhigh|max" >&2
+      return 2
+      ;;
+  esac
+  CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
+    CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 \
+    CLAUDE_CODE_DISABLE_AGENT_VIEW=1 \
+    CLAUDE_CODE_DISABLE_CRON=1 \
+    CLAUDE_CODE_DISABLE_BUNDLED_SKILLS=1 \
+    CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1 \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false \
+    claude-with-proxy \
+    --dangerously-skip-permissions \
+    --effort "$effort" \
+    --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write}" \
+    --strict-mcp-config \
+    --disable-slash-commands \
+    "$@"
+}
+alias lean-proxy-low='claude-lean-proxy low'
+alias lean-proxy-medium='claude-lean-proxy medium'
+alias lean-proxy-high='claude-lean-proxy high'
+alias lean-proxy-xhigh='claude-lean-proxy xhigh'
+alias lean-proxy-max='claude-lean-proxy max'

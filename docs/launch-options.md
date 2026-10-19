@@ -78,6 +78,47 @@ optional native mitmproxy addon replaces that main prompt in flight while
 preserving required prefix blocks and passing ancillary requests through.
 The prompt and addon are canonical resources in `native/helpers/`.
 
+## Lean Inspection Launchers
+
+For capturing the full Claude system prompt, tool definitions and injected
+context with a minimal tool surface, opt in to the aliases (above) and run:
+
+```bash
+lean-proxy-medium            # also lean-proxy-low|high|xhigh|max
+claude-lean-proxy medium     # the underlying function: EFFORT [claude args...]
+```
+
+Trailing arguments forward to Claude. Plain `claude`, plain `claude-with-proxy`
+and the existing aliases are unchanged. These launchers need the inspection
+identity from [HTTPS Traffic Inspection](traffic-inspection.md); the capture and
+analysis workflow lives in
+[Analyzing The Full System Prompt](traffic-inspection.md#analyzing-the-full-system-prompt).
+
+| Setting | Purpose |
+| --- | --- |
+| `--dangerously-skip-permissions` | Always on for lean sessions; same guest-root-equivalent authority as the other high-authority launchers |
+| `--effort LEVEL` | Per-launch effort as a flag, because `CLAUDE_CODE_EFFORT_LEVEL` would override `/effort` mid-session |
+| `--tools "Bash,Read,Edit,Write"` | Whitelist; omits `Agent`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Skill` and task tools |
+| `--strict-mcp-config` | Ignores all MCP servers |
+| `--disable-slash-commands` | Removes skills and their list from context |
+| `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `_BACKGROUND_TASKS`, `_AGENT_VIEW`, `_CRON`, `_BUNDLED_SKILLS`, `_FEEDBACK_SURVEY`, `_NONESSENTIAL_TRAFFIC` = `1` | Remove memory, background features and ancillary requests so flows are easier to read |
+| `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` | No prompt-suggestion requests |
+
+The variables are scoped to the launched process. `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`
+comes from `claude-with-proxy` itself (`scripts/native/proxy.py`).
+
+Override the tool list with `CLAUDE_LEAN_TOOLS`, for example
+`CLAUDE_LEAN_TOOLS="Bash,Read,Edit,Write,Grep" lean-proxy-medium`. Exact
+accepted tool names are confirmed in the live checklist in
+[traffic-inspection.md](traffic-inspection.md#human-live-verification-checklist).
+
+`--bare`, `--safe-mode` and `--restricted` are deliberately not used: Claude
+Code loads `AGENTS.md` through normal project-instruction discovery, and those
+flags disable it and/or change authentication. The old `SessionStart` hook that
+also injected `AGENTS.md` is removed by the
+[settings replacement](native-user-tools.md#claude-settings-replacement), so one
+copy appears.
+
 ## Disabling Claude Subagents
 
 For focused work in a small repository:

@@ -84,7 +84,7 @@ def launch(action, user_args):
         if action == 'codex-max-with-proxy':
             env['CODEX_REASONING_EFFORT'] = 'xhigh'
         if action.startswith('claude'):
-            env.update(CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS='true', ENABLE_CLAUDEAI_MCP_SERVERS='false',
+            env.update(CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS='1', ENABLE_CLAUDEAI_MCP_SERVERS='false',
                        CLAUDE_CODE_DISABLE_1M_CONTEXT='1')
             if 'custom-system-prompt' in action:
                 env.update(CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING='1', MAX_THINKING_TOKENS='128000')

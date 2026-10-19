@@ -1,7 +1,14 @@
 # Research: Barebones Claude Code Launch Options
 
-Status: research only. No launcher, alias, settings or `proxy.py` change has
-been made from this document.
+Status: research, now partly implemented. The lean inspection launcher
+(`claude-lean-proxy`, `lean-proxy-*`) and the settings replacement script follow
+[the launch plan](../plans/claude-lean-proxy-launch.md); see
+[Lean Inspection Launchers](../launch-options.md#lean-inspection-launchers).
+`proxy.py` now sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`. The older aliases
+still use `true` (follow-up). The open questions on tool names, `AGENTS.md`
+retention and `Agent` removal are answered by the
+[human live verification checklist](../traffic-inspection.md#human-live-verification-checklist);
+no answers are recorded here until that checklist is run.
 
 Sources: `claude --help` on Claude Code 2.1.289, the Claude Code environment
 variable and settings reference pages (fetched 2026-10-19 through a summarizing
@@ -23,7 +30,7 @@ non-essential traffic.
 |---|---|---|
 | `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1` | Valid, mostly no-op | Only affects Opus 4.6 and Sonnet 4.6. No effect on Fable, Sonnet 5+, Haiku 5.5 or Opus 4.7+, which always use adaptive reasoning. Effective only in the `*46` aliases. |
 | `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` | Valid | Removes `[1m]` variants and holds models to a 200K window. |
-| `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` | Valid, value unverified | Documented value is `1`. Whether `true` is accepted was not confirmed. `proxy.py` also uses `true`. |
+| `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true` | Valid, value unverified | Documented value is `1`. Whether `true` is accepted was not confirmed. `proxy.py` now uses `1`; the aliases still use `true`. |
 | `ENABLE_CLAUDEAI_MCP_SERVERS=false` | Undocumented | Not in the env-var reference. May be inert. Verify with `/mcp` in a session. Prefer `--strict-mcp-config`. |
 | `CLAUDE_CODE_EFFORT_LEVEL` | Valid | Accepts `low`, `medium`, `high`, `xhigh`, `max`, `auto`. Overrides `--effort` and `/effort`. |
 | `MAX_THINKING_TOKENS` | Mostly stale | Fixed budget, used only on Opus 4.6 and Sonnet 4.6 when adaptive thinking is disabled. The docs state no maximum. |
@@ -62,7 +69,7 @@ No single environment variable disables the Agent tool.
 | `--disable-slash-commands` | Disables all skills. | Removes the skill list from context. |
 | `--setting-sources user` | Skips project and local settings. | Drops repository `.claude` settings. |
 | `--bare` | No hooks, LSP, plugin sync, attribution, auto-memory, keychain reads or CLAUDE.md discovery. Sets `CLAUDE_CODE_SIMPLE=1`. | OAuth and keychain are never read. Requires `ANTHROPIC_API_KEY` or `apiKeyHelper`. Drops `AGENTS.md` instructions. |
-| `--safe-mode` | Disables CLAUDE.md, skills, plugins, hooks, MCP, agents, styles and keybindings. | Drops `AGENTS.md` instructions this repository depends on. |
+| `--safe-mode` | Disables CLAUDE.md, skills, plugins, hooks, MCP, agents, styles and keybindings. | Drops `AGENTS.md` instructions this repository depends on (loaded natively). |
 | `--restricted` | Removes command-running tools and WebFetch, ignores user, project and local settings, confines file tools to the working directories and refuses `bypassPermissions`. | Incompatible with `--dangerously-skip-permissions` and with an agent that must run commands. |
 | `--exclude-dynamic-system-prompt-sections` | Moves cwd, env and git status out of the system prompt. | Cache-reuse optimization, not a reduction. |
 | `--autocompact <auto\|tokens>` | Sets the auto-compact window. | Not needed for barebones. |
@@ -116,11 +123,12 @@ Candidate overlay for `native/helpers/settings-overlay.json`:
 }
 ```
 
-`disableAllHooks` is deliberately omitted. The session-start `AGENTS.md`
-loading appears to use a hook, and `disableAllHooks` also disables custom
-status lines. Check the overlay before adding it. At time of writing,
-`native/helpers/settings-overlay.json` has uncommitted changes in the working
-tree, so any edit must be merged against the current content.
+`disableAllHooks` is deliberately omitted because it also disables custom
+status lines. `AGENTS.md` loading is native to Claude Code and no longer uses a
+hook; the legacy `SessionStart` hook in a live settings file is removed by the
+[settings replacement](../native-user-tools.md#claude-settings-replacement).
+Merge any edit against the current content of
+`native/helpers/settings-overlay.json`.
 
 ## Recommendation
 
@@ -144,6 +152,9 @@ tree, so any edit must be merged against the current content.
    ```
 
 ## Open questions
+
+The tool-name, `AGENTS.md` retention and `Agent` removal questions are answered
+by the live checklist once a human runs it; the rest remain open.
 
 - Is `true` accepted for `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`?
 - Does `ENABLE_CLAUDEAI_MCP_SERVERS` have any effect on 2.1.289?
