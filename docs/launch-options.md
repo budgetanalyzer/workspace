@@ -12,7 +12,8 @@ automatically; opt in explicitly when needed:
 
 ## Explicit High-Authority Launchers
 
-The `dangerous`, `high`, `max` and version-selected Claude aliases use
+The `claude-dangerous`, `claude-high`, `claude-max` and version-selected
+(`claude-*45`, `claude-*46`) Claude aliases use
 `--dangerously-skip-permissions`. The `codex-dangerous`, `codex-high` and
 `codex-max` aliases delegate to `codex-lean`.
 
@@ -84,7 +85,7 @@ For capturing the full Claude system prompt, tool definitions and injected
 context with a minimal tool surface, opt in to the aliases (above) and run:
 
 ```bash
-lean-proxy-medium            # also lean-proxy-low|high|xhigh|max
+claude-lean-proxy-medium            # also claude-lean-proxy-low|high|xhigh|max
 claude-lean-proxy medium     # the underlying function: EFFORT [claude args...]
 ```
 
@@ -98,7 +99,7 @@ analysis workflow lives in
 | --- | --- |
 | `--dangerously-skip-permissions` | Always on for lean sessions; same guest-root-equivalent authority as the other high-authority launchers |
 | `--effort LEVEL` | Per-launch effort as a flag, because `CLAUDE_CODE_EFFORT_LEVEL` would override `/effort` mid-session |
-| `--tools "Bash,Read,Edit,Write"` | Whitelist; omits `Agent`, `Grep`, `Glob`, `WebFetch`, `WebSearch`, `Skill` and task tools |
+| `--tools "Bash,Read,Edit,Write,WebFetch,WebSearch"` | Whitelist; omits `Agent`, `Grep`, `Glob`, `Skill` and task tools |
 | `--strict-mcp-config` | Ignores all MCP servers |
 | `--disable-slash-commands` | Removes skills and their list from context |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `_BACKGROUND_TASKS`, `_AGENT_VIEW`, `_CRON`, `_BUNDLED_SKILLS`, `_FEEDBACK_SURVEY`, `_NONESSENTIAL_TRAFFIC` = `1` | Remove memory, background features and ancillary requests so flows are easier to read |
@@ -108,7 +109,7 @@ The variables are scoped to the launched process. `CLAUDE_CODE_DISABLE_GIT_INSTR
 comes from `claude-with-proxy` itself (`scripts/native/proxy.py`).
 
 Override the tool list with `CLAUDE_LEAN_TOOLS`, for example
-`CLAUDE_LEAN_TOOLS="Bash,Read,Edit,Write,Grep" lean-proxy-medium`. Exact
+`CLAUDE_LEAN_TOOLS="Bash,Read,Edit,Write,WebFetch,WebSearch,Grep" claude-lean-proxy-medium`. Exact
 accepted tool names are confirmed in the live checklist in
 [traffic-inspection.md](traffic-inspection.md#human-live-verification-checklist).
 

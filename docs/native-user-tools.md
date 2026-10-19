@@ -413,7 +413,7 @@ selection and permission mode actually ran.
 | `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
 | `claude-with-proxy` | Plain Claude permission arguments, inspection only |
 | Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
-| `claude-lean-proxy`, `lean-proxy-*` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; flags and environment scoped to the launch; opt-in through `aliases.sh` |
+| `claude-lean-proxy`, `claude-lean-proxy-*` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; flags and environment scoped to the launch; opt-in through `aliases.sh` |
 | Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.

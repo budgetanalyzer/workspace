@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # -- Claude Code aliases -----------------------------------------------------
 # Opus 4.6 (effort parameter supported, adaptive thinking disabled for fixed budget)
-alias dangerous='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --verbose --dangerously-skip-permissions'
-alias high='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=high MAX_THINKING_TOKENS=32000 claude --verbose --dangerously-skip-permissions'
-alias max='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=max MAX_THINKING_TOKENS=128000 claude --verbose  --dangerously-skip-permissions'
+alias claude-dangerous='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --verbose --dangerously-skip-permissions'
+alias claude-high='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=high MAX_THINKING_TOKENS=32000 claude --verbose --dangerously-skip-permissions'
+alias claude-max='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=max MAX_THINKING_TOKENS=128000 claude --verbose  --dangerously-skip-permissions'
 
 # Opus 4.6 (effort parameter supported, adaptive thinking disabled for fixed budget)
-alias dangerous46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude  --model claude-opus-4-6 --verbose --dangerously-skip-permissions'
-alias high46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=high MAX_THINKING_TOKENS=32000 claude  --model claude-opus-4-6 --verbose --dangerously-skip-permissions'
-alias max46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=max MAX_THINKING_TOKENS=128000 claude --model claude-opus-4-6 --verbose  --dangerously-skip-permissions'
+alias claude-dangerous46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude  --model claude-opus-4-6 --verbose --dangerously-skip-permissions'
+alias claude-high46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=high MAX_THINKING_TOKENS=32000 claude  --model claude-opus-4-6 --verbose --dangerously-skip-permissions'
+alias claude-max46='env CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false CLAUDE_CODE_EFFORT_LEVEL=max MAX_THINKING_TOKENS=128000 claude --model claude-opus-4-6 --verbose  --dangerously-skip-permissions'
 
 # Opus 4.5 (no effort parameter, uses MAX_THINKING_TOKENS for fixed budget)
-alias dangerous45='env CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
-alias high45='env MAX_THINKING_TOKENS=32000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
-alias max45='env MAX_THINKING_TOKENS=128000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
+alias claude-dangerous45='env CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
+alias claude-high45='env MAX_THINKING_TOKENS=32000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
+alias claude-max45='env MAX_THINKING_TOKENS=128000 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=true ENABLE_CLAUDEAI_MCP_SERVERS=false claude --model claude-opus-4-5-20251101 --verbose --dangerously-skip-permissions'
 
 # -- Codex CLI aliases --------------------------------------------------------
 alias codex-dangerous="codex-lean"
@@ -47,13 +47,13 @@ claude-lean-proxy() {
     claude-with-proxy \
     --dangerously-skip-permissions \
     --effort "$effort" \
-    --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write}" \
+    --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write,WebFetch,WebSearch}" \
     --strict-mcp-config \
     --disable-slash-commands \
     "$@"
 }
-alias lean-proxy-low='claude-lean-proxy low'
-alias lean-proxy-medium='claude-lean-proxy medium'
-alias lean-proxy-high='claude-lean-proxy high'
-alias lean-proxy-xhigh='claude-lean-proxy xhigh'
-alias lean-proxy-max='claude-lean-proxy max'
+alias claude-lean-proxy-low='claude-lean-proxy low'
+alias claude-lean-proxy-medium='claude-lean-proxy medium'
+alias claude-lean-proxy-high='claude-lean-proxy high'
+alias claude-lean-proxy-xhigh='claude-lean-proxy xhigh'
+alias claude-lean-proxy-max='claude-lean-proxy max'

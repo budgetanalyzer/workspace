@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
     assert result.returncode == 0, result.stderr
     (args,) = args_of(text)
     for want in ('[--dangerously-skip-permissions]', '[--effort] [medium]',
-                 '[--tools] [Bash,Read,Edit,Write]', '[--strict-mcp-config]',
+                 '[--tools] [Bash,Read,Edit,Write,WebFetch,WebSearch]', '[--strict-mcp-config]',
                  '[--disable-slash-commands]', '[extra-arg]'):
         assert want in args, f'{want} missing from {args}'
     assert args.rstrip().endswith('[extra-arg]')
@@ -64,12 +64,12 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
     assert result.stdout.split() == ['<unset>'] * len(ENV_ALL), result.stdout
 
     # alias form forwards trailing arguments
-    result, text = run('lean-proxy-medium extra-arg')
+    result, text = run('claude-lean-proxy-medium extra-arg')
     assert result.returncode == 0, result.stderr
     (args,) = args_of(text)
     assert '[--effort] [medium]' in args and args.rstrip().endswith('[extra-arg]')
     for level in ('low', 'high', 'xhigh', 'max'):
-        result, text = run(f'lean-proxy-{level}')
+        result, text = run(f'claude-lean-proxy-{level}')
         assert result.returncode == 0 and f'[--effort] [{level}]' in args_of(text)[0], level
 
     # tool override

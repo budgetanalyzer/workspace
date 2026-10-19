@@ -88,7 +88,7 @@ settings replacement that keeps `AGENTS.md` to a single copy is in
 
 ```bash
 . "$HOME/.local/share/budget-analyzer-native/aliases.sh"
-lean-proxy-medium          # send one trivial prompt, then exit
+claude-lean-proxy-medium          # send one trivial prompt, then exit
 ```
 
 Find the main-model flow. Ancillary flows differ in model and carry few or no
@@ -143,15 +143,21 @@ performed by workers.
 2. Stop workers and re-run the user installer so `aliases.sh` updates; confirm
    it still verifies against the replaced settings file.
 3. `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
-4. `lean-proxy-medium`, send a one-line prompt, exit.
-5. In the main flow, `.tools[].name` is exactly the whitelist and `Agent`,
-   `Grep` and `Glob` are absent. If `--tools` rejects a name, adjust
-   `CLAUDE_LEAN_TOOLS` and record the real names in the docs.
+4. `claude-lean-proxy-medium`, send a one-line prompt, exit.
+5. In the main flow, `.tools[].name` is the whitelist (`Bash`, `Read`, `Edit`,
+   `Write`, `WebFetch`, `WebSearch`) and `Agent`, `Grep` and `Glob` are absent.
+   Claude Code also injects a `DeferredToolPlaceholder` entry
+   (`defer_loading: true`) regardless of `--tools`; it is expected. If `--tools`
+   rejects a name, adjust `CLAUDE_LEAN_TOOLS` and record the real names in the
+   docs.
 6. The `AGENTS.md` text occurs exactly once in the whole request; note whether
    it lands in the system prompt or the first user message.
 7. No skills list, MCP tools or memory section appear; review ancillary flows
-   for anything unexpectedly still firing.
-8. Effort/thinking fields reflect `medium`; repeat with `lean-proxy-high` and
+   for anything unexpectedly still firing. A first lean capture on 2.1.289 still
+   showed a Haiku session-title request and a `count_tokens` request despite
+   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`; treat those as known ancillary
+   flows when picking the main-model flow.
+8. Effort/thinking fields reflect `medium`; repeat with `claude-lean-proxy-high` and
    compare.
 9. The git-instructions section is absent from the system prompt with
    `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`; report it if still present.

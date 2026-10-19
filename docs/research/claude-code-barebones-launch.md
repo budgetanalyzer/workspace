@@ -1,7 +1,7 @@
 # Research: Barebones Claude Code Launch Options
 
 Status: research, now partly implemented. The lean inspection launcher
-(`claude-lean-proxy`, `lean-proxy-*`) and the settings replacement script follow
+(`claude-lean-proxy`, `claude-lean-proxy-*`) and the settings replacement script follow
 [the launch plan](../plans/claude-lean-proxy-launch.md); see
 [Lean Inspection Launchers](../launch-options.md#lean-inspection-launchers).
 `proxy.py` now sets `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`. The older aliases
@@ -38,7 +38,7 @@ non-essential traffic.
 Other findings:
 
 - The comments in the file describe Opus 4.6 and 4.5, but the unsuffixed
-  aliases (`dangerous`, `high`, `max`) run the current default model, for which
+  aliases (`claude-dangerous`, `claude-high`, `claude-max`) run the current default model, for which
   the thinking-budget variables do nothing. Only `CLAUDE_CODE_EFFORT_LEVEL` is
   an effective thinking control there.
 - `scripts/native/proxy.py` carries its own copy of these variables and only
@@ -132,9 +132,11 @@ Merge any edit against the current content of
 
 ## Recommendation
 
-1. Add `--tools` with a short whitelist (for example
-   `"Bash,Read,Edit,Write,Glob,Grep"`) to remove subagents and all unused
-   tools. Add `WebFetch,WebSearch` only if needed.
+1. Add `--tools` with a short whitelist to remove subagents and all unused
+   tools. The lean launcher uses `"Bash,Read,Edit,Write,WebFetch,WebSearch"`:
+   without the web tools an agent cannot search and can only fetch raw pages
+   through `Bash`. `Grep` and `Glob` stay out; add them through
+   `CLAUDE_LEAN_TOOLS` if needed.
 2. Add `--strict-mcp-config` and `--disable-slash-commands`.
 3. Add the env var block above, using `1` rather than `true`.
 4. Move durable settings into `settings-overlay.json` where they fit.
@@ -147,8 +149,8 @@ Merge any edit against the current content of
 
    ```bash
    _claude_lean() { env <vars> claude --verbose --dangerously-skip-permissions --tools "..." --strict-mcp-config --disable-slash-commands "$@"; }
-   alias dangerous='_claude_lean'
-   alias high='CLAUDE_CODE_EFFORT_LEVEL=high _claude_lean'
+   alias claude-dangerous='_claude_lean'
+   alias claude-high='CLAUDE_CODE_EFFORT_LEVEL=high _claude_lean'
    ```
 
 ## Open questions
@@ -163,4 +165,5 @@ by the live checklist once a human runs it; the rest remain open.
 - What are the exact built-in tool names accepted by `--tools` on this build?
 - Which of the aliases, `proxy.py`, `native/toolchain.json` and the docs must
   change together, and which tests (`tests/native`) pin the current values?
-- Should skills and WebFetch/WebSearch stay available?
+- Should skills stay available? (`WebFetch` and `WebSearch` are now in the lean
+  default whitelist.)

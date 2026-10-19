@@ -11,7 +11,8 @@ Requirements, from the owner:
 - `claude-with-proxy` stays the launcher; effort is selectable per launch.
 - Exactly one copy of `AGENTS.md` in context. Claude Code now loads `AGENTS.md`
   natively as project instructions, so no `SessionStart` hook is wanted.
-- Only the bare-minimum tools. Omit `Grep` and `Glob`. No subagents.
+- Only the bare-minimum tools plus web access. Omit `Grep` and `Glob`. No
+  subagents.
 - Lean sessions always run with `--dangerously-skip-permissions`.
 - `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS` is set to `1` (not `true`).
 - Settings setup must be idempotent: one human-run script that makes
@@ -88,10 +89,12 @@ and [Native Guest User Tools](../native-user-tools.md).
   `CLAUDE_CODE_DISABLE_1M_CONTEXT` alone. The lean function does not repeat the
   variable. The existing alias lines that still say `true` are out of scope
   (follow-up).
-- **Tools:** `--tools "Bash,Read,Edit,Write"`, overridable through
+- **Tools:** `--tools "Bash,Read,Edit,Write,WebFetch,WebSearch"`, overridable through
   `CLAUDE_LEAN_TOOLS`. `--tools` is a whitelist, so `Agent`, `Grep`, `Glob`,
-  `WebFetch`, `WebSearch`, `Skill` and task tools are all absent. Exact accepted
-  tool names are verified live in the human handoff, not guessed.
+  `Skill` and task tools are all absent. `WebFetch` and `WebSearch` are included
+  because without them the agent cannot search the web. Claude Code also injects
+  a `DeferredToolPlaceholder` tool regardless of `--tools`. Exact accepted tool
+  names are verified live in the human handoff, not guessed.
 - **Permissions:** the lean function always passes
   `--dangerously-skip-permissions`. `proxy.py` is not changed for this, so plain
   `claude-with-proxy` keeps its documented plain-permission behavior; the bypass
@@ -106,8 +109,8 @@ and [Native Guest User Tools](../native-user-tools.md).
   Also `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false`. Fewer ancillary requests
   make captured flows easier to read.
 - **Names:** function `claude-lean-proxy EFFORT [claude args...]`; aliases
-  `lean-proxy-low`, `lean-proxy-medium`, `lean-proxy-high`, `lean-proxy-xhigh`
-  and `lean-proxy-max`.
+  `claude-lean-proxy-low`, `claude-lean-proxy-medium`, `claude-lean-proxy-high`, `claude-lean-proxy-xhigh`
+  and `claude-lean-proxy-max`.
 
 ## Safety and scope
 
@@ -225,7 +228,7 @@ git diff --check
 ### Goal
 
 `native/helpers/bash_aliases.sh` defines `claude-lean-proxy` and the five
-`lean-proxy-*` aliases, `proxy.py` uses `1` for git instructions, and an offline
+`claude-lean-proxy-*` aliases, `proxy.py` uses `1` for git instructions, and an offline
 test proves the exact arguments and environment handed to `claude-with-proxy`.
 
 ### Scope
@@ -265,11 +268,11 @@ test proves the exact arguments and environment handed to `claude-with-proxy`.
    - Run `claude-with-proxy` as a single command with the design-decision
      environment set inline for that command only, then
      `--dangerously-skip-permissions --effort "$effort"
-     --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write}" --strict-mcp-config
+     --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write,WebFetch,WebSearch}" --strict-mcp-config
      --disable-slash-commands "$@"`.
    - Quote every expansion; keep the file valid for `bash -n` and ShellCheck
      (aliases referencing functions are acceptable).
-3. Add aliases `lean-proxy-low|medium|high|xhigh|max`, each
+3. Add aliases `claude-lean-proxy-low|medium|high|xhigh|max`, each
    `claude-lean-proxy <level>`, so trailing arguments forward to Claude.
 4. Add `tests/native/check_lean_proxy_aliases.py`, a standalone verifier in the
    style of the existing `check_*.py` files. It must, under a temporary
@@ -278,7 +281,7 @@ test proves the exact arguments and environment handed to `claude-with-proxy`.
      environment variables to a file, and put it first on `PATH`;
    - source `native/helpers/bash_aliases.sh` in `bash` with `HOME` pointing at
      the temporary directory, and run `claude-lean-proxy medium extra-arg`
-     plus the `lean-proxy-medium` alias via `bash -ic` or an equivalent that
+     plus the `claude-lean-proxy-medium` alias via `bash -ic` or an equivalent that
      enables alias expansion;
    - assert the recorded arguments contain `--dangerously-skip-permissions`,
      `--effort medium`, the default tool list, `--strict-mcp-config`,
@@ -380,7 +383,7 @@ definitions and injected context from the flow.
    `AGENTS.md` must load through normal project-instruction discovery.
 3. In `docs/traffic-inspection.md`, add a "Analyzing The Full System Prompt"
    section with a copy-paste workflow:
-   - launch `lean-proxy-medium`, send one trivial prompt, exit;
+   - launch `claude-lean-proxy-medium`, send one trivial prompt, exit;
    - `mitmflows --provider anthropic --path /v1/messages --limit 20` to find the
      main-model flow versus ancillary flows (differing model, tool count);
    - `mitmflow-detail FLOW_ID --full` for the summary;
@@ -487,9 +490,9 @@ replacement, installation and live capture.
       `docs/native-user-tools.md`) so `aliases.sh` updates; confirm it still
       verifies against the replaced settings file.
    3. `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
-   4. `lean-proxy-medium`, send a one-line prompt, exit.
-   5. Verify in the captured main flow: `.tools[].name` is exactly the whitelist
-      and `Agent`, `Grep`, `Glob` are absent (this answers the open question on
+   4. `claude-lean-proxy-medium`, send a one-line prompt, exit.
+   5. Verify in the captured main flow: `.tools[].name` is the whitelist
+      (plus the injected `DeferredToolPlaceholder`) and `Agent`, `Grep`, `Glob` are absent (this answers the open question on
       accepted tool names; if `--tools` rejects a name, adjust
       `CLAUDE_LEAN_TOOLS` and record the real names in the docs).
    6. Verify the `AGENTS.md` text occurs exactly once in the whole request, and
@@ -497,7 +500,7 @@ replacement, installation and live capture.
    7. Verify no skills list, MCP tools or memory section appear, and review
       ancillary flows for anything unexpectedly still firing.
    8. Verify the effort/thinking fields reflect `medium`; repeat with
-      `lean-proxy-high` and compare.
+      `claude-lean-proxy-high` and compare.
    9. Verify the git-instructions section is absent from the system prompt now
       that `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`; if it is still present,
       report it.
