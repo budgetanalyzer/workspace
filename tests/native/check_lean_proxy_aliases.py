@@ -12,7 +12,8 @@ ENV_ONE = ('CLAUDE_CODE_DISABLE_AUTO_MEMORY', 'CLAUDE_CODE_DISABLE_BACKGROUND_TA
            'CLAUDE_CODE_DISABLE_BUNDLED_SKILLS', 'CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY',
            'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC')
 ENV_ALL = ENV_ONE + ('CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION',)
-FORBIDDEN = ('--bare', '--safe-mode', '--restricted', '--setting-sources')
+FORBIDDEN = ('--bare', '--safe-mode', '--restricted', '--setting-sources',
+             '--disable-slash-commands')
 
 STUB = f'''#!/usr/bin/env bash
 {{
@@ -49,7 +50,7 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
     (args,) = args_of(text)
     for want in ('[--dangerously-skip-permissions]', '[--effort] [medium]',
                  '[--tools] [Bash,Read,Edit,Write,WebFetch,WebSearch]', '[--strict-mcp-config]',
-                 '[--disable-slash-commands]', '[extra-arg]'):
+                 '[extra-arg]'):
         assert want in args, f'{want} missing from {args}'
     assert args.rstrip().endswith('[extra-arg]')
     for flag in FORBIDDEN:

@@ -101,7 +101,7 @@ analysis workflow lives in
 | `--effort LEVEL` | Per-launch effort as a flag, because `CLAUDE_CODE_EFFORT_LEVEL` would override `/effort` mid-session |
 | `--tools "Bash,Read,Edit,Write,WebFetch,WebSearch"` | Whitelist; omits `Agent`, `Grep`, `Glob`, `Skill` and task tools |
 | `--strict-mcp-config` | Ignores all MCP servers |
-| `--disable-slash-commands` | Removes skills and their list from context |
+| (no `--disable-slash-commands`) | Deliberately not used: it empties the whole command list, including built-ins such as `/model` and `/effort`. The skill list is already absent because `Skill` is not in `--tools`, and `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS=1` drops bundled skills |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `_BACKGROUND_TASKS`, `_AGENT_VIEW`, `_CRON`, `_BUNDLED_SKILLS`, `_FEEDBACK_SURVEY`, `_NONESSENTIAL_TRAFFIC` = `1` | Remove memory, background features and ancillary requests so flows are easier to read |
 | `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` | No prompt-suggestion requests |
 

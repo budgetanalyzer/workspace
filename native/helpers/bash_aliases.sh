@@ -49,7 +49,6 @@ claude-lean-proxy() {
     --effort "$effort" \
     --tools "${CLAUDE_LEAN_TOOLS:-Bash,Read,Edit,Write,WebFetch,WebSearch}" \
     --strict-mcp-config \
-    --disable-slash-commands \
     "$@"
 }
 alias claude-lean-proxy-low='claude-lean-proxy low'

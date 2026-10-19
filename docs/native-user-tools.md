@@ -209,7 +209,17 @@ This is a full replacement: keys not in the canonical file are dropped, so edit
 legacy `SessionStart` hook, so Claude Code's native `AGENTS.md` loading is the
 only source and the text appears once. The installer's overlay merge
 (`promptSuggestionEnabled`, `autoCompactEnabled`) leaves the replaced file
-unchanged, so the two do not conflict. See
+unchanged, so the two do not conflict.
+
+The canonical file points `statusLine` at the installed `statusline-command`
+helper (`native/helpers/statusline-command.sh`), so run the user installer
+before `apply` so the command exists. The helper reads only the status line JSON
+on stdin and prints one line: the directory (`$HOME` shown as `~`), model,
+`ctx N%`, `5h N% (reset)` and `7d N% (reset)`, with resets as relative durations
+(`XdYh`, `XhYm`, `Ym` or `now`). A segment whose value is missing or null is
+omitted (for example `5h`/`7d` without plan rate limits, or `ctx` before the
+first response); an unparsable reset time keeps the percentage without the
+parenthesized duration. It makes no network calls and reads no credentials. See
 [Lean Inspection Launchers](launch-options.md#lean-inspection-launchers) for the
 launch side.
 
@@ -496,6 +506,9 @@ PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_claude_settings.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_proxy_aliases.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_statusline.py
 bash -n scripts/install-agent-vm-user-tools.sh
 bash -n scripts/check-agent-vm-tools.sh
 bash -n scripts/install-agent-vm-local-ca-trust.sh

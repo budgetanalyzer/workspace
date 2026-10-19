@@ -268,6 +268,7 @@ class UserTools:
         targets.update({name: f'"{self.root}/pipx-bin/{name}"' for name in
                         ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump')})
         helper_sources = {'ai-run': 'ai-run.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
+                          'statusline-command': 'statusline-command.sh',
                           'mitmflows': 'mitmflows',
                           'mitmflow-body': 'mitmflow-body', 'mitmflow-detail': 'mitmflow-detail',
                           'mitmflow-render.py': 'mitmflow-render.py'}

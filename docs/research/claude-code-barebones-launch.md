@@ -66,7 +66,7 @@ No single environment variable disables the Agent tool.
 |---|---|---|
 | `--tools "..."` | Restricts the built-in tool set. | Tool names such as `Glob` and `Grep` were not verified on this build. Check the tool list in one session. |
 | `--strict-mcp-config` | Ignores all MCP servers except those in `--mcp-config`. | None. |
-| `--disable-slash-commands` | Disables all skills. | Removes the skill list from context. |
+| `--disable-slash-commands` | Help text says it disables all skills. | It also removes built-in commands such as `/model`, `/effort`, `/clear` and `/compact`, because the session command list becomes empty. Not needed for a lean context: the skill listing is only produced when the `Skill` tool is loaded, and `--tools` omits it. |
 | `--setting-sources user` | Skips project and local settings. | Drops repository `.claude` settings. |
 | `--bare` | No hooks, LSP, plugin sync, attribution, auto-memory, keychain reads or CLAUDE.md discovery. Sets `CLAUDE_CODE_SIMPLE=1`. | OAuth and keychain are never read. Requires `ANTHROPIC_API_KEY` or `apiKeyHelper`. Drops `AGENTS.md` instructions. |
 | `--safe-mode` | Disables CLAUDE.md, skills, plugins, hooks, MCP, agents, styles and keybindings. | Drops `AGENTS.md` instructions this repository depends on (loaded natively). |
@@ -137,7 +137,8 @@ Merge any edit against the current content of
    without the web tools an agent cannot search and can only fetch raw pages
    through `Bash`. `Grep` and `Glob` stay out; add them through
    `CLAUDE_LEAN_TOOLS` if needed.
-2. Add `--strict-mcp-config` and `--disable-slash-commands`.
+2. Add `--strict-mcp-config`. Do not add `--disable-slash-commands`; the absence
+   of the `Skill` tool already keeps the skill listing out of context.
 3. Add the env var block above, using `1` rather than `true`.
 4. Move durable settings into `settings-overlay.json` where they fit.
 5. Drop `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` and `MAX_THINKING_TOKENS` from
@@ -148,7 +149,7 @@ Merge any edit against the current content of
 7. Collapse the repeated alias bodies into one shared base:
 
    ```bash
-   _claude_lean() { env <vars> claude --verbose --dangerously-skip-permissions --tools "..." --strict-mcp-config --disable-slash-commands "$@"; }
+   _claude_lean() { env <vars> claude --verbose --dangerously-skip-permissions --tools "..." --strict-mcp-config "$@"; }
    alias claude-dangerous='_claude_lean'
    alias claude-high='CLAUDE_CODE_EFFORT_LEVEL=high _claude_lean'
    ```

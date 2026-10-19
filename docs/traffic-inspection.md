@@ -163,6 +163,8 @@ performed by workers.
    `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`; report it if still present.
 10. No `permissions.deny` for `Agent` is needed, because `--tools` already
     excludes it.
+11. In the lean session, `/model` and `/effort` open their pickers, and the
+    captured main flow still has no `skill_listing` system reminder.
 
 ## Development And Validation
 
