@@ -220,7 +220,7 @@ on stdin and prints one line: the directory (`$HOME` shown as `~`), model,
 omitted (for example `5h`/`7d` without plan rate limits, or `ctx` before the
 first response); an unparsable reset time keeps the percentage without the
 parenthesized duration. It makes no network calls and reads no credentials. See
-[Lean Inspection Launchers](launch-options.md#lean-inspection-launchers) for the
+[Lean Claude Launchers](launch-options.md#lean-claude-launchers) for the
 launch side.
 
 ## Canonical Read-Only Native Runtime Contract
@@ -422,7 +422,7 @@ selection and permission mode actually ran.
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
 | `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
 | `claude-with-proxy` | Plain Claude permission arguments, inspection only |
-| Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
+| `claude-lean`, `claude-lean-*` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; flags and environment scoped to the launch; level shortcuts opt-in through `aliases.sh` |
 | `claude-lean-proxy`, `claude-lean-proxy-*` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; flags and environment scoped to the launch; opt-in through `aliases.sh` |
 | Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
 
@@ -483,17 +483,16 @@ PY
 Never copy a proxy signing key from another machine. `start-proxy` and optional
 provider wrappers require this private CA/token, bind proxy/UI to 127.0.0.1 and
 keep upstream TLS verification on. They refuse occupied ports rather than
-reusing an unidentified proxy or assuming the correct addon is loaded. Provider
+reusing an unidentified proxy. Provider
 wrappers own/stop their child, assemble a private public+inspection CA bundle
 under workspace `tmp/mitmproxy-private`, and scope proxy/trust variables to that
 provider process. Their bundle is removed on exit. No system/NSS inspection-root
 import, global proxy export or upstream bypass runs. Raw `start-proxy` starts
 only the UI/proxy; it does not proxy ordinary sessions. Flow renderer exports
-stay under workspace `tmp/mitmproxy-flows`; addon dumps
-are private files under workspace `tmp/`. Full captured requests can contain
+stay under workspace `tmp/mitmproxy-flows`. Full captured requests can contain
 secrets; inspect/clean those directories privately after stopping listeners.
 
-Remove only the human-created inspection directory and private capture/dump
+Remove only the human-created inspection directory and private capture
 files after review to disable interception. Optional real interception is a
 separate human test; automated checks validate its offline argv and lifecycle.
 
@@ -507,7 +506,7 @@ PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_claude_settings.py
-PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_proxy_aliases.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_launchers.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_statusline.py
 bash -n scripts/install-agent-vm-user-tools.sh
 bash -n scripts/check-agent-vm-tools.sh
@@ -515,7 +514,7 @@ bash -n scripts/install-agent-vm-local-ca-trust.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/install-agent-vm-user-tools.sh scripts/check-agent-vm-tools.sh scripts/install-agent-vm-local-ca-trust.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh native/helpers/*.sh native/helpers/mitmflows native/helpers/mitmflow-detail native/helpers/mitmflow-body
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/system-prompt-addon.py native/helpers/mitmflow-render.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/mitmflow-render.py
 git diff --check
 ```
 

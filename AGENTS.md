@@ -86,8 +86,8 @@ find .github/workflows -maxdepth 1 -type f | sort
   adapters live in `scripts/native/`. Read the specific implementation and its
   focused tests before changing behavior.
 - Session-start settings live in `native/helpers/settings-overlay.json`.
-  Custom prompt replacement lives in `native/helpers/system-prompt.md` and
-  `native/helpers/system-prompt-addon.py`.
+  The custom system prompt lives in `native/helpers/system-prompt.md`;
+  `native/helpers/claude-lean.sh` passes it through `--system-prompt-file`.
 
 ## Code Exploration
 
@@ -104,14 +104,16 @@ Never hardcode machine-specific checkout locations such as `/workspace`.
 
 ## Custom System Prompt
 
-Using `claude-with-custom-system-prompt` is optional. Plain `claude` and the
-inspection-only `claude-with-proxy` flow are the normal alternatives.
+Using `claude-lean` is optional. Plain `claude` and the inspection-only
+`claude-with-proxy` and `claude-lean-proxy` flows are the normal alternatives.
 
-Claude Code's prompt flags append rather than replace its default main prompt.
-The native mitmproxy addon replaces only the main prompt body while preserving
-required prefix blocks. Read the native prompt and addon before changing this
-behavior. Use the custom launcher only when lean-prompt behavior is part of the
-test or workflow.
+`--system-prompt-file` replaces Claude Code's default main prompt; only
+`--append-system-prompt[-file]` appends. The former mitmproxy prompt-replacement
+addon is retired because the flag now replaces the prompt directly. Before
+changing lean launch flags or the prompt, read `docs/launch-options.md`, the
+native prompt and `native/helpers/claude-lean.sh`. Keep the prompt's tool
+guidance consistent with the lean `--tools` list. Use `claude-lean` only when
+lean-prompt behavior is part of the test or workflow.
 
 ## Operating Rules
 

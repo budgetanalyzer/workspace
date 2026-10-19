@@ -58,9 +58,6 @@ the transcript. Use `ai-run --help` for the command summary.
 ## Optional Proxy Launchers
 
 - `claude-with-proxy` provides inspection without prompt replacement.
-- `claude-with-custom-system-prompt` adds prompt replacement.
-- `claude-45-custom-system-prompt` and
-  `claude-46-custom-system-prompt` add explicit model selection.
 - `codex-with-proxy` and `codex-max-with-proxy` delegate to `codex-lean`.
 
 These launchers require the separate human-created inspection identity
@@ -72,25 +69,31 @@ Canonical launcher implementations and resources live under `native/helpers/`
 and `scripts/native/proxy.py`; command mappings live in
 [`native/toolchain.json`](../native/toolchain.json).
 
-### Why the custom system prompt launcher exists
+## Lean Claude Launchers
 
-Claude Code's `--system-prompt` flags append to its default main prompt. The
-optional native mitmproxy addon replaces that main prompt in flight while
-preserving required prefix blocks and passing ancillary requests through.
-The prompt and addon are canonical resources in `native/helpers/`.
-
-## Lean Inspection Launchers
-
-For capturing the full Claude system prompt, tool definitions and injected
-context with a minimal tool surface, opt in to the aliases (above) and run:
+Both lean launchers run Claude with a minimal tool surface at a chosen effort
+level and always bypass permissions:
 
 ```bash
-claude-lean-proxy-medium            # also claude-lean-proxy-low|high|xhigh|max
-claude-lean-proxy medium     # the underlying function: EFFORT [claude args...]
+claude-lean medium                  # workspace system prompt, no proxy
+claude-lean-proxy medium            # default system prompt, captured in mitmweb
 ```
 
-Trailing arguments forward to Claude. Plain `claude`, plain `claude-with-proxy`
-and the existing aliases are unchanged. These launchers need the inspection
+Both take `EFFORT [claude args...]`; trailing arguments forward to Claude.
+`claude-lean` is an installed command. `claude-lean-proxy` and the
+`claude-lean-LEVEL` and `claude-lean-proxy-LEVEL` shortcuts (`low`, `medium`,
+`high`, `xhigh`, `max`) come from the opt-in aliases (above). Plain `claude`,
+plain `claude-with-proxy` and the other aliases are unchanged.
+
+`claude-lean` (`native/helpers/claude-lean.sh`) passes
+`--system-prompt-file` with the installed copy of
+[`native/helpers/system-prompt.md`](../native/helpers/system-prompt.md).
+That flag replaces Claude Code's default main prompt; only
+`--append-system-prompt[-file]` appends. Keep the prompt's tool guidance
+consistent with the lean tool list.
+
+`claude-lean-proxy` keeps the default prompt so the full system prompt, tool
+definitions and injected context can be captured. It needs the inspection
 identity from [HTTPS Traffic Inspection](traffic-inspection.md); the capture and
 analysis workflow lives in
 [Analyzing The Full System Prompt](traffic-inspection.md#analyzing-the-full-system-prompt).
@@ -104,12 +107,13 @@ analysis workflow lives in
 | (no `--disable-slash-commands`) | Deliberately not used: it empties the whole command list, including built-ins such as `/model` and `/effort`. The skill list is already absent because `Skill` is not in `--tools`, and `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS=1` drops bundled skills |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `_BACKGROUND_TASKS`, `_AGENT_VIEW`, `_CRON`, `_BUNDLED_SKILLS`, `_FEEDBACK_SURVEY`, `_NONESSENTIAL_TRAFFIC` = `1` | Remove memory, background features and ancillary requests so flows are easier to read |
 | `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` | No prompt-suggestion requests |
+| `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`, `ENABLE_CLAUDEAI_MCP_SERVERS=false`, `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` | Set by `claude-lean` directly and by `claude-with-proxy` itself (`scripts/native/proxy.py`) for `claude-lean-proxy` |
+| `--system-prompt-file` | `claude-lean` only; replaces the default main prompt with the workspace prompt |
 
-The variables are scoped to the launched process. `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1`
-comes from `claude-with-proxy` itself (`scripts/native/proxy.py`).
+The variables are scoped to the launched process.
 
 Override the tool list with `CLAUDE_LEAN_TOOLS`, for example
-`CLAUDE_LEAN_TOOLS="Bash,Read,Edit,Write,WebFetch,WebSearch,Grep" claude-lean-proxy-medium`. Exact
+`CLAUDE_LEAN_TOOLS="Bash,Read,Edit,Write,WebFetch,WebSearch,Grep" claude-lean-medium`. Exact
 accepted tool names are confirmed in the live checklist in
 [traffic-inspection.md](traffic-inspection.md#human-live-verification-checklist).
 

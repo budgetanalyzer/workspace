@@ -73,16 +73,15 @@ mitmflow-detail FLOW_ID --md
 ```
 
 Exports default to `tmp/mitmproxy-flows/`. An explicit export path must remain
-inside the workspace. Addon dumps use `tmp/claude-proxy-dumps/`; private proxy
-bundles use `tmp/mitmproxy-private/`. Captured requests can contain secrets, so
-inspect and clean these human-owned temporary files privately after listeners
-stop.
+inside the workspace. Private proxy bundles use `tmp/mitmproxy-private/`.
+Captured requests can contain secrets, so inspect and clean these human-owned
+temporary files privately after listeners stop.
 
 ## Analyzing The Full System Prompt
 
 Capture one minimal Claude session and read what the model actually receives.
 The lean launchers are described in
-[Lean Inspection Launchers](launch-options.md#lean-inspection-launchers); the
+[Lean Claude Launchers](launch-options.md#lean-claude-launchers); the
 settings replacement that keeps `AGENTS.md` to a single copy is in
 [Claude Settings Replacement](native-user-tools.md#claude-settings-replacement).
 
@@ -168,7 +167,7 @@ performed by workers.
 
 ## Development And Validation
 
-Canonical portable flow/prompt resources live in `native/helpers/`; lifecycle,
+Canonical portable flow resources live in `native/helpers/`; lifecycle,
 listener and scoped-trust behavior lives in `scripts/native/proxy.py`. Edit
 those sources directly and run the offline helper/environment checks in
 [Native Guest User Tools](native-user-tools.md#offline-validation).

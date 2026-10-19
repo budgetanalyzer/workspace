@@ -192,6 +192,7 @@ jobs:
             scripts/prepare-agent-vm-native.sh \
             native/helpers/ai-run.sh \
             native/helpers/bash_aliases.sh \
+            native/helpers/claude-lean.sh \
             native/helpers/codex-lean.sh \
             native/helpers/statusline-command.sh \
             native/helpers/via-annotator.sh \
@@ -216,7 +217,6 @@ jobs:
               tests/native/check_manifest.py \
               tests/native/check_install_inputs.py \
               tests/native/check_user_environment.py \
-              native/helpers/system-prompt-addon.py \
               native/helpers/mitmflow-render.py
 
           temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"

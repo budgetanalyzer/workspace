@@ -56,3 +56,12 @@ alias claude-lean-proxy-medium='claude-lean-proxy medium'
 alias claude-lean-proxy-high='claude-lean-proxy high'
 alias claude-lean-proxy-xhigh='claude-lean-proxy xhigh'
 alias claude-lean-proxy-max='claude-lean-proxy max'
+
+# -- Lean sessions ------------------------------------------------------------
+# claude-lean: the lean settings above without the proxy, plus the workspace
+# system prompt through --system-prompt-file.
+alias claude-lean-low='claude-lean low'
+alias claude-lean-medium='claude-lean medium'
+alias claude-lean-high='claude-lean high'
+alias claude-lean-xhigh='claude-lean xhigh'
+alias claude-lean-max='claude-lean max'

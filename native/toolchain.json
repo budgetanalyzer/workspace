@@ -366,26 +366,12 @@
       "check": "read-only trust fixture and human-verified HTTPS matrix",
       "native_source": "scripts/native/local_ca.py"
     },
-    "claude-45-custom-system-prompt": {
+    "claude-lean": {
       "owner": "normal-user",
       "method": "reviewed-native-user-helper-install",
       "policy": "workspace-revision",
-      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
-      "native_source": "scripts/native/proxy.py"
-    },
-    "claude-46-custom-system-prompt": {
-      "owner": "normal-user",
-      "method": "reviewed-native-user-helper-install",
-      "policy": "workspace-revision",
-      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
-      "native_source": "scripts/native/proxy.py"
-    },
-    "claude-with-custom-system-prompt": {
-      "owner": "normal-user",
-      "method": "reviewed-native-user-helper-install",
-      "policy": "workspace-revision",
-      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
-      "native_source": "scripts/native/proxy.py"
+      "check": "offline mocked fixture; no provider traffic or credentials during installation",
+      "native_source": "native/helpers/claude-lean.sh"
     },
     "claude-with-proxy": {
       "owner": "normal-user",
@@ -569,7 +555,6 @@
     "settings": "native/helpers/settings-overlay.json",
     "skill": "native/helpers/skills/save-conversation/SKILL.md",
     "system_prompt": "native/helpers/system-prompt.md",
-    "system_prompt_addon": "native/helpers/system-prompt-addon.py",
     "helm_contract": "../orchestration/scripts/bootstrap/check-tilt-prerequisites.sh",
     "orchestration_tools": "../orchestration/scripts/lib/pinned-tool-versions.sh",
     "go_checksums": "https://go.dev/dl/?mode=json&include=all",

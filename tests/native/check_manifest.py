@@ -26,8 +26,7 @@ for command, helper in data['helpers'].items():
     assert (REPO / source).is_file(), f'native helper source missing: {source}'
     assert helper['method'] == 'reviewed-native-user-helper-install'
 
-for key in ('aliases', 'settings', 'skill', 'system_prompt',
-            'system_prompt_addon', 'npm_lock'):
+for key in ('aliases', 'settings', 'skill', 'system_prompt', 'npm_lock'):
     source = REPO / data['reviewed_sources'][key]
     assert source.is_file(), f'reviewed source missing: {key}={source}'
 

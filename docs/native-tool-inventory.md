@@ -115,15 +115,16 @@ commands for its validation, not live help invocation.
 | Retained command or resource | Native implementation, dependencies and validation |
 | --- | --- |
 | `ai-run` | `native/helpers/ai-run.sh`; forwards to the installed handler/high wrapper; Bash/static checks and human smoke |
+| `claude-lean` | `native/helpers/claude-lean.sh`; lean flags/environment plus `--system-prompt-file` with the installed `system-prompt.md`, resolving user-installed Claude; offline argv/environment fixture |
 | `codex-lean` | `native/helpers/codex-lean.sh`; preserves explicit `CODEX_MODEL`/effort and high-authority arguments while resolving user-installed Codex; plain Codex remains upstream |
 | Codex proxy commands | `scripts/native/proxy.py`; optional mitmweb child plus Codex lean, native paths and xhigh effort; offline argv/lifecycle fixtures |
-| Claude proxy/custom-prompt commands | `scripts/native/proxy.py`; inspection-only or prompt replacement/model selection using npm Claude; offline argv/lifecycle fixtures |
+| Claude proxy command | `scripts/native/proxy.py`; inspection-only using npm Claude; offline argv/lifecycle fixtures |
 | `start-proxy` | `scripts/native/proxy.py`; optional foreground loopback mitmweb UI with reviewed private identity and upstream verification |
 | `mitmflows`, `mitmflow-detail`, `mitmflow-body`, `mitmflow-render.py` | `native/helpers/`; Bash + Python stdlib rendering/export with repository-`tmp/` boundaries |
 | `ensure-budget-analyzer-local-ca-trust`, `check-budget-analyzer-local-ca-trust` | `scripts/native/local_ca.py`; read-only exact-origin diagnosis. The separate human installer owns scoped OS/NSS mutation and identity-checked legacy convergence |
 | `statusline-command` | `native/helpers/statusline-command.sh`; stdin-only, offline status line; no credentials, network or cache |
 | `via-annotator` | `native/helpers/via-annotator.sh`; asset validation, strict `127.0.0.1` foreground serving and clean stop |
-| Prompt addon and text | `native/helpers/system-prompt-addon.py` and `system-prompt.md`; required prefix/cache-control preservation, ancillary pass-through and private dumps |
+| Lean system prompt | `native/helpers/system-prompt.md`; replaces the default main prompt through `claude-lean`; tool guidance matches the lean tool list |
 | Conversation skill | `native/helpers/skills/save-conversation/SKILL.md`; exact file-only installation with collision checks |
 | Settings overlay | `native/helpers/settings-overlay.json`; merges only two reviewed controls while preserving unrelated settings |
 | Optional aliases | `native/helpers/bash_aliases.sh`; explicit model/effort/permission choices. Shell startup loads only the environment; aliases remain opt-in |
