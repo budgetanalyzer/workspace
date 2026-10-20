@@ -1,0 +1,11 @@
+{
+  "model": "opus",
+  "promptSuggestionEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "autoCompactEnabled": false,
+  "statusLine": {
+    "type": "command",
+    "command": "statusline-command"
+  }
+}

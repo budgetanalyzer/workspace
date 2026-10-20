@@ -2,14 +2,17 @@
 
 ## AGENTS.md over CLAUDE.md
 
-We use AGENTS.md (the emerging multi-tool standard) instead of CLAUDE.md, injected via a SessionStart hook. This works around two open issues:
+We use AGENTS.md (the emerging multi-tool standard) as the instruction source
+instead of CLAUDE.md. Current Claude Code loads `AGENTS.md` natively through
+normal project-instruction discovery, so no `CLAUDE.md` shim or injection hook
+is needed. The
+[settings replacement](native-user-tools.md#claude-settings-replacement)
+removes the legacy `SessionStart` hook that also injected `AGENTS.md`, so the
+instructions appear exactly once; the settings overlay merges only the two
+reviewed controls. Related upstream issues:
 
-- [#18560](https://github.com/anthropics/claude-code/issues/18560) — system-reminder appended to CLAUDE.md contents undermines user instructions with a contradictory "may or may not be relevant" caveat
-- [#6235](https://github.com/anthropics/claude-code/issues/6235) — Claude Code doesn't natively read AGENTS.md
-
-The hook in `native/helpers/settings-overlay.json` cats AGENTS.md at session
-start. The native user installer merges only that hook and the two reviewed
-controls into the normal guest user's existing Claude settings.
+- [#18560](https://github.com/anthropics/claude-code/issues/18560) — system-reminder appended to CLAUDE.md contents undermines user instructions with a contradictory "may or may not be relevant" caveat; one reason a CLAUDE.md-based workaround was rejected
+- [#6235](https://github.com/anthropics/claude-code/issues/6235) — historical context: the earlier support request for native AGENTS.md reading, from before Claude Code closed that gap
 
 ## Save Conversation Skill
 

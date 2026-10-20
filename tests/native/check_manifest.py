@@ -26,8 +26,7 @@ for command, helper in data['helpers'].items():
     assert (REPO / source).is_file(), f'native helper source missing: {source}'
     assert helper['method'] == 'reviewed-native-user-helper-install'
 
-for key in ('aliases', 'settings', 'skill', 'system_prompt',
-            'system_prompt_addon', 'npm_lock'):
+for key in ('aliases', 'settings', 'skill', 'system_prompt', 'npm_lock'):
     source = REPO / data['reviewed_sources'][key]
     assert source.is_file(), f'reviewed source missing: {key}={source}'
 
@@ -37,12 +36,7 @@ if not args.workspace_only:
         assert source.is_file(), f'reviewed source missing: {key}={source}'
 
 settings = json.loads((REPO / data['reviewed_sources']['settings']).read_text())
-hook = settings['hooks']['SessionStart'][0]['hooks'][0]
-assert hook == {
-    'type': 'command',
-    'command': ('if [ -f "$CLAUDE_PROJECT_DIR/AGENTS.md" ]; then '
-                'cat "$CLAUDE_PROJECT_DIR/AGENTS.md"; fi'),
-}, 'managed AGENTS.md SessionStart hook drift'
+assert 'hooks' not in settings, 'managed settings must not define hooks'
 
 if not args.workspace_only:
     # Local native validation consumes orchestration's current binary contract

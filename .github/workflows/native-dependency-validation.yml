@@ -176,6 +176,15 @@ jobs:
           record_check static-user-environment \
             env PYTHONPYCACHEPREFIX=tmp/pycache \
               python3 tests/native/check_user_environment.py
+          record_check claude-settings \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_claude_settings.py
+          record_check lean-launchers \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_lean_launchers.py
+          record_check statusline \
+            env PYTHONPYCACHEPREFIX=tmp/pycache \
+              python3 tests/native/check_statusline.py
           record_check bash-syntax bash -n \
             scripts/provision-agent-vm-guest.sh \
             scripts/install-agent-vm-user-tools.sh \
@@ -192,6 +201,7 @@ jobs:
             scripts/prepare-agent-vm-native.sh \
             native/helpers/ai-run.sh \
             native/helpers/bash_aliases.sh \
+            native/helpers/claude-lean.sh \
             native/helpers/codex-lean.sh \
             native/helpers/statusline-command.sh \
             native/helpers/via-annotator.sh \
@@ -206,6 +216,7 @@ jobs:
               scripts/native/proxy.py \
               scripts/native/bwrap_profile.py \
               scripts/native/verify_release_inputs.py \
+              scripts/native/claude_settings.py \
               tests/native/test_provision.py \
               tests/native/test_user_tools.py \
               tests/native/test_local_ca.py \
@@ -216,7 +227,9 @@ jobs:
               tests/native/check_manifest.py \
               tests/native/check_install_inputs.py \
               tests/native/check_user_environment.py \
-              native/helpers/system-prompt-addon.py \
+              tests/native/check_claude_settings.py \
+              tests/native/check_lean_launchers.py \
+              tests/native/check_statusline.py \
               native/helpers/mitmflow-render.py
 
           temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"

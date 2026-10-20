@@ -49,15 +49,10 @@ def is_private_primary_group(user, primary_gid, path_gid):
 
 
 def merge_settings(settings, overlay):
-    """Own only the two controls and one hook; preserve all other user keys."""
+    """Own only the two controls; preserve all other user keys."""
     result = json.loads(json.dumps(settings))
     for key in ('promptSuggestionEnabled', 'autoCompactEnabled'):
         result[key] = overlay[key]
-    hooks = result.setdefault('hooks', {}).setdefault('SessionStart', [])
-    managed = overlay['hooks']['SessionStart'][0]
-    command = managed['hooks'][0]['command']
-    if not any(h.get('command') == command for group in hooks for h in group.get('hooks', [])):
-        hooks.append(managed)
     return result
 
 
@@ -271,9 +266,12 @@ class UserTools:
         files[self.root / 'aliases.sh'] = ((REPO / 'native/helpers/bash_aliases.sh').read_text(), 0o600)
         targets = {name: f'"{self.root}/npm/node_modules/.bin/{name}"' for name in ('claude', 'codex', 'gemini', 'playwright')}
         targets.update({name: f'"{self.root}/pipx-bin/{name}"' for name in
-                        ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump')})
-        helper_sources = {'ai-run': 'ai-run.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
-                          'statusline-command': 'statusline-command.sh', 'mitmflows': 'mitmflows',
+                        ('ai-session-handler', 'ai-session-handler-codex-high',
+                         'ai-session-handler-claude-high', 'mitmproxy',
+                         'mitmweb', 'mitmdump')})
+        helper_sources = {'ai-run': 'ai-run.sh', 'claude-lean': 'claude-lean.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
+                          'statusline-command': 'statusline-command.sh',
+                          'mitmflows': 'mitmflows',
                           'mitmflow-body': 'mitmflow-body', 'mitmflow-detail': 'mitmflow-detail',
                           'mitmflow-render.py': 'mitmflow-render.py'}
         for name, source in helper_sources.items():
@@ -287,14 +285,14 @@ class UserTools:
             # shlex quotes handle apostrophes, shell substitutions and spaces in account homes.
             if name in ('claude', 'codex', 'gemini', 'playwright'):
                 target = shlex.quote(str(self.root / 'npm/node_modules/.bin' / name))
-            elif name in ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump'):
+            elif name in ('ai-session-handler', 'ai-session-handler-codex-high',
+                          'ai-session-handler-claude-high', 'mitmproxy',
+                          'mitmweb', 'mitmdump'):
                 target = shlex.quote(str(self.root / 'pipx-bin' / name))
             files[self.bin / name] = ('#!/usr/bin/env bash\nset -euo pipefail\n'
                                      f'. {shlex.quote(str(self.fragment))}\nexec {target} "$@"\n', 0o700)
         self.names = set(targets)
-        state_path = self.root / 'managed-files.json'
-        self.home_path(state_path)
-        previous = json.loads(state_path.read_text()) if state_path.exists() else {}
+        previous = self.previous_state()
         for path, (content, _) in files.items():
             self.home_path(path)
             if path.exists():
@@ -302,8 +300,41 @@ class UserTools:
                         f'unmanaged or modified file collision: {path}; review privately')
         return files
 
+    def previous_state(self):
+        state_path = self.root / 'managed-files.json'
+        self.home_path(state_path)
+        if not state_path.exists():
+            return {}
+        try:
+            previous = json.loads(state_path.read_text())
+        except ValueError:
+            previous = None
+        require(isinstance(previous, dict) and all(
+            isinstance(key, str) and isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+            for key, value in previous.items()), 'malformed managed-files.json; review privately')
+        return previous
+
+    def retired_files(self, previous, files):
+        # Review every retired candidate before any is removed; no partial cleanup.
+        current = {str(path) for path in files}
+        retired = []
+        for key, recorded in previous.items():
+            if key in current:
+                continue
+            path = Path(key)
+            require(path.is_absolute() and os.path.normpath(key) == key,
+                    f'malformed retired managed path: {key}; review privately')
+            self.home_path(path)
+            if not path.exists():
+                continue
+            require(path.is_file() and digest(path) == recorded,
+                    f'modified or non-regular retired managed file: {path}; review privately')
+            retired.append(path)
+        return retired
+
     def install(self):
         files = self.plan_files()
+        self.retired_files(self.previous_state(), files)
         for path in (self.root / 'pipx', self.root / 'pipx-bin', self.root / 'npm-cache',
                      self.root / 'managed-files.json', self.root / 'installation.json'):
             self.home_path(path)
@@ -374,6 +405,8 @@ class UserTools:
                   'user_tool_versions': {n: t['version'] for n, t in self.manifest['user_tools'].items()}}
         report['mitmproxy_resolved_dependencies'] = self.command(['pipx', 'runpip', 'mitmproxy', 'freeze', '--all'], env=env).stdout.splitlines()
         self.write(self.root / 'installation.json', json.dumps(report, indent=2) + '\n')
+        for path in self.retired_files(self.previous_state(), files):
+            path.unlink()
         self.write(self.root / 'managed-files.json', json.dumps({str(p): digest(p) for p in files}, indent=2) + '\n')
         self.env = env
         self.verify(require_trust=False)
@@ -403,10 +436,7 @@ class UserTools:
         settings_path = self.home / '.claude/settings.json'
         require(settings_path.is_file(), 'managed provider settings missing')
         settings = json.loads(settings_path.read_text())
-        require(merge_settings(settings, overlay) == settings, 'managed controls/hook missing or stale')
-        hook = overlay['hooks']['SessionStart'][0]['hooks'][0]['command']
-        require(sum(h.get('command') == hook for g in settings['hooks']['SessionStart'] for h in g.get('hooks', [])) == 1,
-                'duplicate managed SessionStart hook; inspect privately')
+        require(merge_settings(settings, overlay) == settings, 'managed controls missing or stale')
         skill = self.home / '.claude/skills/save-conversation/SKILL.md'
         require(skill.is_file() and skill.read_bytes() == (REPO / 'native/helpers/skills/save-conversation/SKILL.md').read_bytes(),
                 'managed conversation skill missing/stale')
@@ -422,7 +452,9 @@ class UserTools:
         python = self.root / 'pipx/venvs/ai-session-handler/bin/python'
         origin = self.command([python, '-c', 'from pathlib import Path; import ai_session_handler; print(Path(ai_session_handler.__file__).resolve())']).stdout.strip()
         require(Path(origin).is_absolute() and Path(origin).is_relative_to(self.handler / 'src/ai_session_handler'), 'handler import origin mismatch')
-        self.command([self.bin / 'ai-session-handler-codex-high', '--help'])
+        for name in ('ai-session-handler-codex-high',
+                     'ai-session-handler-claude-high'):
+            self.command([self.bin / name, '--help'])
         for name in ('mitmweb', 'mitmdump'):
             self.command([self.bin / name, '--version'])
         for name in ('mitmflows', 'mitmflow-detail', 'mitmflow-body', 'ai-run'):

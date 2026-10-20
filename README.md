@@ -164,15 +164,18 @@ From the repository that owns `docs/plans/PLAN_NAME.md`, run:
 
 ```bash
 ai-run PLAN_NAME
+ai-run --claude PLAN_NAME
 ```
 
 For example, `ai-run improve-imports --max-phases 1` runs the plan through the
-globally installed high-reasoning Codex wrapper and streams progress. Later
-arguments are forwarded to `ai-session-handler run`; use `--quiet` to suppress
-live output while retaining the transcript. Set `CODEX_MODEL` only when an
-explicit model is required. The editable handler install reflects reviewed
-source changes immediately; dependency or entry-point changes require an
-explicit reinstall.
+globally installed high-reasoning Codex wrapper, while a leading `--claude`
+selects the high-effort Claude wrapper. The opt-in `ai-run-claude` alias is the
+same Claude selection. Later arguments are forwarded to
+`ai-session-handler run`; use `--quiet` to suppress live output while retaining
+the transcript. Set `CODEX_MODEL` or `ANTHROPIC_MODEL` only when an explicit
+model is required for the corresponding provider. The editable handler install
+reflects reviewed source changes immediately; dependency or entry-point changes
+require an explicit reinstall.
 
 ## Local Budget Analyzer HTTPS
 

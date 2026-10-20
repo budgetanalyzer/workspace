@@ -81,8 +81,7 @@ def validate_source(root):
     require(manifest.get('reviewed_sources', {}).get('settings') == str(SETTINGS_PATH),
             'toolchain settings source path mismatch')
     settings = json.loads((root / SETTINGS_PATH).read_text())
-    require(settings.get('hooks', {}).get('SessionStart'),
-            'managed SessionStart settings hook missing')
+    require('hooks' not in settings, 'managed settings must not define hooks')
 
     npm_tools = {
         name: tool for name, tool in manifest.get('user_tools', {}).items()

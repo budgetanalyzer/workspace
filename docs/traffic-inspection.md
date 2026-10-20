@@ -73,14 +73,108 @@ mitmflow-detail FLOW_ID --md
 ```
 
 Exports default to `tmp/mitmproxy-flows/`. An explicit export path must remain
-inside the workspace. Addon dumps use `tmp/claude-proxy-dumps/`; private proxy
-bundles use `tmp/mitmproxy-private/`. Captured requests can contain secrets, so
-inspect and clean these human-owned temporary files privately after listeners
-stop.
+inside the workspace. Private proxy bundles use `tmp/mitmproxy-private/`.
+Captured requests can contain secrets, so inspect and clean these human-owned
+temporary files privately after listeners stop.
+
+## Analyzing The Full System Prompt
+
+Capture one minimal Claude session and read what the model actually receives.
+The lean launchers are described in
+[Lean Claude Launchers](launch-options.md#lean-claude-launchers); the
+settings replacement that keeps `AGENTS.md` to a single copy is in
+[Claude Settings Replacement](native-user-tools.md#claude-settings-replacement).
+
+```bash
+. "$HOME/.local/share/budget-analyzer-native/aliases.sh"
+claude-lean-proxy                 # send one trivial prompt, then exit
+```
+
+This alias is `claude-lean --proxy`, which keeps the default prompt for the
+baseline capture. Add a trailing `--system-prompt-file PATH` when a custom-prompt
+capture is wanted.
+
+Find the main-model flow. Ancillary flows differ in model and carry few or no
+tools:
+
+```bash
+mitmflows --provider anthropic --path /v1/messages --limit 20
+mitmflows --provider anthropic --path /v1/messages --limit 20 --json
+mitmflow-detail FLOW_ID --full
+```
+
+Query the request body (`FLOW_ID` may be truncated):
+
+```bash
+REQ() { mitmflow-body "$1" request --json; }
+
+# System blocks: index, length, first characters
+REQ FLOW_ID | jq -r '.system | if type=="string" then [.] else map(.text) end
+  | to_entries[] | "\(.key)\t\(.value|length)\t\(.value[0:60]|gsub("\n";" "))"'
+
+# Tool names, then serialized size per tool
+REQ FLOW_ID | jq -r '.tools[].name'
+REQ FLOW_ID | jq -r '.tools[] | "\(.name)\t\(tojson|length)"'
+
+# Model, thinking and effort fields
+REQ FLOW_ID | jq '{model, thinking, effort: .output_config.effort, max_tokens}'
+
+# Occurrences of AGENTS.md text in the whole request (expected: 1) and where
+REQ FLOW_ID | jq '[.. | strings | select(contains("# Workspace Entry Point"))] | length'
+REQ FLOW_ID | jq -r 'paths(type=="string" and contains("# Workspace Entry Point"))
+  | map(tostring) | join(".")'
+```
+
+Captured requests contain secrets and private repository text. Output from
+`mitmflow-body` is redacted by default; do not pass `--no-redact` unless you are
+debugging privately. Exports under `tmp/` are private, and a human cleans them
+after listeners stop.
+
+The full default prompt is what this workflow wants. To compare, pass
+`--system-prompt-snapshot off` or `--exclude-dynamic-system-prompt-sections`
+through the lean launcher as ordinary trailing Claude arguments; both are
+optional comparison knobs, not part of the baseline.
+
+### Human live verification checklist
+
+Live verification and the real settings replacement are human-only and are not
+performed by workers.
+
+1. `python3 scripts/native/claude_settings.py check` (expect the legacy `hooks`
+   difference), then `apply`, then `check` again (exit 0) and `apply` again
+   (`already up to date`).
+2. Stop workers and re-run the user installer so `aliases.sh` updates; confirm
+   it still verifies against the replaced settings file.
+3. `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
+4. `claude-lean-proxy`, send a one-line prompt, exit.
+5. In the main flow, `.tools[].name` is the whitelist (`Bash`, `Read`, `Edit`,
+   `Write`, `WebFetch`, `WebSearch`) and `Agent`, `Grep` and `Glob` are absent.
+   Claude Code also injects a `DeferredToolPlaceholder` entry
+   (`defer_loading: true`) regardless of `--tools`; it is expected. If `--tools`
+   rejects a name, adjust the tool list in `native/helpers/claude-lean.sh` and
+   record the real names in the docs and workspace prompt.
+6. The `AGENTS.md` text occurs exactly once in the whole request; note whether
+   it lands in the system prompt or the first user message.
+7. No skills list, MCP tools or memory section appear; review ancillary flows
+   for anything unexpectedly still firing. A first lean capture on 2.1.289 still
+   showed a Haiku session-title request and a `count_tokens` request despite
+   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`; treat those as known ancillary
+   flows when picking the main-model flow.
+8. Record the default effort/thinking fields; repeat with
+   `claude-lean-proxy-high` and compare them with explicit high effort.
+9. The git-instructions section is absent from the system prompt with
+   `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` set by `claude-lean`; report it if
+   still present.
+10. No `permissions.deny` for `Agent` is needed, because `--tools` already
+    excludes it.
+11. In the lean session, `/model` and `/effort` open their pickers, and the
+    captured main flow still has no `skill_listing` system reminder.
+12. In a non-proxy `claude-lean` session, the bypass-mode guidance that Claude
+    Code appends does not conflict with the workspace prompt.
 
 ## Development And Validation
 
-Canonical portable flow/prompt resources live in `native/helpers/`; lifecycle,
+Canonical portable flow resources live in `native/helpers/`; lifecycle,
 listener and scoped-trust behavior lives in `scripts/native/proxy.py`. Edit
 those sources directly and run the offline helper/environment checks in
 [Native Guest User Tools](native-user-tools.md#offline-validation).

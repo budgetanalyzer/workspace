@@ -1,183 +1,77 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Claude Code status line: reads the status line JSON on stdin and prints one
+# offline line. No network, credentials, cache or file writes.
 
 input=$(cat)
+[ -n "$input" ] || exit 0
 
-current_dir=$(echo "$input" | jq -r '.workspace.current_dir')
-model_name=$(echo "$input" | jq -r '.model.display_name')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+sep=$'\x1f'
+fields=$(printf '%s' "$input" | jq -r '
+  def pct($o): ($o.used_percentage // $o.utilization) | if type == "number" then round else empty end;
+  def reset($o): $o.resets_at | if type == "number" then floor elif type == "string" then . else empty end;
+  [ (.workspace.current_dir // .cwd // ""),
+    (.model.display_name // ""),
+    (pct(.context_window // {}) // ""),
+    (pct(.rate_limits.five_hour // {}) // ""),
+    (reset(.rate_limits.five_hour // {}) // ""),
+    (pct(.rate_limits.seven_day // {}) // ""),
+    (reset(.rate_limits.seven_day // {}) // "")
+  ] | map(tostring) | join("\u001f")' 2>/dev/null) || exit 0
+IFS="$sep" read -r dir model ctx five five_reset week week_reset <<<"$fields"
 
-
-# --- Usage limits (out-of-band API call with caching) ---
-umask 077
-cache_dir="$BUDGET_ANALYZER_WORKTREE_PARENT/workspace/tmp/claude-statusline"
-mkdir -p "$cache_dir"
-CACHE_FILE="$cache_dir/claude-usage-cache.json"
-CACHE_META="$cache_dir/claude-usage-cache.meta"
-BASE_TTL=60
-MAX_STALE=600  # 10 minutes: beyond this, show ?%
-USAGE_STR=""
-
-fetch_usage() {
-    local creds_file="$HOME/.claude/.credentials.json"
-    [ -f "$creds_file" ] || return 1
-    local token
-    token=$(jq -r '.claudeAiOauth.accessToken // empty' "$creds_file")
-    [ -n "$token" ] || return 1
-    local version
-    version=$(claude --version 2>/dev/null | awk '{print $1}')
-    local http_code
-    local body
-    local tmpfile
-    tmpfile=$(mktemp "$cache_dir/request.XXXXXX")
-    http_code=$(curl -s --max-time 5 -o "$tmpfile" -w '%{http_code}' \
-        -H "Authorization: Bearer $token" \
-        -H "anthropic-beta: oauth-2025-04-20" \
-        -H "User-Agent: claude-code/${version:-unknown}" \
-        "https://api.anthropic.com/api/oauth/usage" 2>/dev/null)
-    body=$(cat "$tmpfile")
-    rm -f "$tmpfile"
-
-    if [ "$http_code" = "200" ] && [ -n "$body" ]; then
-        echo "$body"
-        # Record success: reset backoff
-        echo "ok $http_code $(date +%s)" > "$CACHE_META"
-        return 0
+# Relative duration until an epoch (seconds or milliseconds) or ISO-8601 time.
+until_reset() {
+    local value=$1 epoch now secs
+    [ -n "$value" ] || return 0
+    if [[ $value =~ ^[0-9]+$ ]]; then
+        epoch=$value
+        [ "$epoch" -gt 1000000000000 ] && epoch=$((epoch / 1000))
     else
-        # Record failure with status code
-        echo "fail $http_code $(date +%s)" > "$CACHE_META"
-        return 1
+        epoch=$(date -d "$value" +%s 2>/dev/null) || return 0
     fi
-}
-
-# Determine effective TTL (backoff on failures)
-effective_ttl() {
-    if [ ! -f "$CACHE_META" ]; then
-        echo "$BASE_TTL"
-        return
-    fi
-    local status
-    status=$(awk '{print $1}' "$CACHE_META")
-    if [ "$status" = "ok" ]; then
-        echo "$BASE_TTL"
-        return
-    fi
-    # Count consecutive failures by checking time since last success
-    # Simple backoff: 60 → 120 → 300, capped at 300
-    local fail_time
-    fail_time=$(awk '{print $3}' "$CACHE_META")
-    local now
     now=$(date +%s)
-    local since_fail
-    since_fail=$(( now - fail_time ))
-    if [ "$since_fail" -lt 120 ]; then
-        echo 120
-    else
-        echo 300
-    fi
-}
-
-# Format seconds into human-readable delta
-format_delta() {
-    local secs=$1
+    secs=$((epoch - now))
     if [ "$secs" -le 0 ]; then
-        echo "now"
-        return
-    fi
-    local days
-    days=$((secs / 86400))
-    local hours
-    hours=$(( (secs % 86400) / 3600 ))
-    local mins
-    mins=$(( (secs % 3600) / 60 ))
-    if [ "$days" -gt 0 ]; then
-        echo "${days}d ${hours}h"
-    elif [ "$hours" -gt 0 ]; then
-        echo "${hours}h ${mins}m"
+        printf 'now'
+    elif [ "$secs" -ge 86400 ]; then
+        printf '%dd%dh' $((secs / 86400)) $((secs % 86400 / 3600))
+    elif [ "$secs" -ge 3600 ]; then
+        printf '%dh%dm' $((secs / 3600)) $((secs % 3600 / 60))
     else
-        echo "${mins}m"
+        printf '%dm' $((secs / 60))
     fi
 }
 
-# Check cache age
-if [ -f "$CACHE_FILE" ]; then
-    cache_age=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
-else
-    cache_age=$((BASE_TTL + 1))
-fi
-
-CACHE_TTL=$(effective_ttl)
-is_stale=false
-
-if [ "$cache_age" -gt "$CACHE_TTL" ]; then
-    usage_data=$(fetch_usage)
-    if [ -n "$usage_data" ]; then
-        echo "$usage_data" > "$CACHE_FILE"
-        is_stale=false
-    elif [ -f "$CACHE_FILE" ]; then
-        usage_data=$(cat "$CACHE_FILE")
-        is_stale=true
-        # Recalculate cache_age for the fallback data
-        cache_age=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
-    fi
-else
-    usage_data=$(cat "$CACHE_FILE")
-fi
-
-if [ -n "$usage_data" ]; then
-    now=$(date +%s)
-
-    # Age-gate: if cache is older than MAX_STALE, show ?% instead
-    if [ "$cache_age" -gt "$MAX_STALE" ] && [ "$is_stale" = true ]; then
-        USAGE_STR=" | 5h: ?% | 7d: ?%"
+usage_segment() {
+    local label=$1 percent=$2 reset=$3 duration
+    [ -n "$percent" ] || return 0
+    duration=$(until_reset "$reset")
+    if [ -n "$duration" ]; then
+        printf '%s %s%% (%s)' "$label" "$percent" "$duration"
     else
-        stale_marker=""
-        [ "$is_stale" = true ] && stale_marker="~"
-
-        h5=$(echo "$usage_data" | jq -r '.five_hour.utilization // empty' | cut -d. -f1)
-        h5_reset=$(echo "$usage_data" | jq -r '.five_hour.resets_at // empty')
-        h5_delta=""
-        if [ -n "$h5_reset" ] && [ "$h5_reset" != "null" ]; then
-            h5_epoch=$(date -d "$h5_reset" +%s 2>/dev/null)
-            [ -n "$h5_epoch" ] && h5_delta=" $(format_delta $((h5_epoch - now)))"
-        fi
-
-        d7=$(echo "$usage_data" | jq -r '.seven_day.utilization // empty' | cut -d. -f1)
-        d7_reset=$(echo "$usage_data" | jq -r '.seven_day.resets_at // empty')
-        d7_delta=""
-        if [ -n "$d7_reset" ] && [ "$d7_reset" != "null" ]; then
-            d7_epoch=$(date -d "$d7_reset" +%s 2>/dev/null)
-            [ -n "$d7_epoch" ] && d7_delta=" $(format_delta $((d7_epoch - now)))"
-        fi
-
-        # Model-specific 7-day limits
-        model_lower=$(echo "$model_name" | tr '[:upper:]' '[:lower:]')
-        d7_model=""
-        d7_model_key=""
-        case "$model_lower" in
-            *opus*)   d7_model_key="seven_day_opus" ;;
-            *sonnet*) d7_model_key="seven_day_sonnet" ;;
-        esac
-        if [ -n "$d7_model_key" ]; then
-            d7_model_val=$(echo "$usage_data" | jq -r ".${d7_model_key}.utilization // empty" | cut -d. -f1)
-            if [ -n "$d7_model_val" ]; then
-                d7_model_reset=$(echo "$usage_data" | jq -r ".${d7_model_key}.resets_at // empty")
-                d7_model_delta=""
-                if [ -n "$d7_model_reset" ] && [ "$d7_model_reset" != "null" ]; then
-                    d7_model_epoch=$(date -d "$d7_model_reset" +%s 2>/dev/null)
-                    [ -n "$d7_model_epoch" ] && d7_model_delta=" $(format_delta $((d7_model_epoch - now)))"
-                fi
-                d7_model=" ${d7_model_key##seven_day_}: ${d7_model_val}%${stale_marker}${d7_model_delta}"
-            fi
-        fi
-
-        if [ -n "$h5" ] && [ -n "$d7" ]; then
-            USAGE_STR=" | 5h: ${h5}%${stale_marker}${h5_delta} | 7d: ${d7}%${stale_marker}${d7_delta}${d7_model}"
-        fi
+        printf '%s %s%%' "$label" "$percent"
     fi
-fi
+}
 
-printf "%s | %s | ctx: %s%%%s" \
-    "$current_dir" \
-    "$model_name" \
-    "$used_pct" \
-    "$USAGE_STR"
+segments=()
+if [ -n "$dir" ]; then
+    if [ -n "$HOME" ] && [ "$dir" = "$HOME" ]; then
+        dir='~'
+    elif [ -n "$HOME" ] && [[ $dir == "$HOME"/* ]]; then
+        dir="~${dir#"$HOME"}"
+    fi
+    segments+=("$(printf '\033[01;34m%s\033[00m' "$dir")")
+fi
+[ -z "$model" ] || segments+=("$model")
+[ -z "$ctx" ] || segments+=("ctx $ctx%")
+segment=$(usage_segment 5h "$five" "$five_reset")
+[ -z "$segment" ] || segments+=("$segment")
+segment=$(usage_segment 7d "$week" "$week_reset")
+[ -z "$segment" ] || segments+=("$segment")
+
+line=''
+for segment in "${segments[@]}"; do
+    line+="${line:+ | }$segment"
+done
+[ -z "$line" ] || printf '%s\n' "$line"
+exit 0

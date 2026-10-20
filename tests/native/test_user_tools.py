@@ -331,6 +331,124 @@ class UserInstallerSafetyTests(unittest.TestCase):
                 self.fail(f'unexpected helper source mapping: {source}')
             self.assertTrue(wrapper.rstrip().endswith('"$@"'))
 
+    def test_handler_high_wrappers_are_managed_and_verified(self):
+        self.install()
+        for name in ('ai-session-handler-codex-high',
+                     'ai-session-handler-claude-high'):
+            self.assertIn(name, self.probe.names)
+            wrapper = self.probe.bin / name
+            self.assertIn(wrapper, self.probe.plan_files())
+            self.assertIn([str(wrapper), '--help'], self.probe.calls)
+
+    def seed_retired_state(self, extra=()):
+        """Model the managed state left by an install from before 1a3ef5b."""
+        self.install()
+        fragment = shlex.quote(str(self.probe.fragment))
+        proxy = shlex.quote(str(self.probe.root / 'proxy.py'))
+        retired = {}
+        for name in ('claude-45-custom-system-prompt',
+                     'claude-46-custom-system-prompt',
+                     'claude-with-custom-system-prompt'):
+            retired[self.probe.bin / name] = (
+                '#!/usr/bin/env bash\nset -euo pipefail\n'
+                f'. {fragment}\nexec python3 {proxy} {name} "$@"\n')
+        retired[self.probe.root / 'helpers/system-prompt-addon.py'] = (
+            '"""Retired mitmproxy prompt-replacement addon fixture."""\n')
+        for path, content in retired.items():
+            path.write_text(content)
+            path.chmod(0o700)
+        state_path = self.probe.root / 'managed-files.json'
+        state = json.loads(state_path.read_text())
+        state.update({str(path): user_tools.digest(path) for path in retired})
+        state.update(extra)
+        state_path.write_text(json.dumps(state, indent=2) + '\n')
+        return list(retired), state_path
+
+    def assert_refresh_rejected(self, retired, state_path, message):
+        retained = {path: path.read_bytes() for path in retired
+                    if path.exists() or path.is_symlink()}
+        state = state_path.read_bytes()
+        self.probe.calls.clear()
+        with self.assertRaisesRegex(user_tools.UserToolsError, message):
+            self.install()
+        self.assertEqual(state, state_path.read_bytes())
+        self.assertFalse(any(Path(call[0]).name == 'playwright'
+                             for call in self.probe.calls))
+        for path, content in retained.items():
+            self.assertEqual(content, path.read_bytes())
+
+    def test_refresh_removes_unchanged_retired_managed_files(self):
+        retired, state_path = self.seed_retired_state()
+        unrelated = self.probe.bin / 'user-owned-tool'
+        unrelated.write_text('#!/bin/sh\n')
+        credentials = self.probe.credentials.read_bytes()
+        self.install()
+        for path in retired:
+            self.assertFalse(path.exists(), path)
+        state = json.loads(state_path.read_text())
+        self.assertEqual({str(path) for path in self.probe.plan_files()},
+                         set(state))
+        self.assertTrue(set(map(str, retired)).isdisjoint(state))
+        self.assertTrue((self.probe.bin / 'claude-lean').is_file())
+        self.assertTrue((self.probe.root / 'helpers').is_dir())
+        self.assertEqual('#!/bin/sh\n', unrelated.read_text())
+        self.assertEqual(credentials, self.probe.credentials.read_bytes())
+        self.assertTrue((self.probe.home / '.claude/settings.json').is_file())
+
+    def test_refresh_converges_when_retired_files_are_already_missing(self):
+        retired, state_path = self.seed_retired_state()
+        retired[0].unlink()
+        retired[3].unlink()
+        self.install()
+        self.install()
+        for path in retired:
+            self.assertFalse(path.exists(), path)
+        self.assertTrue(set(map(str, retired)).isdisjoint(
+            json.loads(state_path.read_text())))
+
+    def test_modified_retired_file_rejects_before_cleanup(self):
+        retired, state_path = self.seed_retired_state()
+        retired[1].write_text('#!/usr/bin/env bash\necho user change\n')
+        self.assert_refresh_rejected(retired, state_path,
+                                     'modified or non-regular retired')
+        for path in retired:
+            self.assertTrue(path.exists(), path)
+
+    def test_retired_paths_cannot_escape_the_managed_home(self):
+        outside = self.probe.fixture / 'outside-home.txt'
+        outside.write_text('outside')
+        retired, state_path = self.seed_retired_state()
+        base = json.loads(state_path.read_text())
+        for key, message in (
+                (str(outside), 'escaped the development home'),
+                (str(self.probe.home / '..' / outside.name),
+                 'malformed retired managed path'),
+                ('relative/path', 'malformed retired managed path')):
+            with self.subTest(key=key):
+                state_path.write_text(json.dumps(
+                    base | {key: user_tools.digest(outside)}))
+                self.assert_refresh_rejected(retired, state_path, message)
+                self.assertEqual('outside', outside.read_text())
+                for path in retired:
+                    self.assertTrue(path.exists(), path)
+
+    def test_symlinked_retired_file_rejects_without_touching_target(self):
+        target = self.probe.fixture / 'symlink-target.txt'
+        target.write_text('target')
+        link = self.probe.home / '.local/bin/retired-link'
+        retired, state_path = self.seed_retired_state(
+            {str(link): user_tools.digest(target)})
+        link.symlink_to(target)
+        self.assert_refresh_rejected(retired, state_path, 'symlink collision')
+        self.assertTrue(link.is_symlink())
+        self.assertEqual('target', target.read_text())
+
+    def test_malformed_previous_state_rejects_before_cleanup(self):
+        retired, state_path = self.seed_retired_state(
+            {str(self.probe.home / '.local/bin/bad-digest'): 'not-a-digest'})
+        self.assert_refresh_rejected(retired, state_path,
+                                     'malformed managed-files.json')
+
     def test_wrong_origin_rejects_before_home_mutation(self):
         self.probe.origin_bad = True
         with self.assertRaisesRegex(user_tools.UserToolsError, 'wrong origin'):

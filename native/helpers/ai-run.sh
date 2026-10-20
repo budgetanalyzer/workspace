@@ -5,20 +5,23 @@ usage() {
     cat <<'EOF'
 Usage:
   ai-run --help
-  ai-run PLAN_NAME [RUN_OPTIONS...]
+  ai-run [--claude] PLAN_NAME [RUN_OPTIONS...]
 
 Run ./docs/plans/PLAN_NAME.md from the current repository with the native user environment’s
-globally installed high-reasoning Codex wrapper. PLAN_NAME must be a bare
-filename stem without .md or path separators. Additional arguments are passed
-unchanged to `ai-session-handler run`.
+globally installed high-reasoning Codex wrapper, or use --claude to select the
+high-effort Claude wrapper. PLAN_NAME must be a bare filename stem without .md
+or path separators. Additional arguments are passed unchanged to
+`ai-session-handler run`.
 
 Examples:
   ai-run improve-imports
+  ai-run --claude improve-imports
   ai-run improve-imports --max-phases 1
   ai-run improve-imports --quiet
   ai-run improve-imports --retry-stopped
 
-Set CODEX_MODEL to select a Codex model without changing the plan command.
+Set CODEX_MODEL or ANTHROPIC_MODEL to select the corresponding provider model
+without changing the plan command.
 EOF
 }
 
@@ -39,6 +42,17 @@ case "$1" in
         exit 0
         ;;
 esac
+
+agent_cmd="ai-session-handler-codex-high"
+if [[ "$1" == "--claude" ]]; then
+    agent_cmd="ai-session-handler-claude-high"
+    shift
+    if (($# == 0)); then
+        printf 'ai-run: missing PLAN_NAME\n' >&2
+        usage >&2
+        exit 2
+    fi
+fi
 
 plan_name="$1"
 shift
@@ -66,5 +80,5 @@ fi
 
 exec ai-session-handler run \
     --plan "$plan_path" \
-    --agent-cmd "ai-session-handler-codex-high" \
+    --agent-cmd "$agent_cmd" \
     "$@"

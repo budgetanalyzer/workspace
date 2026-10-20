@@ -166,21 +166,26 @@ entire managed shell configuration. It resolves `JAVA_HOME` from installed `java
 system home, consistent browser/package paths and the combined system CA bundle
 for Python, requests and Node. It exports no proxy or credentials.
 
-Claude configuration merges only `promptSuggestionEnabled`, `autoCompactEnabled`
-and the AGENTS SessionStart command from the reviewed overlay. Other settings,
+Claude configuration merges only `promptSuggestionEnabled` and
+`autoCompactEnabled` from the reviewed overlay. Other settings,
 permission/model choices and user hooks survive. The file-only conversation
 skill is retained byte-for-byte. An unrelated existing skill/command, changed
 managed resource, symlink or altered npm lock stops for private human review.
-The statusline helper is installed but remains optional and is never activated
-or invoked during installation; an explicit invocation can use this user's
-Claude OAuth state. Its private cache stays under workspace `tmp/`.
 
 `installation.json` records source revisions/dirty paths, home/user, repository
 parents, reviewed versions, npm-lock SHA256 and resolved mitmproxy dependencies.
 The handler is editable from the local checkout; the verifier checks its import
-origin, global command resolution and high wrapper help. Ordinary source edits
-remain visible; handler dependency/entry-point changes require an explicit
-human pipx reinstall after review. mitmproxy's exact top-level release is pinned;
+origin, global command resolution and both high wrapper help commands. Ordinary
+source edits remain visible; handler dependency/entry-point changes require an
+explicit human pipx reinstall after review. After adding a reviewed console
+script, stop affected workers and run this from a fresh shell before rerunning
+the user installer:
+
+```bash
+pipx reinstall ai-session-handler
+```
+
+mitmproxy's exact top-level release is pinned;
 pipx resolves transitive PyPI dependencies on first install and records them.
 Reruns retain that environment. npm uses the tracked full integrity lock with
 `npm ci`, isolated config/cache and verified HTTPS. Reviewed npm lifecycle scripts
@@ -188,6 +193,44 @@ may compile their locked optional dependencies. Never resolve `latest` during
 installation. An explicit npm refresh requires reviewing both manifest and lock,
 then privately removing only this managed npm environment and rerunning; the
 installer refuses to perform that removal or upgrade automatically.
+
+### Claude Settings Replacement
+
+A separate, human-run script makes `~/.claude/settings.json` match the reviewed
+file `native/helpers/claude-settings.json`. It is not an installed command and
+not a `toolchain.json` entry, and it is independent of the user installer:
+
+```bash
+python3 scripts/native/claude_settings.py check    # read-only: 0 equal, 1 differs, 2 unreadable/invalid
+python3 scripts/native/claude_settings.py apply
+```
+
+`apply` is idempotent. If the parsed JSON already equals the canonical file it
+prints "already up to date" and changes nothing. Otherwise it copies the existing
+file to `settings.json.bak-YYYYmmddTHHMMSS` beside it, then atomically replaces
+it with the canonical content (mode `0600`). A missing file is created without a
+backup; a symlink or non-regular target is refused. Use `--settings-path PATH`
+to target another file.
+
+This is a full replacement: keys not in the canonical file are dropped, so edit
+`native/helpers/claude-settings.json` to keep a new setting. It removes the
+legacy `SessionStart` hook, so Claude Code's native `AGENTS.md` loading is the
+only source and the text appears once. It also sets the default model to Claude
+Code's `opus` alias. The installer's overlay merge
+(`promptSuggestionEnabled`, `autoCompactEnabled`) leaves the replaced file
+unchanged, so the two do not conflict.
+
+The canonical file points `statusLine` at the installed `statusline-command`
+helper (`native/helpers/statusline-command.sh`), so run the user installer
+before `apply` so the command exists. The helper reads only the status line JSON
+on stdin and prints one line: the directory (`$HOME` shown as `~`), model,
+`ctx N%`, `5h N% (reset)` and `7d N% (reset)`, with resets as relative durations
+(`XdYh`, `XhYm`, `Ym` or `now`). A segment whose value is missing or null is
+omitted (for example `5h`/`7d` without plan rate limits, or `ctx` before the
+first response); an unparsable reset time keeps the percentage without the
+parenthesized duration. It makes no network calls and reads no credentials. See
+[Lean Claude Launchers](launch-options.md#lean-claude-launchers) for the
+launch side.
 
 ## Canonical Read-Only Native Runtime Contract
 
@@ -242,7 +285,10 @@ After the reviewed source is transferred and every affected worker has ended,
 the human must rerun the focused normal-user installation sequence in
 [Install User Tools And Environment](#install-user-tools-and-environment),
 including its repeat run. That refresh converges the installed manifest,
-settings overlay and helper resources, then proves idempotence. Do not rerun
+settings overlay and helper resources, then proves idempotence. Files recorded
+by a previous installation but no longer managed are removed only when their
+recorded digest still matches; a modified, symlinked or out-of-home retired
+path stops the refresh for private review before anything is removed. Do not rerun
 system provisioning solely for this source refresh, and do not remove provider
 state or the human-created optional inspection directory.
 
@@ -386,15 +432,17 @@ selection and permission mode actually ran.
 | --- | --- |
 | Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers only load environment and forward arguments |
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
-| `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
-| `claude-with-proxy` | Plain Claude permission arguments, inspection only |
-| Claude custom-prompt/model wrappers | Explicit `--dangerously-skip-permissions`; optional selection retains that permission behavior |
-| Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
+| `ai-session-handler-codex-high`, `ai-session-handler-claude-high`, `ai-run` | Handler selects either high-reasoning `codex-lean exec` or high-effort `claude-lean`; both selected modes have full guest access |
+| `claude-with-proxy` | Upstream Claude permission behavior through the inspection proxy, with no added Claude environment |
+| `claude-lean` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; lean option set and 11 environment variables scoped to the launch |
+| `claude-lean --proxy`, `claude-lean-proxy`, `claude-lean-proxy-high` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; same lean option set and environment, with the default prompt kept for capture unless a trailing prompt flag is supplied |
+| Optional aliases | Four thin lean aliases select medium or high effort and/or proxy mode; `ai-run-claude` selects the Claude handler; Codex aliases retain explicit effort/permission choices; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
-Explicit CLI model choices survive forwarding; `CODEX_MODEL` remains supported.
-The `xhigh` proxy effort spelling is corrected. Docker-group membership gives
-all these processes broad guest-root-equivalent authority regardless of native
+Explicit CLI model choices survive forwarding; `CODEX_MODEL` and
+`ANTHROPIC_MODEL` remain supported for their corresponding providers. The
+`xhigh` proxy effort spelling is corrected. Docker-group membership gives all
+these processes broad guest-root-equivalent authority regardless of native
 command sandboxing. The VM and host policy remain the personal-host boundary.
 
 Open a fresh login shell and a fresh terminal through the SSH client or editor
@@ -405,9 +453,10 @@ terminal:
 ```bash
 id -un
 printf '%s\n' "$HOME"
-command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-run playwright
+command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-session-handler-claude-high ai-run playwright
 ai-session-handler --version
 ai-session-handler-codex-high --help
+ai-session-handler-claude-high --help
 check-budget-analyzer-local-ca-trust
 ./scripts/check-agent-vm-tools.sh \
   --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
@@ -448,17 +497,16 @@ PY
 Never copy a proxy signing key from another machine. `start-proxy` and optional
 provider wrappers require this private CA/token, bind proxy/UI to 127.0.0.1 and
 keep upstream TLS verification on. They refuse occupied ports rather than
-reusing an unidentified proxy or assuming the correct addon is loaded. Provider
+reusing an unidentified proxy. Provider
 wrappers own/stop their child, assemble a private public+inspection CA bundle
 under workspace `tmp/mitmproxy-private`, and scope proxy/trust variables to that
 provider process. Their bundle is removed on exit. No system/NSS inspection-root
 import, global proxy export or upstream bypass runs. Raw `start-proxy` starts
 only the UI/proxy; it does not proxy ordinary sessions. Flow renderer exports
-stay under workspace `tmp/mitmproxy-flows`; addon dumps and statusline caches
-are private files under workspace `tmp/`. Full captured requests can contain
+stay under workspace `tmp/mitmproxy-flows`. Full captured requests can contain
 secrets; inspect/clean those directories privately after stopping listeners.
 
-Remove only the human-created inspection directory and private capture/dump
+Remove only the human-created inspection directory and private capture
 files after review to disable interception. Optional real interception is a
 separate human test; automated checks validate its offline argv and lifecycle.
 
@@ -471,13 +519,16 @@ PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_user_environment.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_claude_settings.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_launchers.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_statusline.py
 bash -n scripts/install-agent-vm-user-tools.sh
 bash -n scripts/check-agent-vm-tools.sh
 bash -n scripts/install-agent-vm-local-ca-trust.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/install-agent-vm-user-tools.sh scripts/check-agent-vm-tools.sh scripts/install-agent-vm-local-ca-trust.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh native/helpers/*.sh native/helpers/mitmflows native/helpers/mitmflow-detail native/helpers/mitmflow-body
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/system-prompt-addon.py native/helpers/mitmflow-render.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py scripts/native/claude_settings.py tests/native/check_claude_settings.py tests/native/check_lean_launchers.py tests/native/check_statusline.py native/helpers/mitmflow-render.py
 git diff --check
 ```
 
