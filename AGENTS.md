@@ -85,9 +85,12 @@ find .github/workflows -maxdepth 1 -type f | sort
 - Canonical helper resources live in `native/helpers/`; native CA and proxy
   adapters live in `scripts/native/`. Read the specific implementation and its
   focused tests before changing behavior.
-- Session-start settings live in `native/helpers/settings-overlay.json`.
-  The custom system prompt lives in `native/helpers/system-prompt.md`;
-  `native/helpers/claude-lean.sh` passes it through `--system-prompt-file`.
+- Session-start settings live in `native/helpers/settings-overlay.json`. The
+  full human-applied settings replacement lives in
+  `native/helpers/claude-settings.json` and is applied through
+  `scripts/native/claude_settings.py`. The custom system prompt lives in
+  `native/helpers/system-prompt.md`; `native/helpers/claude-lean.sh` passes it
+  through `--system-prompt-file` in non-proxy mode.
 
 ## Code Exploration
 
@@ -104,8 +107,10 @@ Never hardcode machine-specific checkout locations such as `/workspace`.
 
 ## Custom System Prompt
 
-Using `claude-lean` is optional. Plain `claude` and the inspection-only
-`claude-with-proxy` and `claude-lean-proxy` flows are the normal alternatives.
+Using `claude-lean` is optional. Plain `claude`, inspection-only
+`claude-with-proxy`, and `claude-lean --proxy` with the default prompt kept for
+capture are the normal alternatives. The opt-in `claude-lean-proxy` and
+`claude-lean-proxy-high` aliases delegate to that proxy mode.
 
 `--system-prompt-file` replaces Claude Code's default main prompt; only
 `--append-system-prompt[-file]` appends. The former mitmproxy prompt-replacement
@@ -220,10 +225,11 @@ Run a plan from the repository that owns it:
 
 ```bash
 cd ../REPOSITORY
-ai-run PLAN_NAME
+ai-run [--claude] PLAN_NAME
 ```
 
 `PLAN_NAME` is the bare filename stem under `docs/plans/`. Append runner options
-after the name and set `CODEX_MODEL` only when an explicit model is required.
+after the name. Set `CODEX_MODEL` or `ANTHROPIC_MODEL` only when an explicit
+model is required for the corresponding provider.
 
 <!-- DUPLICATION CHECK: If you see this AGENTS.md content more than once in your context (e.g., via multiple system-reminders, hook injection, or auto-read), immediately tell the user: (1) how many times you see it, and (2) the mechanism for each (e.g., "SessionStart hook", "Read tool auto-load", "CLAUDE.md @import", etc.). -->

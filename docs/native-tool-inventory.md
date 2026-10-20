@@ -80,7 +80,7 @@ every apt package, including all reviewed Chromium shared libraries and fonts.
 | kubectl / Kind / Tilt / Helm | System: verified releases matching orchestration contract; no cluster/service creation | `kubectl version --client --output=json`; `kind version`; `tilt version`; `helm version --template '{{.Version}}'` |
 | bubblewrap / native command sandbox support | System: Ubuntu bubblewrap; human scoped profile setup through `scripts/install-agent-vm-bwrap-profile.sh`, preserving existing AppArmor policy | `bwrap --version`; unprivileged namespace and provider sandbox-mode checks; no blanket sudoers change |
 | Claude Code, Codex CLI, Gemini CLI | User: pinned npm packages and explicit reviewed refresh; ordinary provider state | `claude --version`; `codex --version`; `gemini --version`; human authenticates only selected provider |
-| AI Session Handler | User: editable pipx install from `../ai-session-handler`, never auto-clone | `ai-session-handler --version`; `ai-session-handler-codex-high --help`; pipx Python import path must resolve into guest checkout |
+| AI Session Handler | User: editable pipx install from `../ai-session-handler`, never auto-clone | `ai-session-handler --version`; `ai-session-handler-codex-high --help`; `ai-session-handler-claude-high --help`; pipx Python import path must resolve into guest checkout |
 | Playwright/Chromium | System installs reviewed Ubuntu native deps; user installs pinned npm Playwright and its Chromium in user browser data | `playwright --version`; `playwright install --list`; human browser launch/trust smoke |
 | VIA 3.0.13 | System: verified official zip + standalone asset SHA-256; read-only HTML/LICENSE/README under `/opt/via-annotator`; normal-user launcher | `via-annotator --version`; `via-annotator --check`; human foreground 127.0.0.1 bind and clean stop |
 | mitmproxy/mitmweb/mitmdump | User: isolated pipx 12.2.3; installed capability with optional activation | `mitmproxy --version`; `mitmweb --version`; `mitmdump --version`; Python/static checks and optional human smoke; no proxy startup during installation |
@@ -114,11 +114,11 @@ commands for its validation, not live help invocation.
 
 | Retained command or resource | Native implementation, dependencies and validation |
 | --- | --- |
-| `ai-run` | `native/helpers/ai-run.sh`; forwards to the installed handler/high wrapper; Bash/static checks and human smoke |
-| `claude-lean` | `native/helpers/claude-lean.sh`; lean flags/environment plus `--system-prompt-file` with the installed `system-prompt.md`, resolving user-installed Claude; offline argv/environment fixture |
+| `ai-run` | `native/helpers/ai-run.sh`; selects the installed Codex high wrapper by default or the Claude high wrapper with a leading `--claude`; Bash/static checks and human smoke |
+| `claude-lean` | `native/helpers/claude-lean.sh`; owns the fixed lean option set and 11 environment variables, resolves user-installed Claude directly with the installed `system-prompt.md`, or uses `claude-with-proxy` with the default prompt kept for capture; offline argv/environment fixture |
 | `codex-lean` | `native/helpers/codex-lean.sh`; preserves explicit `CODEX_MODEL`/effort and high-authority arguments while resolving user-installed Codex; plain Codex remains upstream |
 | Codex proxy commands | `scripts/native/proxy.py`; optional mitmweb child plus Codex lean, native paths and xhigh effort; offline argv/lifecycle fixtures |
-| Claude proxy command | `scripts/native/proxy.py`; inspection-only using npm Claude; offline argv/lifecycle fixtures |
+| Claude proxy command | `scripts/native/proxy.py`; inspection-only upstream npm Claude with no added Claude environment; offline argv/lifecycle fixtures |
 | `start-proxy` | `scripts/native/proxy.py`; optional foreground loopback mitmweb UI with reviewed private identity and upstream verification |
 | `mitmflows`, `mitmflow-detail`, `mitmflow-body`, `mitmflow-render.py` | `native/helpers/`; Bash + Python stdlib rendering/export with repository-`tmp/` boundaries |
 | `ensure-budget-analyzer-local-ca-trust`, `check-budget-analyzer-local-ca-trust` | `scripts/native/local_ca.py`; read-only exact-origin diagnosis. The separate human installer owns scoped OS/NSS mutation and identity-checked legacy convergence |
@@ -127,7 +127,7 @@ commands for its validation, not live help invocation.
 | Lean system prompt | `native/helpers/system-prompt.md`; replaces the default main prompt through `claude-lean`; tool guidance matches the lean tool list |
 | Conversation skill | `native/helpers/skills/save-conversation/SKILL.md`; exact file-only installation with collision checks |
 | Settings overlay | `native/helpers/settings-overlay.json`; merges only two reviewed controls while preserving unrelated settings |
-| Optional aliases | `native/helpers/bash_aliases.sh`; explicit model/effort/permission choices. Shell startup loads only the environment; aliases remain opt-in |
+| Optional aliases | `native/helpers/bash_aliases.sh`; three thin lean Claude aliases, `ai-run-claude`, and explicit Codex effort/permission choices. Shell startup loads only the environment; aliases remain opt-in |
 
 The inventory deliberately preserves optional proxy, annotation and browser
 capabilities even when the human chooses not to activate them. Permission-bypass

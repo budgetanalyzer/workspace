@@ -266,7 +266,9 @@ class UserTools:
         files[self.root / 'aliases.sh'] = ((REPO / 'native/helpers/bash_aliases.sh').read_text(), 0o600)
         targets = {name: f'"{self.root}/npm/node_modules/.bin/{name}"' for name in ('claude', 'codex', 'gemini', 'playwright')}
         targets.update({name: f'"{self.root}/pipx-bin/{name}"' for name in
-                        ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump')})
+                        ('ai-session-handler', 'ai-session-handler-codex-high',
+                         'ai-session-handler-claude-high', 'mitmproxy',
+                         'mitmweb', 'mitmdump')})
         helper_sources = {'ai-run': 'ai-run.sh', 'claude-lean': 'claude-lean.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
                           'statusline-command': 'statusline-command.sh',
                           'mitmflows': 'mitmflows',
@@ -283,7 +285,9 @@ class UserTools:
             # shlex quotes handle apostrophes, shell substitutions and spaces in account homes.
             if name in ('claude', 'codex', 'gemini', 'playwright'):
                 target = shlex.quote(str(self.root / 'npm/node_modules/.bin' / name))
-            elif name in ('ai-session-handler', 'ai-session-handler-codex-high', 'mitmproxy', 'mitmweb', 'mitmdump'):
+            elif name in ('ai-session-handler', 'ai-session-handler-codex-high',
+                          'ai-session-handler-claude-high', 'mitmproxy',
+                          'mitmweb', 'mitmdump'):
                 target = shlex.quote(str(self.root / 'pipx-bin' / name))
             files[self.bin / name] = ('#!/usr/bin/env bash\nset -euo pipefail\n'
                                      f'. {shlex.quote(str(self.fragment))}\nexec {target} "$@"\n', 0o700)
@@ -415,7 +419,9 @@ class UserTools:
         python = self.root / 'pipx/venvs/ai-session-handler/bin/python'
         origin = self.command([python, '-c', 'from pathlib import Path; import ai_session_handler; print(Path(ai_session_handler.__file__).resolve())']).stdout.strip()
         require(Path(origin).is_absolute() and Path(origin).is_relative_to(self.handler / 'src/ai_session_handler'), 'handler import origin mismatch')
-        self.command([self.bin / 'ai-session-handler-codex-high', '--help'])
+        for name in ('ai-session-handler-codex-high',
+                     'ai-session-handler-claude-high'):
+            self.command([self.bin / name, '--help'])
         for name in ('mitmweb', 'mitmdump'):
             self.command([self.bin / name, '--version'])
         for name in ('mitmflows', 'mitmflow-detail', 'mitmflow-body', 'ai-run'):

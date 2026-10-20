@@ -331,6 +331,15 @@ class UserInstallerSafetyTests(unittest.TestCase):
                 self.fail(f'unexpected helper source mapping: {source}')
             self.assertTrue(wrapper.rstrip().endswith('"$@"'))
 
+    def test_handler_high_wrappers_are_managed_and_verified(self):
+        self.install()
+        for name in ('ai-session-handler-codex-high',
+                     'ai-session-handler-claude-high'):
+            self.assertIn(name, self.probe.names)
+            wrapper = self.probe.bin / name
+            self.assertIn(wrapper, self.probe.plan_files())
+            self.assertIn([str(wrapper), '--help'], self.probe.calls)
+
     def test_wrong_origin_rejects_before_home_mutation(self):
         self.probe.origin_bad = True
         with self.assertRaisesRegex(user_tools.UserToolsError, 'wrong origin'):

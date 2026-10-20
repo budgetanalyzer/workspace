@@ -1,5 +1,5 @@
 {
-  "model": "sonnet",
+  "model": "opus",
   "promptSuggestionEnabled": false,
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",

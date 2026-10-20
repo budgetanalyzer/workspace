@@ -73,9 +73,6 @@ def launch(action, user_args):
                    REQUESTS_CA_BUNDLE=str(bundle), NODE_EXTRA_CA_CERTS=str(bundle))
         if action == 'codex-max-with-proxy':
             env['CODEX_REASONING_EFFORT'] = 'xhigh'
-        if action.startswith('claude'):
-            env.update(CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS='1', ENABLE_CLAUDEAI_MCP_SERVERS='false',
-                       CLAUDE_CODE_DISABLE_1M_CONTEXT='1')
         proxy = subprocess.Popen(args, env=os.environ.copy(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(50):
             require(proxy.poll() is None, 'inspection proxy failed to start; inspect privately')

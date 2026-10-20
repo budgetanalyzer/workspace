@@ -175,9 +175,17 @@ managed resource, symlink or altered npm lock stops for private human review.
 `installation.json` records source revisions/dirty paths, home/user, repository
 parents, reviewed versions, npm-lock SHA256 and resolved mitmproxy dependencies.
 The handler is editable from the local checkout; the verifier checks its import
-origin, global command resolution and high wrapper help. Ordinary source edits
-remain visible; handler dependency/entry-point changes require an explicit
-human pipx reinstall after review. mitmproxy's exact top-level release is pinned;
+origin, global command resolution and both high wrapper help commands. Ordinary
+source edits remain visible; handler dependency/entry-point changes require an
+explicit human pipx reinstall after review. After adding a reviewed console
+script, stop affected workers and run this from a fresh shell before rerunning
+the user installer:
+
+```bash
+pipx reinstall ai-session-handler
+```
+
+mitmproxy's exact top-level release is pinned;
 pipx resolves transitive PyPI dependencies on first install and records them.
 Reruns retain that environment. npm uses the tracked full integrity lock with
 `npm ci`, isolated config/cache and verified HTTPS. Reviewed npm lifecycle scripts
@@ -207,7 +215,8 @@ to target another file.
 This is a full replacement: keys not in the canonical file are dropped, so edit
 `native/helpers/claude-settings.json` to keep a new setting. It removes the
 legacy `SessionStart` hook, so Claude Code's native `AGENTS.md` loading is the
-only source and the text appears once. The installer's overlay merge
+only source and the text appears once. It also sets the default model to Claude
+Code's `opus` alias. The installer's overlay merge
 (`promptSuggestionEnabled`, `autoCompactEnabled`) leaves the replaced file
 unchanged, so the two do not conflict.
 
@@ -420,16 +429,17 @@ selection and permission mode actually ran.
 | --- | --- |
 | Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers only load environment and forward arguments |
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
-| `ai-session-handler-codex-high`, `ai-run` | Handler selects high reasoning and calls `codex-lean exec`; therefore full guest access in this selected mode |
-| `claude-with-proxy` | Plain Claude permission arguments, inspection only |
-| `claude-lean`, `claude-lean-*` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; flags and environment scoped to the launch; level shortcuts opt-in through `aliases.sh` |
-| `claude-lean-proxy`, `claude-lean-proxy-*` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; flags and environment scoped to the launch; opt-in through `aliases.sh` |
-| Optional aliases | Explicit bypass/effort/model choices in managed `aliases.sh`; never sourced by default |
+| `ai-session-handler-codex-high`, `ai-session-handler-claude-high`, `ai-run` | Handler selects either high-reasoning `codex-lean exec` or high-effort `claude-lean`; both selected modes have full guest access |
+| `claude-with-proxy` | Upstream Claude permission behavior through the inspection proxy, with no added Claude environment |
+| `claude-lean` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; lean option set and 11 environment variables scoped to the launch |
+| `claude-lean --proxy`, `claude-lean-proxy`, `claude-lean-proxy-high` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; same lean option set and environment, with the default prompt kept for capture unless a trailing prompt flag is supplied |
+| Optional aliases | Three thin lean aliases select high effort and/or proxy mode; `ai-run-claude` selects the Claude handler; Codex aliases retain explicit effort/permission choices; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
-Explicit CLI model choices survive forwarding; `CODEX_MODEL` remains supported.
-The `xhigh` proxy effort spelling is corrected. Docker-group membership gives
-all these processes broad guest-root-equivalent authority regardless of native
+Explicit CLI model choices survive forwarding; `CODEX_MODEL` and
+`ANTHROPIC_MODEL` remain supported for their corresponding providers. The
+`xhigh` proxy effort spelling is corrected. Docker-group membership gives all
+these processes broad guest-root-equivalent authority regardless of native
 command sandboxing. The VM and host policy remain the personal-host boundary.
 
 Open a fresh login shell and a fresh terminal through the SSH client or editor
@@ -440,9 +450,10 @@ terminal:
 ```bash
 id -un
 printf '%s\n' "$HOME"
-command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-run playwright
+command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-session-handler-claude-high ai-run playwright
 ai-session-handler --version
 ai-session-handler-codex-high --help
+ai-session-handler-claude-high --help
 check-budget-analyzer-local-ca-trust
 ./scripts/check-agent-vm-tools.sh \
   --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
