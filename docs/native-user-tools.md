@@ -432,7 +432,7 @@ selection and permission mode actually ran.
 | --- | --- |
 | Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers only load environment and forward arguments |
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
-| `ai-session-handler-codex-high`, `ai-session-handler-claude-high`, `ai-run` | Handler selects either high-reasoning `codex-lean exec` or high-effort `claude-lean`; both selected modes have full guest access |
+| `ai-session-handler-codex-high`, `ai-session-handler-claude-high`, `ai-session-handler-claude-medium`, `ai-run` | Handler selects high-reasoning `codex-lean exec` or high- or medium-effort `claude-lean`; all selected modes have full guest access |
 | `claude-with-proxy` | Upstream Claude permission behavior through the inspection proxy, with no added Claude environment |
 | `claude-lean` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; lean option set and 11 environment variables scoped to the launch |
 | `claude-lean --proxy`, `claude-lean-proxy`, `claude-lean-proxy-high` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; same lean option set and environment, with the default prompt kept for capture unless a trailing prompt flag is supplied |
@@ -453,10 +453,11 @@ terminal:
 ```bash
 id -un
 printf '%s\n' "$HOME"
-command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-session-handler-claude-high ai-run playwright
+command -v codex claude gemini ai-session-handler ai-session-handler-codex-high ai-session-handler-claude-high ai-session-handler-claude-medium ai-run playwright
 ai-session-handler --version
 ai-session-handler-codex-high --help
 ai-session-handler-claude-high --help
+ai-session-handler-claude-medium --help
 check-budget-analyzer-local-ca-trust
 ./scripts/check-agent-vm-tools.sh \
   --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"

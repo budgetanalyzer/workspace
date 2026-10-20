@@ -267,7 +267,8 @@ class UserTools:
         targets = {name: f'"{self.root}/npm/node_modules/.bin/{name}"' for name in ('claude', 'codex', 'gemini', 'playwright')}
         targets.update({name: f'"{self.root}/pipx-bin/{name}"' for name in
                         ('ai-session-handler', 'ai-session-handler-codex-high',
-                         'ai-session-handler-claude-high', 'mitmproxy',
+                         'ai-session-handler-claude-high',
+                         'ai-session-handler-claude-medium', 'mitmproxy',
                          'mitmweb', 'mitmdump')})
         helper_sources = {'ai-run': 'ai-run.sh', 'claude-lean': 'claude-lean.sh', 'codex-lean': 'codex-lean.sh', 'via-annotator': 'via-annotator.sh',
                           'statusline-command': 'statusline-command.sh',
@@ -286,7 +287,8 @@ class UserTools:
             if name in ('claude', 'codex', 'gemini', 'playwright'):
                 target = shlex.quote(str(self.root / 'npm/node_modules/.bin' / name))
             elif name in ('ai-session-handler', 'ai-session-handler-codex-high',
-                          'ai-session-handler-claude-high', 'mitmproxy',
+                          'ai-session-handler-claude-high',
+                          'ai-session-handler-claude-medium', 'mitmproxy',
                           'mitmweb', 'mitmdump'):
                 target = shlex.quote(str(self.root / 'pipx-bin' / name))
             files[self.bin / name] = ('#!/usr/bin/env bash\nset -euo pipefail\n'
@@ -453,7 +455,8 @@ class UserTools:
         origin = self.command([python, '-c', 'from pathlib import Path; import ai_session_handler; print(Path(ai_session_handler.__file__).resolve())']).stdout.strip()
         require(Path(origin).is_absolute() and Path(origin).is_relative_to(self.handler / 'src/ai_session_handler'), 'handler import origin mismatch')
         for name in ('ai-session-handler-codex-high',
-                     'ai-session-handler-claude-high'):
+                     'ai-session-handler-claude-high',
+                     'ai-session-handler-claude-medium'):
             self.command([self.bin / name, '--help'])
         for name in ('mitmweb', 'mitmdump'):
             self.command([self.bin / name, '--version'])
