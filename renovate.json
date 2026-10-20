@@ -6,58 +6,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Discover the reviewed kubectl release",
-      "managerFilePatterns": [
-        "/^native\\/toolchain\\.json$/"
-      ],
-      "matchStrings": [
-        "\"kubectl\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "kubernetes/kubernetes",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "description": "Discover the reviewed Helm release",
-      "managerFilePatterns": [
-        "/^native\\/toolchain\\.json$/"
-      ],
-      "matchStrings": [
-        "\"helm\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "helm/helm",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "description": "Discover the reviewed Tilt release",
-      "managerFilePatterns": [
-        "/^native\\/toolchain\\.json$/"
-      ],
-      "matchStrings": [
-        "\"tilt\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "tilt-dev/tilt",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "description": "Discover the reviewed Kind release",
-      "managerFilePatterns": [
-        "/^native\\/toolchain\\.json$/"
-      ],
-      "matchStrings": [
-        "\"kind\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"system\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
-      ],
-      "depNameTemplate": "kubernetes-sigs/kind",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
       "description": "Discover the reviewed actionlint release",
       "managerFilePatterns": [
         "/^native\\/toolchain\\.json$/"
@@ -86,7 +34,7 @@
       "customType": "regex",
       "description": "Discover the reviewed mitmproxy release",
       "managerFilePatterns": [
-        "/^native\\/toolchain\\.json$/"
+        "/^native\\/agent-tools\\.json$/"
       ],
       "matchStrings": [
         "\"mitmproxy\"\\s*:\\s*\\{\\s*\"owner\"\\s*:\\s*\"normal-user\",\\s*\"method\"\\s*:\\s*\"pipx\",\\s*\"version\"\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
@@ -116,10 +64,6 @@
         "custom.regex"
       ],
       "matchPackageNames": [
-        "kubernetes/kubernetes",
-        "helm/helm",
-        "tilt-dev/tilt",
-        "kubernetes-sigs/kind",
         "rhysd/actionlint",
         "go"
       ],
@@ -129,11 +73,11 @@
         "checksum-required"
       ],
       "prBodyNotes": [
-        "This version-only proposal is intentionally incomplete. Review and update the amd64 and arm64 release URLs and SHA-256 values, `version_pattern`, versioned `destination` where applicable, architecture support, lifecycle compatibility, and any matching orchestration contract before merge. Renovate does not calculate or verify these companion inputs."
+        "This version-only proposal is intentionally incomplete. Review and update the amd64 and arm64 release URLs and SHA-256 values, `version_pattern`, versioned `destination` where applicable, architecture support, and lifecycle compatibility before merge. Renovate does not calculate or verify these companion inputs."
       ]
     },
     {
-      "description": "Keep native npm snapshots review-complete",
+      "description": "Keep the pinned Playwright project review-complete",
       "matchManagers": [
         "npm"
       ],
@@ -141,7 +85,7 @@
         "native/npm/package.json"
       ],
       "prBodyNotes": [
-        "Before merge, keep the direct version, lock entries, registry tarball URLs, integrity values, and matching `native/toolchain.json` records aligned. Playwright updates must also refresh its Chromium-derived reviewed inputs."
+        "Playwright is the only native npm dependency; `package-lock.json` is its single version, tarball and integrity source and `package.json` must match it. Before merge, review the new release's Ubuntu 24.04 Chromium native dependency lists and update `chromium_apt` and `chromium_apt_source` in `native/toolchain.json`. The native checks reject a lock-only upgrade until that separately reviewed provenance matches. Provider CLIs float outside this project and are not tracked."
       ]
     },
     {

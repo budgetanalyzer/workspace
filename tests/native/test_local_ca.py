@@ -37,6 +37,10 @@ class TrustCommandFixture:
         self.bundle = bundle
         self.nss = nss
         self.bundle_current = True
+        self.expired = set()
+        self.not_ca = set()
+        self.hostname_matches = True
+        self.fail_prefix = None
         self.nss_managed = None
         self.nss_entries = {'Unrelated Public Root': 'C,,'}
         self.calls = []
@@ -48,13 +52,20 @@ class TrustCommandFixture:
     def __call__(self, args, *, data=None):
         args = [str(arg) for arg in args]
         self.calls.append(args)
+        if self.fail_prefix and args[:len(self.fail_prefix)] == self.fail_prefix:
+            return self.result(1)
         if args[:3] == ['openssl', 'x509', '-outform']:
             payload = Path(args[args.index('-in') + 1]).read_bytes() if '-in' in args else data
             return self.result(output=b'DER:' + payload)
         if args[:2] == ['openssl', 'x509']:
-            return self.result(output=b'CA:TRUE\n')
+            subject = Path(args[args.index('-in') + 1])
+            if '-checkend' in args:
+                return self.result(1 if subject.read_bytes() in self.expired else 0)
+            return self.result(output=b'CA:FALSE\n' if subject in self.not_ca else b'CA:TRUE\n')
         if args[:2] == ['openssl', 'verify']:
             ca_file = Path(args[args.index('-CAfile') + 1])
+            if '-verify_hostname' in args and not self.hostname_matches:
+                return self.result(2)
             return self.result(0 if ca_file != self.bundle or self.bundle_current else 1)
         if args[:4] == ['sudo', '--', 'install', '-m']:
             shutil.copyfile(args[-2], args[-1])
@@ -103,10 +114,11 @@ class LocalCaConvergenceTests(unittest.TestCase):
         self.fixture = Path(self.temp.name)
         self.worktrees = self.fixture / 'work trees'
         self.bares = self.fixture / 'bare repos'
-        certs = self.worktrees / 'orchestration/nginx/certs/k8s'
-        certs.mkdir(parents=True)
-        self.root = certs / '_mkcert-rootCA.pem'
-        self.leaf = certs / '_wildcard.budgetanalyzer.localhost.pem'
+        self.worktrees.mkdir()
+        supplied = self.fixture / 'supplied publication'
+        supplied.mkdir()
+        self.root = supplied / 'approved root.pem'
+        self.leaf = supplied / 'current leaf.pem'
         self.root.write_bytes(self.APPROVED)
         self.leaf.write_bytes(b'fixture approved ingress leaf\n')
         self.bares.mkdir()
@@ -116,6 +128,7 @@ class LocalCaConvergenceTests(unittest.TestCase):
         self.home.chmod(0o700)
         (self.home / '.pki').chmod(0o700)
         (self.nss / 'cert9.db').write_bytes(b'fixture NSS database')
+        self.record = self.home / '.local/share/budget-analyzer-native/trust/approved-local-root.pem'
         self.system_dir = self.fixture / 'system trust'
         self.system_dir.mkdir()
         self.system_cert = self.system_dir / 'budget-analyzer-local-mkcert.crt'
@@ -153,12 +166,11 @@ class LocalCaConvergenceTests(unittest.TestCase):
         self.temp.cleanup()
 
     def install(self):
-        local_ca.check_or_install(
-            self.worktrees, self.bares, self.home, self.account, install=True)
+        local_ca.install(self.root, self.leaf, self.worktrees, self.bares,
+                         self.home, self.account)
 
     def check(self):
-        local_ca.check_or_install(
-            self.worktrees, self.bares, self.home, self.account, install=False)
+        local_ca.check(self.worktrees, self.bares, self.home, self.account)
 
     @staticmethod
     def write_system_certificate(path, content):
@@ -244,6 +256,133 @@ class LocalCaConvergenceTests(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertEqual([], self.runner.mutations())
 
+
+    def test_explicit_inputs_record_approved_root_and_check_ignores_supplied_files(self):
+        self.install()
+
+        self.assertEqual(self.APPROVED, self.record.read_bytes())
+        self.assertEqual(0o600, self.record.stat().st_mode & 0o777)
+        self.assertEqual(0o700, self.record.parent.stat().st_mode & 0o777)
+        self.root.unlink()
+        self.leaf.unlink()
+        self.runner.calls.clear()
+
+        self.check()
+
+        self.assertEqual([], self.runner.mutations())
+        self.assertTrue(all(str(self.fixture / 'supplied publication') not in arg
+                            for call in self.runner.calls for arg in call))
+
+    def assert_rejected_before_mutation(self, pattern, code=11):
+        with self.assertRaisesRegex(local_ca.TrustError, pattern) as raised:
+            self.install()
+        self.assertEqual(code, raised.exception.code)
+        self.assertEqual([], self.runner.mutations())
+        self.assertFalse(self.system_cert.exists())
+        self.assertFalse(local_ca.path_exists(self.record))
+
+    def test_rejected_inputs_leave_stores_and_record_untouched(self):
+        self.root.write_bytes(self.APPROVED + b'-----BEGIN PRIVATE KEY-----\n')
+        self.assert_rejected_before_mutation('supplied CA contains a signing key')
+        self.root.write_bytes(self.APPROVED)
+
+        self.leaf.write_bytes(b'leaf\n-----BEGIN EC PRIVATE KEY-----\n')
+        self.assert_rejected_before_mutation('supplied leaf contains a private key')
+        self.leaf.write_bytes(b'fixture approved ingress leaf\n')
+
+        self.runner.expired = {self.APPROVED}
+        self.assert_rejected_before_mutation('supplied CA invalid/expired')
+        self.runner.expired = {b'fixture approved ingress leaf\n'}
+        self.assert_rejected_before_mutation('supplied leaf invalid/expired')
+        self.runner.expired = set()
+
+        self.runner.not_ca = {self.root}
+        self.assert_rejected_before_mutation('supplied CA is not a CA')
+        self.runner.not_ca = set()
+
+        self.runner.hostname_matches = False
+        self.assert_rejected_before_mutation('does not verify exact ingress hostname/leaf')
+        self.runner.hostname_matches = True
+
+        self.leaf.unlink()
+        self.assert_rejected_before_mutation('supplied CA or leaf file missing', code=10)
+
+    def test_failed_install_leaves_no_record(self):
+        for prefix, pattern in ((['sudo', '--', 'install'], 'system root import failed'),
+                                (['sudo', '--', 'update-ca-certificates'], 'combined trust update failed'),
+                                (['certutil', '-A'], 'NSS public root import failed')):
+            self.runner.fail_prefix = prefix
+            with self.assertRaisesRegex(local_ca.TrustError, pattern):
+                self.install()
+            self.assertFalse(local_ca.path_exists(self.record), prefix)
+        self.runner.fail_prefix = None
+
+        # Stores already current except a stale bundle: still no record on failure.
+        self.runner.bundle_current = False
+        self.runner.fail_prefix = ['sudo', '--', 'update-ca-certificates']
+        with self.assertRaisesRegex(local_ca.TrustError, 'combined trust update failed'):
+            self.install()
+        self.assertFalse(local_ca.path_exists(self.record))
+
+    def test_missing_record_fails_closed_with_human_command(self):
+        self.install()
+        self.record.unlink()
+
+        with self.assertRaisesRegex(local_ca.TrustError, 'approved root record missing') as raised:
+            self.check()
+        self.assertEqual(10, raised.exception.code)
+        self.assertIn('install-agent-vm-local-ca-trust.sh', str(raised.exception))
+        self.assertIn('--ca-file CA_PEM --leaf-file LEAF_PEM', str(raised.exception))
+        self.assertNotIn('orchestration', str(raised.exception))
+
+    def test_expired_or_unsafe_record_fails(self):
+        self.install()
+        self.runner.expired = {self.APPROVED}
+        with self.assertRaisesRegex(local_ca.TrustError, 'recorded approved root invalid/expired'):
+            self.check()
+        self.runner.expired = set()
+
+        self.record.chmod(0o666)
+        with self.assertRaisesRegex(local_ca.TrustError, 'record ownership/permissions'):
+            self.check()
+        self.record.chmod(0o600)
+
+        target = self.fixture / 'elsewhere.pem'
+        target.write_bytes(self.APPROVED)
+        self.record.unlink()
+        self.record.symlink_to(target)
+        with self.assertRaisesRegex(local_ca.TrustError, 'record symlink collision'):
+            self.check()
+        with self.assertRaisesRegex(local_ca.TrustError, 'record symlink collision'):
+            self.install()
+
+    def test_stores_trusting_a_different_root_than_record_fail(self):
+        self.install()
+        self.runner.nss_managed = self.DIFFERENT
+        with self.assertRaisesRegex(local_ca.TrustError, 'NSS root missing/stale'):
+            self.check()
+
+        self.runner.nss_managed = self.APPROVED
+        self.system_cert.write_bytes(self.DIFFERENT)
+        with self.assertRaisesRegex(local_ca.TrustError, 'system trust missing/stale/duplicated'):
+            self.check()
+
+        self.system_cert.write_bytes(self.APPROVED)
+        self.runner.bundle_current = False
+        with self.assertRaisesRegex(local_ca.TrustError, 'system trust missing/stale/duplicated'):
+            self.check()
+
+    def test_cli_requires_explicit_inputs_only_for_human_install(self):
+        for argv in (['local_ca.py', 'human-install'],
+                     ['local_ca.py', 'human-install', '--ca-file', str(self.root)],
+                     ['local_ca.py', 'check-budget-analyzer-local-ca-trust',
+                      '--ca-file', str(self.root), '--leaf-file', str(self.leaf)]):
+            with patch.object(sys, 'argv', argv), \
+                    contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as raised:
+                local_ca.main()
+            self.assertEqual(2, raised.exception.code)
+        self.assertEqual([], self.runner.calls)
 
 if __name__ == '__main__':
     unittest.main()

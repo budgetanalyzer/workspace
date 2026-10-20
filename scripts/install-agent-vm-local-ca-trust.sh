@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Human-only trust installation; agents use the read-only ensure/check commands.
+# Human-only trust installation from explicit --ca-file/--leaf-file inputs;
+# agents use the read-only ensure/check commands.
 set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export PYTHONDONTWRITEBYTECODE=1

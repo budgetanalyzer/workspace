@@ -76,7 +76,7 @@ variables to the launched provider process.
 
 Canonical launcher implementations and resources live under `native/helpers/`
 and `scripts/native/proxy.py`; command mappings live in
-[`native/toolchain.json`](../native/toolchain.json).
+[`native/agent-tools.json`](../native/agent-tools.json).
 
 ## Lean Claude Launchers
 

@@ -10,6 +10,7 @@ on:
       - 'scripts/native/**'
       - 'scripts/provision-agent-vm-guest.sh'
       - 'scripts/install-agent-vm-user-tools.sh'
+      - 'scripts/check-agent-vm-boundary.sh'
       - 'scripts/check-agent-vm-tools.sh'
       - 'scripts/install-agent-vm-local-ca-trust.sh'
       - 'scripts/install-agent-vm-bwrap-profile.sh'
@@ -27,6 +28,7 @@ on:
       - 'scripts/native/**'
       - 'scripts/provision-agent-vm-guest.sh'
       - 'scripts/install-agent-vm-user-tools.sh'
+      - 'scripts/check-agent-vm-boundary.sh'
       - 'scripts/check-agent-vm-tools.sh'
       - 'scripts/install-agent-vm-local-ca-trust.sh'
       - 'scripts/install-agent-vm-bwrap-profile.sh'
@@ -97,16 +99,21 @@ jobs:
           python_version="$(python3 --version)"
           shellcheck_version="$(shellcheck --version | sed -n 's/^version: //p')"
           manifest_sha256="$(sha256sum native/toolchain.json | cut -d ' ' -f 1)"
+          agent_manifest_sha256="$(sha256sum native/agent-tools.json | cut -d ' ' -f 1)"
           lock_sha256="$(sha256sum native/npm/package-lock.json | cut -d ' ' -f 1)"
+          playwright_version="$(jq -r '.packages["node_modules/playwright"].version' native/npm/package-lock.json)"
           jq -n \
             --slurpfile manifest native/toolchain.json \
+            --slurpfile agent native/agent-tools.json \
             --arg node "${node_version}" \
             --arg npm "${npm_version}" \
             --arg python "${python_version}" \
             --arg shellcheck "${shellcheck_version}" \
             --arg renovate "${RENOVATE_VERSION}" \
             --arg manifest_sha256 "${manifest_sha256}" \
+            --arg agent_manifest_sha256 "${agent_manifest_sha256}" \
             --arg lock_sha256 "${lock_sha256}" \
+            --arg playwright "${playwright_version}" \
             '{
               schema: 1,
               tools: {
@@ -118,6 +125,7 @@ jobs:
               },
               inputs: {
                 manifest_sha256: $manifest_sha256,
+                agent_manifest_sha256: $agent_manifest_sha256,
                 npm_lock_sha256: $lock_sha256
               },
               manual_lifecycle_inventory: ([
@@ -126,8 +134,9 @@ jobs:
                 {input: "chromium-apt-packages", selection: {count: ($manifest[0].chromium_apt | length), source: $manifest[0].chromium_apt_source, policy: "signed Ubuntu repositories; installed patches retained"}},
                 ($manifest[0].repositories | to_entries[] | {input: .key, selection: {source: .value.source, fingerprint: .value.fingerprint, policy: .value.policy}}),
                 {input: "via", selection: {version: $manifest[0].downloads.via.version, policy: $manifest[0].downloads.via.policy}},
-                {input: "ai-session-handler", selection: $manifest[0].user_tools["ai-session-handler"]},
-                {input: "chromium", selection: $manifest[0].user_tools.chromium}
+                {input: "ai-session-handler", selection: $agent[0].user_tools["ai-session-handler"]},
+                {input: "chromium", selection: ($agent[0].user_tools.chromium + {locked_playwright: $playwright})},
+                {input: "provider-clis", selection: {packages: [$agent[0].providers[].package], policy: "float-latest-explicit-human-update; no repository pin or Renovate tracking"}}
               ])
             }' > "${EVIDENCE_DIR}/tool-metadata.json"
 
@@ -161,76 +170,14 @@ jobs:
             mv "${temporary}" "${EVIDENCE_DIR}/source-validation-status.json"
           }
 
-          record_check renovate-config \
-            npx --yes --package="renovate@${RENOVATE_VERSION}" \
-              renovate-config-validator --strict --no-global renovate.json
-          record_check native-unit-tests \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 -m unittest discover -s tests/native -v
-          record_check native-manifest \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_manifest.py --workspace-only
-          record_check committed-install-inputs \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_install_inputs.py --publication committed
-          record_check static-user-environment \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_user_environment.py
-          record_check claude-settings \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_claude_settings.py
-          record_check lean-launchers \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_lean_launchers.py
-          record_check statusline \
-            env PYTHONPYCACHEPREFIX=tmp/pycache \
-              python3 tests/native/check_statusline.py
-          record_check bash-syntax bash -n \
-            scripts/provision-agent-vm-guest.sh \
-            scripts/install-agent-vm-user-tools.sh \
-            scripts/check-agent-vm-tools.sh \
-            scripts/install-agent-vm-local-ca-trust.sh \
-            scripts/install-agent-vm-bwrap-profile.sh \
-            scripts/prepare-agent-vm-native.sh
-          record_check shellcheck shellcheck \
-            scripts/provision-agent-vm-guest.sh \
-            scripts/install-agent-vm-user-tools.sh \
-            scripts/check-agent-vm-tools.sh \
-            scripts/install-agent-vm-local-ca-trust.sh \
-            scripts/install-agent-vm-bwrap-profile.sh \
-            scripts/prepare-agent-vm-native.sh \
-            native/helpers/ai-run.sh \
-            native/helpers/bash_aliases.sh \
-            native/helpers/claude-lean.sh \
-            native/helpers/codex-lean.sh \
-            native/helpers/statusline-command.sh \
-            native/helpers/via-annotator.sh \
-            native/helpers/mitmflows \
-            native/helpers/mitmflow-detail \
-            native/helpers/mitmflow-body
-          record_check python-syntax \
-            env PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile \
-              scripts/native/provision.py \
-              scripts/native/user_tools.py \
-              scripts/native/local_ca.py \
-              scripts/native/proxy.py \
-              scripts/native/bwrap_profile.py \
-              scripts/native/verify_release_inputs.py \
-              scripts/native/claude_settings.py \
-              tests/native/test_provision.py \
-              tests/native/test_user_tools.py \
-              tests/native/test_local_ca.py \
-              tests/native/test_native_preparation.py \
-              tests/native/test_install_inputs.py \
-              tests/native/test_dependency_discovery.py \
-              tests/native/test_release_inputs.py \
-              tests/native/check_manifest.py \
-              tests/native/check_install_inputs.py \
-              tests/native/check_user_environment.py \
-              tests/native/check_claude_settings.py \
-              tests/native/check_lean_launchers.py \
-              tests/native/check_statusline.py \
-              native/helpers/mitmflow-render.py
+          checks="$(tests/native/run-source-validation.sh --publication committed --list)" || failed=1
+          while IFS= read -r name; do
+            [[ -n "${name}" ]] || continue
+            record_check "${name}" \
+              tests/native/run-source-validation.sh --publication committed --check "${name}"
+          done <<< "${checks}"
+          record_check no-orchestration-sibling \
+            tests/native/check-source-validation-without-orchestration.sh --publication committed
 
           temporary="$(mktemp "${EVIDENCE_DIR}/source-status.XXXXXX")"
           jq --arg status "$([[ "${failed}" -eq 0 ]] && echo complete || echo failed)" \

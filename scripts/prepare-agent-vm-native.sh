@@ -5,10 +5,13 @@ set -Eeuo pipefail
 usage() {
     cat <<'EOF'
 Usage: prepare-agent-vm-native.sh [--worktree-parent PATH] [--bare-parent PATH]
+                                  [--component NAME]...
 
 Human-only Ubuntu development-VM preparation after all authoring workers exit.
 Runs system provisioning, scoped bwrap profile setup, and user installation
-twice. Existing installers enforce VM/user/repository/Docker boundaries.
+twice. Each installer runs the shared VM boundary check first.
+--component (repeatable: base, claude, codex, gemini, extras) limits user
+installation to those components; the default installs every component.
 Defaults worktree parent to this workspace's parent; prompts for bare parent
 when omitted. Logs stay under workspace tmp/native-preparation/.
 No reboot, trust import, provider login or full verification runs.
@@ -19,8 +22,17 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 workspace_dir=$(cd -- "$script_dir/.." && pwd)
 native_worktree_parent=$(cd -- "$workspace_dir/.." && pwd -P)
 native_bare_parent=
+component_args=()
 while (($#)); do
     case "$1" in
+        --component)
+            if (($# < 2)) || [[ -z $2 || $2 == --* ]]; then
+                printf 'Missing name for %s\n' "$1" >&2
+                exit 2
+            fi
+            component_args+=(--component "$2")
+            shift 2
+            ;;
         --worktree-parent|--bare-parent)
             if (($# < 2)) || [[ -z $2 || $2 == --* ]]; then
                 printf 'Missing path for %s\n' "$1" >&2
@@ -66,14 +78,18 @@ report_exit() {
 trap report_exit EXIT
 printf 'Preparation log: %s\n' "$log_file"
 sudo -v
-"$script_dir/provision-agent-vm-guest.sh" --docker-user "$(id -un)"
-"$script_dir/install-agent-vm-bwrap-profile.sh" --docker-user "$(id -un)"
-"$script_dir/install-agent-vm-user-tools.sh" \
+"$script_dir/provision-agent-vm-guest.sh" --docker-user "$(id -un)" \
     --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+"$script_dir/install-agent-vm-bwrap-profile.sh" --docker-user "$(id -un)" \
+    --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+"$script_dir/install-agent-vm-user-tools.sh" \
+    --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent" \
+    "${component_args[@]}"
 # shellcheck disable=SC1091
 . "$HOME/.config/budget-analyzer-native/env.sh"
 "$script_dir/install-agent-vm-user-tools.sh" \
-    --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent"
+    --worktree-parent "$native_worktree_parent" --bare-parent "$native_bare_parent" \
+    "${component_args[@]}"
 printf '\nPreparation completed. Open a fresh guest terminal for the installed environment.\n'
 printf 'Continue trust and provider setup in docs/native-user-tools.md, then run check-agent-vm-tools.sh.\n'
 printf 'Preparation log: %s\n' "$log_file"

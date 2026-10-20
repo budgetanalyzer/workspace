@@ -17,14 +17,24 @@ import tempfile
 REPO = Path(__file__).resolve().parents[2]
 LOCK_PATH = Path('native/npm/package-lock.json')
 SETTINGS_PATH = Path('native/helpers/settings-overlay.json')
+BOUNDARY_PATH = Path('scripts/native/boundary.py')
+AGENT_MANIFEST_PATH = Path('native/agent-tools.json')
+REGISTRY = 'https://registry.npmjs.org/'
 REQUIRED_INPUTS = (
     Path('native/npm/package.json'),
     LOCK_PATH,
     SETTINGS_PATH,
     Path('native/toolchain.json'),
+    AGENT_MANIFEST_PATH,
+    BOUNDARY_PATH,
     Path('scripts/native/user_tools.py'),
 )
-PROPOSED_NEW_SOURCE = (LOCK_PATH, SETTINGS_PATH)
+PROPOSED_NEW_SOURCE = (
+    LOCK_PATH,
+    SETTINGS_PATH,
+    AGENT_MANIFEST_PATH,
+    BOUNDARY_PATH,
+)
 
 
 class InstallInputError(RuntimeError):
@@ -66,6 +76,7 @@ def validate_source(root):
     lock_path = root / LOCK_PATH
     lock = json.loads(lock_path.read_text())
     manifest = json.loads((root / 'native/toolchain.json').read_text())
+    agent = json.loads((root / AGENT_MANIFEST_PATH).read_text())
 
     require(lock.get('lockfileVersion') == 3, 'npm lockfileVersion must remain 3')
     require(lock.get('name') == package.get('name') and
@@ -76,39 +87,30 @@ def validate_source(root):
             'npm lock packages map/root entry missing')
     require(packages[''].get('dependencies') == package.get('dependencies'),
             'npm manifest and lock direct dependencies mismatch')
-    require(manifest.get('reviewed_sources', {}).get('npm_lock') == str(LOCK_PATH),
-            'toolchain npm lock source path mismatch')
-    require(manifest.get('reviewed_sources', {}).get('settings') == str(SETTINGS_PATH),
-            'toolchain settings source path mismatch')
+    require(agent.get('reviewed_sources', {}).get('npm_lock') == str(LOCK_PATH),
+            'agent-tools npm lock source path mismatch')
+    require(agent.get('reviewed_sources', {}).get('settings') == str(SETTINGS_PATH),
+            'agent-tools settings source path mismatch')
     settings = json.loads((root / SETTINGS_PATH).read_text())
     require('hooks' not in settings, 'managed settings must not define hooks')
 
-    npm_tools = {
-        name: tool for name, tool in manifest.get('user_tools', {}).items()
-        if tool.get('method') == 'npm'
-    }
-    expected_dependencies = {
-        name: tool['version'] for name, tool in npm_tools.items()
-    }
-    require(package.get('dependencies') == expected_dependencies,
-            'npm manifest and toolchain direct versions mismatch')
-    for name, tool in npm_tools.items():
-        entry = packages.get(f'node_modules/{name}')
-        require(isinstance(entry, dict), f'locked direct dependency missing: {name}')
-        require(entry.get('version') == tool.get('version'),
-                f'{name}: reviewed version mismatch')
-        require(entry.get('resolved') == tool.get('tarball'),
-                f'{name}: reviewed tarball mismatch')
-        require(entry.get('integrity') == tool.get('integrity'),
-                f'{name}: reviewed integrity mismatch')
-
-    playwright = npm_tools.get('playwright', {}).get('version')
-    require(isinstance(playwright, str), 'reviewed Playwright version missing')
+    # Provider CLIs float outside this project; it locks Playwright only.
+    dependencies = package.get('dependencies')
+    require(isinstance(dependencies, dict) and set(dependencies) == {'playwright'},
+            'npm manifest must declare exactly the pinned Playwright project')
+    for provider in agent.get('providers', {}).values():
+        require(not {'version', 'integrity', 'tarball'} & set(provider),
+                f"{provider.get('package')}: floating provider must not carry a pin")
+    entry = packages.get('node_modules/playwright')
+    require(isinstance(entry, dict), 'locked direct dependency missing: playwright')
+    playwright = entry.get('version')
+    require(dependencies['playwright'] == playwright,
+            'npm manifest and lock Playwright version mismatch')
+    require(entry.get('resolved') == f'{REGISTRY}playwright/-/playwright-{playwright}.tgz',
+            'playwright: locked tarball does not match locked version')
+    # The reviewed apt provenance is a separate input, never derived from the lock.
     require(f'playwright-core {playwright} ' in manifest.get('chromium_apt_source', ''),
-            'Chromium apt source and Playwright version mismatch')
-    require(manifest.get('user_tools', {}).get('chromium', {}).get('version') ==
-            f'selected-by-playwright-{playwright}',
-            'Chromium selection and Playwright version mismatch')
+            'Chromium apt source and locked Playwright version mismatch')
 
     for package_path, entry in packages.items():
         if not package_path:
@@ -120,7 +122,7 @@ def validate_source(root):
                 f'{package_path}: locked version missing')
         resolved = entry.get('resolved')
         require(isinstance(resolved, str) and
-                resolved.startswith('https://registry.npmjs.org/'),
+                resolved.startswith(REGISTRY),
                 f'{package_path}: registry HTTPS tarball missing')
         validate_integrity(entry.get('integrity'), package_path)
 

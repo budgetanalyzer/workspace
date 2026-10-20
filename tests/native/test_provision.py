@@ -2,11 +2,14 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -14,6 +17,7 @@ spec = importlib.util.spec_from_file_location(
     'provision', REPO / 'scripts/native/provision.py')
 provision = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(provision)
+boundary = sys.modules['boundary']
 
 
 def minimal_manifest():
@@ -31,37 +35,54 @@ class PreflightProbe(provision.Provisioner):
     """Small command shim for rejection-before-mutation checks."""
 
     def __init__(self, root):
-        super().__init__(minimal_manifest(), 'developer')
         self.root = root
+        super().__init__(minimal_manifest(), 'developer',
+                         root / 'work trees', root / 'bare repos')
         self.calls = []
         self.missing_command = None
         self.container = 'none'
         self.vm = 'kvm'
         self.docker = False
+        self.git = True
+        self.socket = False
+        self.origin_bad = False
+        self.installed_packages = set()
         self.endpoint = 'unix:///var/run/docker.sock'
         self.absent_user = False
-        self.account_uid = 1000
-        self.current_uid = 1000
+        self.account_uid = self.current = os.getuid()
         self.path('/etc').mkdir(parents=True)
         self.path('/etc/os-release').write_text(
             'ID=ubuntu\nVERSION_ID="24.04"\n')
-        self.path('/home/developer').mkdir(parents=True)
-        self.env = {'HOME': str(self.path('/home/developer'))}
+        self.home = self.path('/home/developer')
+        self.home.mkdir(parents=True, mode=0o700)
+        self.env = {'HOME': str(self.home)}
+        self.repo = self.worktrees / 'workspace'
+        (self.repo / '.git').mkdir(parents=True)
+        (self.bares / 'workspace.git').mkdir(parents=True)
+        (self.bares / 'workspace.git/config').write_text('fixture')
 
     def enable_docker(self):
         self.docker = True
+        self.socket = True
 
     def path(self, value):
         if value == '/var/run/docker.sock':
-            return self.root / 'docker.sock'
+            return SimpleNamespace(is_socket=lambda: self.socket,
+                                   exists=lambda: self.socket)
         return self.root / str(value).lstrip('/')
 
     def which(self, name):
         if name == self.missing_command:
             return None
-        if name in ('docker', 'node', 'java', 'npm'):
-            return f'/mock/{name}' if name == 'docker' and self.docker else None
-        return f'/mock/{name}'
+        if name == 'git':
+            return '/mock/git' if self.git else None
+        if name == 'docker':
+            return '/mock/docker' if self.docker else None
+        # Fresh Ubuntu: only bootstrap commands; Node, Java, npm and every
+        # manifest download are absent and therefore installable.
+        bootstrap = ('systemd-detect-virt', 'sudo', 'curl', 'gpg', 'dpkg', 'dpkg-query',
+                     'apt-get', 'install', 'systemctl', 'usermod', 'id', 'cp', 'ln', 'chmod')
+        return f'/mock/{name}' if name in bootstrap else None
 
     def account(self):
         if self.absent_user:
@@ -69,27 +90,25 @@ class PreflightProbe(provision.Provisioner):
         return SimpleNamespace(
             pw_name=self.user,
             pw_uid=self.account_uid,
-            pw_dir='/home/developer',
+            pw_gid=os.getgid(),
+            pw_dir=str(self.root / 'home/developer'),
             pw_shell='/bin/bash',
         )
 
-    def uid(self):
-        return self.current_uid
+    def current_uid(self):
+        return self.current
 
-    def home_uid(self, home):
-        return self.account_uid
+    def private_primary_group(self, gid):
+        return gid == os.getgid()
 
     def machine(self):
         return 'x86_64'
-
-    def environment(self):
-        return self.env
 
     def root_owned(self, path):
         return None
 
     def installed(self, package):
-        return False
+        return package in self.installed_packages
 
     def command(self, argv, *, privileged=False, check=True):
         args = [str(arg) for arg in argv]
@@ -115,6 +134,15 @@ class PreflightProbe(provision.Provisioner):
             output = '/var/lib/docker'
         elif args[:2] == ['docker', 'ps']:
             output = ''
+        elif args[0] == 'git':
+            repo, operation = Path(args[2]), args[3]
+            if operation == 'rev-parse':
+                output = 'true' if args[4] == '--is-bare-repository' else str(repo)
+            elif operation == 'remote' and len(args) > 4:
+                output = ('https://wrong.example/private' if self.origin_bad
+                          else str(self.bares / f'{repo.name}.git'))
+            elif operation == 'remote':
+                output = '' if repo.name.endswith('.git') else 'origin'
         result = subprocess.CompletedProcess(args, code, output, '')
         if check and code:
             raise provision.ProvisionError('fixture command failed')
@@ -124,17 +152,17 @@ class PreflightProbe(provision.Provisioner):
 class StageProbe(provision.Provisioner):
     def __init__(self, root):
         manifest = minimal_manifest()
-        manifest['downloads']['kind'] = {
+        manifest['downloads']['fixture-tool'] = {
             'method': 'binary',
-            'destination': '/usr/local/bin/kind',
+            'destination': '/usr/local/bin/fixture-tool',
             'platforms': {
                 'amd64': {
-                    'url': 'https://example.invalid/kind',
+                    'url': 'https://example.invalid/fixture-tool',
                     'sha256': hashlib.sha256(b'expected body').hexdigest(),
                 }
             },
         }
-        super().__init__(manifest, 'developer')
+        super().__init__(manifest, 'developer', '/fixture/worktrees', '/fixture/bares')
         self.root = root
         self.arch = 'amd64'
         self.pending = manifest['downloads'].copy()
@@ -153,7 +181,7 @@ class StageProbe(provision.Provisioner):
 
 class RepeatProbe(provision.Provisioner):
     def __init__(self):
-        super().__init__(minimal_manifest(), 'developer')
+        super().__init__(minimal_manifest(), 'developer', '/fixture/worktrees', '/fixture/bares')
         self.existing_docker = True
         self.pending = {}
         self.calls = []
@@ -182,9 +210,16 @@ class ProvisionSafetyTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def probe(self, directory):
+        probe = PreflightProbe(Path(directory))
+        repo_patch = patch.object(boundary, 'REPO', probe.repo)
+        repo_patch.start()
+        self.addCleanup(repo_patch.stop)
+        return probe
+
     def assert_rejected_without_mutation(self, configure, message):
         with tempfile.TemporaryDirectory(dir=self.root) as directory:
-            probe = PreflightProbe(Path(directory))
+            probe = self.probe(directory)
             configure(probe)
             with self.assertRaisesRegex(provision.ProvisionError, message):
                 probe.preflight()
@@ -204,14 +239,16 @@ class ProvisionSafetyTests(unittest.TestCase):
             ('wrong OS', lambda p: p.path('/etc/os-release').write_text(
                 'ID=debian\nVERSION_ID="12"\n'), 'Ubuntu'),
             ('container', lambda p: setattr(p, 'container', 'docker'),
-             'native execution'),
+             'container execution rejected'),
             ('non-VM', lambda p: setattr(p, 'vm', 'none'), 'QEMU/KVM'),
             ('remote Docker', lambda p: (
                 p.enable_docker(), setattr(p, 'endpoint', 'tcp://remote:2376')),
              'remote/custom'),
             ('root target', lambda p: (
                 setattr(p, 'user', 'root'), setattr(p, 'account_uid', 0),
-                setattr(p, 'current_uid', 0)), 'normal development user'),
+                setattr(p, 'current', 0)), 'normal development user'),
+            ('sudo entry point', lambda p: setattr(p, 'current', 0),
+             'normal development user'),
             ('missing user', lambda p: setattr(p, 'absent_user', True),
              'does not exist'),
             ('missing dependency', lambda p: setattr(
@@ -221,6 +258,66 @@ class ProvisionSafetyTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assert_rejected_without_mutation(configure, message)
 
+    def test_unsafe_existing_state_rejects_before_sudo_or_download(self):
+        def docker_config(probe):
+            (probe.home / '.docker').mkdir()
+            (probe.home / '.docker/config.json').write_text('{"currentContext": "remote"}')
+        cases = (
+            ('partial Docker socket', lambda p: setattr(p, 'socket', True),
+             'partial Docker installation'),
+            ('partial Docker package', lambda p: p.installed_packages.add('docker.io'),
+             'partial Docker installation'),
+            ('Docker data root', lambda p: (
+                p.enable_docker(), setattr(p, 'docker_root', lambda: '/mnt/host/docker')),
+             'data root mismatch'),
+            ('Docker config context', docker_config, 'non-default context'),
+            ('Docker endpoint override', lambda p: p.env.update(
+                {'DOCKER_HOST': 'tcp://remote:2376'}), 'DOCKER_HOST'),
+            ('forwarded agent', lambda p: p.env.update(
+                {'SSH_AUTH_SOCK': '/tmp/fixture-agent'}), 'SSH_AUTH_SOCK'),
+            ('credential store', lambda p: (p.home / '.netrc').write_text('x'),
+             'credential store'),
+            ('world-writable home', lambda p: p.home.chmod(0o777), 'unsafe writable path'),
+            ('symlinked repository parent', lambda p: setattr(
+                p, 'worktrees', p.worktrees / '..' / p.worktrees.name), 'canonical absolute'),
+            ('wrong origin', lambda p: setattr(p, 'origin_bad', True), 'wrong origin'),
+            ('missing bare origin', lambda p: (
+                p.bares / 'workspace.git/config').unlink(), 'missing or symlinked path'),
+            ('unsafe repo without Git', lambda p: (
+                setattr(p, 'git', False), (p.bares / 'workspace.git/config').unlink()),
+             'missing or symlinked path'),
+        )
+        for label, configure, message in cases:
+            with self.subTest(label=label):
+                self.assert_rejected_without_mutation(configure, message)
+
+    def test_fresh_system_reaches_provisioning_without_installed_tools(self):
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            probe = self.probe(directory)
+            probe.manifest = provision.load_manifest()
+            probe.git = False
+            probe.preflight()
+            self.assertFalse(probe.existing_docker)
+            self.assertEqual(set(probe.manifest['downloads']), set(probe.pending))
+            self.assertFalse(any(privileged for _, privileged in probe.calls))
+            self.assertFalse(any(args[0] in ('docker', 'node', 'java', 'npm', 'git')
+                                 for args, _ in probe.calls))
+            # The runtime boundary on the same observations still requires Docker.
+            probe.git = True
+            with self.assertRaisesRegex(provision.ProvisionError, 'guest Docker is missing'):
+                probe.check_boundary()
+
+    def test_existing_healthy_docker_passes_with_privileged_read_only_checks(self):
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            probe = self.probe(directory)
+            probe.manifest = provision.load_manifest()
+            probe.enable_docker()
+            probe.preflight()
+            self.assertTrue(probe.existing_docker)
+            privileged = [args for args, flag in probe.calls if flag]
+            self.assertEqual({('docker', 'info'), ('docker', 'ps')},
+                             {tuple(args[:2]) for args in privileged})
+
     def test_checksum_failure_precedes_mutation_and_preserves_spaced_path(self):
         probe = StageProbe(self.root)
         work = self.root / 'download staging with spaces'
@@ -229,24 +326,34 @@ class ProvisionSafetyTests(unittest.TestCase):
             probe.stage(work)
         self.assertEqual([], probe.privileged)
         self.assertEqual(1, len(probe.downloads))
-        self.assertEqual(work / 'kind.download', probe.downloads[0][1])
+        self.assertEqual(work / 'fixture-tool.download', probe.downloads[0][1])
+
+    def test_system_manifest_excludes_agent_tool_declarations(self):
+        manifest = json.loads(provision.MANIFEST.read_text())
+        self.assertFalse({'user_tools', 'providers', 'helpers'} & set(manifest))
+        # A corrupt sibling agent manifest cannot affect system provisioning.
+        (self.root / 'agent-tools.json').write_text('{not json')
+        path = self.root / 'toolchain.json'
+        path.write_text(json.dumps(manifest))
+        self.assertEqual(manifest, provision.load_manifest(path))
+        self.assertNotIn('agent-tools', provision.Path(provision.__file__).read_text())
 
     def test_download_version_requires_matching_urls(self):
         self.assert_manifest_rejected(
-            lambda manifest: manifest['downloads']['kind'].update(
-                {'version': 'v0.33.1'}),
-            'kind/amd64: URL does not match reviewed version',
+            lambda manifest: manifest['downloads']['actionlint'].update(
+                {'version': '1.7.13'}),
+            'actionlint/amd64: URL does not match reviewed version',
         )
 
     def test_download_version_requires_matching_validation_pattern(self):
         def mutate(manifest):
-            tool = manifest['downloads']['kind']
-            tool['version'] = 'v0.33.1'
+            tool = manifest['downloads']['actionlint']
+            tool['version'] = '1.7.13'
             for release in tool['platforms'].values():
-                release['url'] = release['url'].replace('0.33.0', '0.33.1')
+                release['url'] = release['url'].replace('1.7.12', '1.7.13')
 
         self.assert_manifest_rejected(
-            mutate, 'kind: validation pattern does not match reviewed version')
+            mutate, 'actionlint: validation pattern does not match reviewed version')
 
     def test_go_version_requires_matching_destination(self):
         def mutate(manifest):

@@ -15,11 +15,17 @@ import tarfile
 import tempfile
 import zipfile
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from boundary import BoundaryError, VmBoundary  # noqa: E402  pylint: disable=wrong-import-position
+
 REPO = Path(__file__).resolve().parents[2]
 MANIFEST = REPO / 'native/toolchain.json'
 
 
-class ProvisionError(RuntimeError):
+class ProvisionError(BoundaryError):
     pass
 
 
@@ -77,17 +83,6 @@ def load_manifest(path=MANIFEST):
         require(re.findall(r'Node major (\d+)', repository['policy']) ==
                 [selected_node_major],
                 f'{name}: policy does not match NodeSource major selection')
-    for tool in data['user_tools'].values():
-        require(tool['owner'] == 'normal-user', 'user tool assigned to system installer')
-        require(tool['policy'] == 'explicit-reviewed-refresh', 'moving user tool release')
-        if tool['method'] == 'npm':
-            require(re.fullmatch(r'\d+\.\d+\.\d+', tool['version']), 'unresolved npm release')
-            require(tool['integrity'].startswith('sha512-'), 'missing npm integrity input')
-    playwright = data['user_tools']['playwright']['version']
-    require(f'playwright-core {playwright} ' in data['chromium_apt_source'],
-            'Chromium apt source does not match reviewed Playwright version')
-    require(data['user_tools']['chromium']['version'] == f'selected-by-playwright-{playwright}',
-            'Chromium selection does not match reviewed Playwright version')
     return data
 
 
@@ -102,14 +97,20 @@ def semantic_version(value, context):
     return tuple(int(part) for part in match.groups())
 
 
-class Provisioner:
+class Provisioner(VmBoundary):
     """Fixtures substitute OS observations/commands, never production gates."""
-    def __init__(self, manifest, user):
+    error = ProvisionError
+
+    def __init__(self, manifest, user, worktrees, bares):
+        super().__init__(worktrees, bares)
         self.manifest, self.user = manifest, user
         self.existing_docker, self.before = False, None
 
     def path(self, value):
         return Path(value)
+
+    def system_path(self, path):
+        return self.path(path)
 
     def command(self, argv, *, privileged=False, check=True):
         argv = [str(arg) for arg in argv]
@@ -126,57 +127,26 @@ class Provisioner:
             raise ProvisionError(f'{shlex.join(argv)} exited {result.returncode}: {detail}')
         return result
 
-    def which(self, name):
-        return shutil.which(name)
-
     def account(self):
         try:
             return pwd.getpwnam(self.user)
         except KeyError as exc:
             raise ProvisionError('selected guest user does not exist') from exc
 
-    def uid(self):
-        return os.getuid()
-
-    def home_uid(self, home):
-        return home.stat().st_uid
-
     def machine(self):
         return os.uname().machine
 
-    def environment(self):
-        return os.environ
+    def docker_root(self):
+        # The user may not be in the docker group before first provisioning.
+        return self.command(['docker', 'info', '--format', '{{.DockerRootDir}}'], privileged=True).stdout.strip()
 
     def preflight(self):
         require(re.fullmatch(r'[a-z_][a-z0-9_-]*\$?', self.user), 'invalid guest user name')
-        release = {}
-        for line in self.path('/etc/os-release').read_text().splitlines():
-            if '=' in line:
-                key, value = line.split('=', 1)
-                release[key] = value.strip('"')
-        require(release.get('ID') == 'ubuntu' and release.get('VERSION_ID') == '24.04',
-                'requires Ubuntu 24.04; other distributions and personal hosts are rejected')
+        # Shared VM boundary first; missing Docker/Git is installable here,
+        # unsafe or partial existing state still fails before any write.
+        self.check_boundary(installable=True)
         for name in ('systemd-detect-virt', 'sudo', 'curl', 'gpg', 'dpkg', 'dpkg-query', 'apt-get', 'install', 'systemctl', 'usermod', 'id', 'cp', 'ln', 'chmod'):
             require(self.which(name), f'required bootstrap command missing: {name}')
-        require(not self.path('/.dockerenv').exists() and not self.path('/run/.containerenv').exists(),
-                'run from the guest OS shell, never a container')
-        container = self.command(['systemd-detect-virt', '--container'], check=False)
-        vm = self.command(['systemd-detect-virt', '--vm'], check=False)
-        require(container.returncode == 1 and container.stdout.strip() == 'none',
-                'container detection did not prove native execution')
-        require(vm.returncode == 0 and vm.stdout.strip() in ('kvm', 'qemu'),
-                'requires actual QEMU/KVM VM detection; a marker is insufficient')
-        account = self.account()
-        require(account.pw_uid >= 1000 and account.pw_name != 'root', 'requires a normal development user')
-        require(self.uid() == account.pw_uid, 'run as the selected user, without sudo on the entry point')
-        home = self.path(account.pw_dir)
-        require(home.is_dir() and not home.is_symlink() and home.resolve() == home,
-                'user home must be an existing canonical directory')
-        require(self.home_uid(home) == account.pw_uid, 'user home ownership collision')
-        require(self.environment().get('HOME') == str(home), 'HOME does not match the selected account')
-        require(account.pw_shell in ('/bin/bash', '/bin/sh', '/usr/bin/bash', '/bin/zsh', '/usr/bin/zsh'),
-                'selected user needs a login shell')
-        self.home = home
         self.arch = self.command(['dpkg', '--print-architecture']).stdout.strip()
         require(self.arch in self.manifest['architectures'], 'unsupported architecture')
         require({'x86_64': 'amd64', 'aarch64': 'arm64'}.get(self.machine()) == self.arch,
@@ -184,26 +154,10 @@ class Provisioner:
         audit = self.command(['dpkg', '--audit'])
         require(not audit.stdout.strip() and not audit.stderr.strip(),
                 'pending package configuration needs human repair before provisioning')
-        for key in ('DOCKER_HOST', 'DOCKER_CONTEXT', 'TESTCONTAINERS_HOST_OVERRIDE'):
-            require(key not in self.environment(), f'{key} must remain unset')
-        config = home / '.docker/config.json'
-        if config.exists():
-            require(json.loads(config.read_text()).get('currentContext', 'default') in ('', 'default'),
-                    'user Docker configuration selects a non-default context')
-        self.existing_docker = bool(self.which('docker'))
         if self.existing_docker:
-            require(self.command(['docker', 'context', 'show']).stdout.strip() == 'default', 'requires default Docker context')
-            endpoint = self.command(['docker', 'context', 'inspect', 'default', '--format', '{{.Endpoints.docker.Host}}'])
-            require(endpoint.stdout.strip() == 'unix:///var/run/docker.sock', 'rejecting remote/custom Docker endpoint')
-            require(self.path('/var/run/docker.sock').is_socket(), 'guest Docker socket is missing')
-            require(self.command(['docker', 'info', '--format', '{{.DockerRootDir}}'], privileged=True).stdout.strip() == '/var/lib/docker',
-                    'existing Docker must be healthy with /var/lib/docker; repair it manually')
             require(self.command(['docker', 'compose', 'version'], check=False).returncode == 0,
                     'existing Docker needs Compose; review its package provider before repair')
             self.before = self.workloads()
-        else:
-            require(not self.path('/var/run/docker.sock').exists() and not self.installed('docker.io') and
-                    not self.installed('docker-ce'), 'partial Docker installation needs human repair')
         self.check_major(
             'node', ['node', '--version'], rf'^v{node_major(self.manifest)}\.')
         self.check_major('java', ['java', '-version'], r'(?:openjdk|java) version "25(?:[."])')
@@ -211,7 +165,7 @@ class Provisioner:
             version = self.command(['npm', '--version']).stdout.strip()
             require(int(version.split('.')[0]) >= 10, 'npm must be 10 or newer')
         self.check_destinations()
-        print(f'Preflight: Ubuntu 24.04 QEMU/KVM; {self.arch}; user {self.user}; home {home}')
+        print(f'Preflight: Ubuntu 24.04 QEMU/KVM; {self.arch}; user {self.user}; home {self.home}')
 
     def check_major(self, name, argv, pattern):
         if self.which(name):
@@ -219,10 +173,6 @@ class Provisioner:
             self.root_owned(Path(self.which(name)).resolve())
             result = self.command(argv)
             require(re.search(pattern, result.stdout + result.stderr), f'existing {name} violates required major; review before replacing')
-
-    def installed(self, package):
-        result = self.command(['dpkg-query', '-W', '-f=${Status}', package], check=False)
-        return result.returncode == 0 and result.stdout.strip() == 'install ok installed'
 
     def root_owned(self, path):
         require(path.stat().st_uid == 0, f'ownership collision: {path}')
@@ -460,9 +410,11 @@ class Provisioner:
 def main():
     parser = argparse.ArgumentParser(prog='provision-agent-vm-guest.sh', description='Human-run system installer for a native Ubuntu 24.04 QEMU/KVM development VM. Run as USER, not root; authorize sudo first with sudo -v in the human shell. Non-VM and container execution are rejected. Existing Docker/workloads are preserved.')
     parser.add_argument('--docker-user', required=True, metavar='USER')
+    parser.add_argument('--worktree-parent', required=True)
+    parser.add_argument('--bare-parent', required=True)
     args = parser.parse_args()
     try:
-        Provisioner(load_manifest(), args.docker_user).run()
+        Provisioner(load_manifest(), args.docker_user, args.worktree_parent, args.bare_parent).run()
     except (ProvisionError, OSError, ValueError, KeyError, tarfile.TarError, zipfile.BadZipFile) as exc:
         print(f'provision-agent-vm-guest: {exc}', file=sys.stderr)
         return 1

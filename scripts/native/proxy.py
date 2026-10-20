@@ -10,6 +10,9 @@ import sys
 import tempfile
 import time
 
+# Managed global provider prefix; Playwright keeps its separate npm project.
+PROVIDER_BIN = 'providers/bin'
+
 
 class ProxyError(RuntimeError):
     pass
@@ -37,7 +40,7 @@ def proxy_arguments(port, home):
 def provider_arguments(action, user_args, root=None):
     if action.startswith('codex'):
         return [str(root / 'helpers/codex-lean.sh') if root else 'codex-lean', *user_args]
-    return [str(root / 'npm/node_modules/.bin/claude') if root else 'claude', *user_args]
+    return [str(root / PROVIDER_BIN / 'claude') if root else 'claude', *user_args]
 
 
 def launch(action, user_args):
@@ -68,7 +71,7 @@ def launch(action, user_args):
             stream.write(Path('/etc/ssl/certs/ca-certificates.crt').read_bytes())
             stream.write(b'\n' + (conf / 'mitmproxy-ca-cert.pem').read_bytes())
         endpoint = f'http://127.0.0.1:{port}'
-        env['CODEX_REAL_BIN'] = str(root / 'npm/node_modules/.bin/codex')
+        env['CODEX_REAL_BIN'] = str(root / PROVIDER_BIN / 'codex')
         env.update(HTTP_PROXY=endpoint, HTTPS_PROXY=endpoint, SSL_CERT_FILE=str(bundle),
                    REQUESTS_CA_BUNDLE=str(bundle), NODE_EXTRA_CA_CERTS=str(bundle))
         if action == 'codex-max-with-proxy':
