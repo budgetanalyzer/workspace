@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # -- Lean Claude aliases ------------------------------------------------------
+alias claude-lean-medium='claude-lean --effort medium'
 alias claude-lean-high='claude-lean --effort high'
 alias claude-lean-proxy='claude-lean --proxy'
 alias claude-lean-proxy-high='claude-lean --proxy --effort high'

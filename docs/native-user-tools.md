@@ -436,7 +436,7 @@ selection and permission mode actually ran.
 | `claude-with-proxy` | Upstream Claude permission behavior through the inspection proxy, with no added Claude environment |
 | `claude-lean` | Explicit `--dangerously-skip-permissions` with the workspace system prompt; lean option set and 11 environment variables scoped to the launch |
 | `claude-lean --proxy`, `claude-lean-proxy`, `claude-lean-proxy-high` | Explicit `--dangerously-skip-permissions` through `claude-with-proxy`; same lean option set and environment, with the default prompt kept for capture unless a trailing prompt flag is supplied |
-| Optional aliases | Three thin lean aliases select high effort and/or proxy mode; `ai-run-claude` selects the Claude handler; Codex aliases retain explicit effort/permission choices; never sourced by default |
+| Optional aliases | Four thin lean aliases select medium or high effort and/or proxy mode; `ai-run-claude` selects the Claude handler; Codex aliases retain explicit effort/permission choices; never sourced by default |
 
 Human opt-in aliases use `. "$HOME/.local/share/budget-analyzer-native/aliases.sh"`.
 Explicit CLI model choices survive forwarding; `CODEX_MODEL` and

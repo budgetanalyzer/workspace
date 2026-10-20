@@ -91,8 +91,9 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
         else:
             assert '--system-prompt' not in args, args
 
-    # The high aliases select high exactly once, and all three aliases forward arguments.
+    # The effort aliases select their effort exactly once, and all four aliases forward arguments.
     aliases = {
+        'claude-lean-medium': 'claude',
         'claude-lean-high': 'claude',
         'claude-lean-proxy': 'claude-with-proxy',
         'claude-lean-proxy-high': 'claude-with-proxy',
@@ -102,8 +103,9 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
         assert result.returncode == 0, result.stderr
         args = assert_common(text, expected_bin)
         assert args.rstrip().endswith(f'[{alias}-tail]'), args
-        if alias.endswith('-high'):
-            assert args.count('[--effort]') == 1 and '[--effort] [high]' in args, args
+        effort = alias.rsplit('-', 1)[-1]
+        if effort in ('medium', 'high'):
+            assert args.count('[--effort]') == 1 and f'[--effort] [{effort}]' in args, args
         else:
             assert '[--effort]' not in args, args
 
@@ -147,11 +149,11 @@ with tempfile.TemporaryDirectory(dir=REPO / 'tmp') as scratch_name:
     args = assert_common(text, 'claude')
     assert f'[--system-prompt-file] [{installed / "system-prompt.md"}]' in args, args
 
-# The aliases file contains only the three Claude lean aliases and unchanged Codex aliases.
+# The aliases file contains only the four Claude lean aliases and unchanged Codex aliases.
 aliases_text = ALIASES.read_text()
 alias_names = re.findall(r'^alias\s+([\w-]+)=', aliases_text, re.MULTILINE)
 assert [name for name in alias_names if name.startswith('claude')] == [
-    'claude-lean-high', 'claude-lean-proxy', 'claude-lean-proxy-high'
+    'claude-lean-medium', 'claude-lean-high', 'claude-lean-proxy', 'claude-lean-proxy-high'
 ]
 assert [name for name in alias_names if name.startswith('codex')] == [
     'codex-dangerous', 'codex-high', 'codex-max', 'codex-proxy',
@@ -163,7 +165,7 @@ for forbidden_text in ('CLAUDE_CODE_', 'ENABLE_CLAUDEAI', 'MAX_THINKING_TOKENS',
 assert not re.search(r'^\s*[A-Za-z_][\w-]*\s*\(\)\s*\{', aliases_text, re.MULTILINE)
 retired = re.compile(
     r'^alias\s+(?:claude-(?:dangerous|high|max)\w*|'
-    r'claude-lean(?:-proxy)?-(?:low|medium|xhigh|max))=', re.MULTILINE)
+    r'claude-lean-(?:low|xhigh|max)|claude-lean-proxy-(?:low|medium|xhigh|max))=', re.MULTILINE)
 assert not retired.search(aliases_text), retired.pattern
 
 # The proxy adapter contributes no Claude-specific environment.
