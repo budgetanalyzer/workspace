@@ -292,9 +292,7 @@ class UserTools:
             files[self.bin / name] = ('#!/usr/bin/env bash\nset -euo pipefail\n'
                                      f'. {shlex.quote(str(self.fragment))}\nexec {target} "$@"\n', 0o700)
         self.names = set(targets)
-        state_path = self.root / 'managed-files.json'
-        self.home_path(state_path)
-        previous = json.loads(state_path.read_text()) if state_path.exists() else {}
+        previous = self.previous_state()
         for path, (content, _) in files.items():
             self.home_path(path)
             if path.exists():
@@ -302,8 +300,41 @@ class UserTools:
                         f'unmanaged or modified file collision: {path}; review privately')
         return files
 
+    def previous_state(self):
+        state_path = self.root / 'managed-files.json'
+        self.home_path(state_path)
+        if not state_path.exists():
+            return {}
+        try:
+            previous = json.loads(state_path.read_text())
+        except ValueError:
+            previous = None
+        require(isinstance(previous, dict) and all(
+            isinstance(key, str) and isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+            for key, value in previous.items()), 'malformed managed-files.json; review privately')
+        return previous
+
+    def retired_files(self, previous, files):
+        # Review every retired candidate before any is removed; no partial cleanup.
+        current = {str(path) for path in files}
+        retired = []
+        for key, recorded in previous.items():
+            if key in current:
+                continue
+            path = Path(key)
+            require(path.is_absolute() and os.path.normpath(key) == key,
+                    f'malformed retired managed path: {key}; review privately')
+            self.home_path(path)
+            if not path.exists():
+                continue
+            require(path.is_file() and digest(path) == recorded,
+                    f'modified or non-regular retired managed file: {path}; review privately')
+            retired.append(path)
+        return retired
+
     def install(self):
         files = self.plan_files()
+        self.retired_files(self.previous_state(), files)
         for path in (self.root / 'pipx', self.root / 'pipx-bin', self.root / 'npm-cache',
                      self.root / 'managed-files.json', self.root / 'installation.json'):
             self.home_path(path)
@@ -374,6 +405,8 @@ class UserTools:
                   'user_tool_versions': {n: t['version'] for n, t in self.manifest['user_tools'].items()}}
         report['mitmproxy_resolved_dependencies'] = self.command(['pipx', 'runpip', 'mitmproxy', 'freeze', '--all'], env=env).stdout.splitlines()
         self.write(self.root / 'installation.json', json.dumps(report, indent=2) + '\n')
+        for path in self.retired_files(self.previous_state(), files):
+            path.unlink()
         self.write(self.root / 'managed-files.json', json.dumps({str(p): digest(p) for p in files}, indent=2) + '\n')
         self.env = env
         self.verify(require_trust=False)

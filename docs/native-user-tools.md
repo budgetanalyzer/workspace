@@ -285,7 +285,10 @@ After the reviewed source is transferred and every affected worker has ended,
 the human must rerun the focused normal-user installation sequence in
 [Install User Tools And Environment](#install-user-tools-and-environment),
 including its repeat run. That refresh converges the installed manifest,
-settings overlay and helper resources, then proves idempotence. Do not rerun
+settings overlay and helper resources, then proves idempotence. Files recorded
+by a previous installation but no longer managed are removed only when their
+recorded digest still matches; a modified, symlinked or out-of-home retired
+path stops the refresh for private review before anything is removed. Do not rerun
 system provisioning solely for this source refresh, and do not remove provider
 state or the human-created optional inspection directory.
 
@@ -525,7 +528,7 @@ bash -n scripts/install-agent-vm-local-ca-trust.sh
 bash -n scripts/install-agent-vm-bwrap-profile.sh
 bash -n scripts/prepare-agent-vm-native.sh
 shellcheck scripts/install-agent-vm-user-tools.sh scripts/check-agent-vm-tools.sh scripts/install-agent-vm-local-ca-trust.sh scripts/install-agent-vm-bwrap-profile.sh scripts/prepare-agent-vm-native.sh native/helpers/*.sh native/helpers/mitmflows native/helpers/mitmflow-detail native/helpers/mitmflow-body
-PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py native/helpers/mitmflow-render.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 -m py_compile scripts/native/user_tools.py scripts/native/local_ca.py scripts/native/proxy.py scripts/native/bwrap_profile.py tests/native/test_local_ca.py tests/native/test_user_tools.py tests/native/test_native_preparation.py tests/native/test_install_inputs.py tests/native/check_user_environment.py tests/native/check_install_inputs.py scripts/native/claude_settings.py tests/native/check_claude_settings.py tests/native/check_lean_launchers.py tests/native/check_statusline.py native/helpers/mitmflow-render.py
 git diff --check
 ```
 

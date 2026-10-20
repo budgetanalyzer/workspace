@@ -84,7 +84,9 @@ or a self-hosted runner.
 
 The job runs the strict pinned Renovate validator and the standalone,
 workspace-owned offline native validation contract, including committed-source
-lock closure. Sibling orchestration contract parity remains part of local
+lock closure. That contract records separate results for the focused Claude
+settings replacement, lean-launcher and status-line verifiers, which run
+directly because they are outside `unittest` discovery. Sibling orchestration contract parity remains part of local
 native validation and is intentionally excluded from hosted CI. The job then
 downloads every `native/toolchain.json` public release asset for both `amd64`
 and `arm64` into temporary storage, verifies each declared SHA-256 and checks
@@ -132,6 +134,9 @@ LOG_LEVEL=debug \
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_install_inputs.py --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_manifest.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_claude_settings.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_launchers.py
+PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_statusline.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 scripts/native/verify_release_inputs.py \
   --manifest native/toolchain.json \
   --output tmp/native-release-validation/release-verification.json \
