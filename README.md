@@ -18,18 +18,24 @@ validation and Kubernetes Secret reconciliation.
 Connect to the VM with your preferred SSH client or editor and open the
 guest-local working clones under `/srv/budget-analyzer/worktrees`. VS Code
 Remote SSH with the dedicated profile is the tested editor workflow, but it is
-optional. Start the application from a fresh normal-user guest shell:
+optional. In a fresh normal-user guest shell, run the workspace
+[VM boundary check](docs/host-isolation.md#pre-agent-vm-boundary-check) before
+agent work, after a VM reboot and when diagnosing isolation:
 
 ```bash
-cd /srv/budget-analyzer/worktrees/orchestration
-./scripts/bootstrap/check-agent-vm-prerequisites.sh --native-runtime
-tilt up
+cd /srv/budget-analyzer/worktrees/workspace
+./scripts/check-agent-vm-boundary.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
 ```
 
 Then launch `codex`, `claude`, `gemini`, or `ai-run` from the repository where
-you want to work. Do not run `setup.sh` for ordinary daily startup; it recreates
-Kind. The complete bootstrap, daily-use and troubleshooting procedures live in
-[Getting Started](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-native-workflow).
+you want to work. Application startup is orchestration's own self-contained
+workflow; it does not invoke or require workspace checks. Follow its
+[Daily Startup](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#daily-startup) for the read-only preflight and
+`tilt up`, and its
+[First Bootstrap](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#first-bootstrap) only for an intentional clean
+rebuild.
 
 For personal-host browser access after the guest application is running, start
 the documented foreground host tunnel for application HTTPS and the Tilt UI.
@@ -46,7 +52,7 @@ personal-host operation.
 
 ## Canonical Native Runtime Contract
 
-The single read-only native runtime verifier is:
+The single full read-only native runtime verifier is:
 
 ```bash
 ./scripts/check-agent-vm-tools.sh \
@@ -55,19 +61,29 @@ The single read-only native runtime verifier is:
 ```
 
 Run it from the reviewed workspace checkout after native preparation and local
-ingress trust are complete. Sibling orchestration calls this same interface for
-both first application bootstrap and daily startup; both parent arguments are
-required canonical absolute directories. The verifier checks Ubuntu 24.04
+ingress trust are complete; both parent arguments are required canonical
+absolute directories. It first runs the VM boundary check (Ubuntu 24.04
 QEMU/KVM identity, the normal user/home, absent credential, Git, proxy and
 endpoint bridges, guest-local working/bare repositories, the default guest
-Unix Docker socket and data root, manifest-owned native and user tool versions,
-managed user resources, Chromium and established OS/NSS ingress trust.
+Unix Docker socket and data root). It then verifies each component
+independently and reports every result: `base` (system tools and shared
+environment files), `claude`, `codex` and `gemini` (each provider CLI with its
+own settings, skills and launchers), and `extras` (AI Session Handler,
+`ai-run`, proxy and mitm helpers, Playwright/Chromium, the statusline,
+`via-annotator` and established OS/NSS ingress trust). A repeatable
+`--component NAME` checks only those components; one failing component never
+fails another. The user installer accepts the same selection.
 
 The command does not use sudo, install packages, mutate trust, authenticate,
 repair repositories or change Docker/Kind state. A failure requires the
-documented human preparation or trust workflow; callers must not substitute a
-partial check. Exact versions and capabilities remain solely in
-[`native/toolchain.json`](native/toolchain.json).
+documented human preparation or trust workflow for the reported component.
+System versions remain solely in
+[`native/toolchain.json`](native/toolchain.json); agent tools, helpers and
+their component ownership are declared in
+[`native/agent-tools.json`](native/agent-tools.json). Provider CLIs float, and
+the npm lockfile pins Playwright. Moving to this component layout requires a
+human clean install rather than an in-place upgrade; follow the
+[Human Clean-Install Handoff](docs/native-user-tools.md#human-clean-install-handoff).
 
 ## Docker Sandboxes
 
@@ -110,19 +126,21 @@ for the transfer contract and prerequisites.
   ordinary sessions remain unproxied. See
   [HTTPS Traffic Inspection](docs/traffic-inspection.md).
 - Pinned Playwright and Chromium for browser automation.
-- Node.js 24, Azul Zulu JDK 25, Maven, Go, Docker/Compose, kubectl, Kind, Tilt,
-  Helm, ShellCheck and actionlint.
+- Node.js 24, Azul Zulu JDK 25, Maven, Go, Docker/Compose, ShellCheck and
+  actionlint. Orchestration's setup installs kubectl, Kind, Tilt and Helm.
 - VGG Image Annotator 3.0.13 and ImageMagick for human-reviewed image tracing.
 - Verified local ingress trust for system, Python, Node and Chromium clients.
 
 Exact versions, checksums, signed repository inputs, package ownership and
-capability checks live in [`native/toolchain.json`](native/toolchain.json) and
+capability checks live in [`native/toolchain.json`](native/toolchain.json),
+[`native/agent-tools.json`](native/agent-tools.json) and
 [Native Tool Inventory](docs/native-tool-inventory.md).
 
 ## Repository Layout
 
-- `native/toolchain.json` — reviewed native tool and helper manifest.
-- `native/npm/` — locked normal-user npm tool environment.
+- `native/toolchain.json` — reviewed system provisioning manifest.
+- `native/agent-tools.json` — normal-user agent tool, provider and helper manifest.
+- `native/npm/` — lockfile-pinned Playwright npm project.
 - `native/helpers/` — canonical portable helpers, settings, prompt and skill
   resources.
 - `scripts/native/` — system, user, trust and optional-proxy implementations.

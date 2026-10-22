@@ -14,8 +14,9 @@ native tool versions, OS/NSS trust readiness and the complete read-only runtime
 check. Orchestration owns application bootstrap and daily startup, the exact
 local Kind target, Tilt, ingress-file validation and Kubernetes Secret
 reconciliation. The
-[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-native-workflow)
-is the current end-to-end workflow. The
+[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#running-in-the-workspace-development-vm)
+is the application workflow; it is self-contained and does not invoke or
+require workspace checks. The
 [personal-host isolation audit](host-isolation-audit.md) owns human-only
 evidence collection, private topology review, the configurable live verifier,
 policy handoff and protocol/persistence proof.
@@ -31,15 +32,31 @@ caches, Docker state, Kind and Tilt. Agents may have broad authority inside the
 guest, especially when they belong to the Docker group or use an explicit
 high-authority launcher. Treat the complete VM as agent-compromise scope.
 
-Do not forward an SSH agent, Git askpass helper, GitHub token, personal-host
-Docker socket or credential store into the guest. Do not install GitHub
-authentication or publishing extensions in any editor environment running in
-the guest. GitHub publication remains a personal-host operation.
+Agents run only as the normal development user inside this VM. Former
+guest-specific and personal-host agent runtimes are retired; do not
+reconstruct them or rerun their cutover work.
 
-Host audit collection, live verification, host policy changes, reboot and
-protocol testing are human-only. Workspace agents may review explicitly
-supplied redacted evidence, but must not acquire host access, run live audit
-tools or apply host configuration. Offline fixtures are not live evidence.
+Do not forward an SSH agent, Git askpass helper, GitHub token or credential
+store into the guest, and do not expose any personal-host credential, mount,
+Docker or libvirt socket, or kubeconfig to it. Never expose staging or
+production kubeconfigs, cloud or deployment credentials, user credentials or
+session cookies to the guest. Do not install GitHub authentication or
+publishing extensions in any editor environment running in the guest. GitHub
+credentials and publication remain on the personal host.
+
+A VM marker, cluster name or process name inside the guest does not prove
+personal-host isolation; only the human-run
+[personal-host isolation audit](host-isolation-audit.md) provides that
+evidence. Only the human accesses or changes the personal host. Host audit
+collection, live verification, host policy changes, reboot and protocol testing
+are human-only. Workspace agents may review explicitly supplied redacted
+evidence, but must not acquire host access, run live audit tools or apply host
+configuration. Offline fixtures are not live evidence.
+
+Guest OS/NSS trust for the local ingress is installed only by the human-run
+workspace trust installer described in
+[Local Budget Analyzer TLS](local-budget-analyzer-tls.md); agents run only its
+read-only checks.
 
 ## Reference Configuration
 
@@ -95,7 +112,8 @@ cd /srv/budget-analyzer/worktrees/workspace
 ```
 
 The runner performs system provisioning, scoped bubblewrap profile setup and a
-repeat user-tools installation. It prompts for the existing bare-repository
+repeat user-tools installation; a repeatable `--component NAME` limits the
+user installation to those components. It prompts for the existing bare-repository
 parent and writes private logs under `tmp/native-preparation/`. Trust import,
 provider authentication and the full tools verifier are separate explicit
 human actions documented in
@@ -115,13 +133,51 @@ Docker workloads are preserved. A fresh VM may receive Ubuntu Docker and
 Compose; a partial or unhealthy installation requires human repair.
 
 Review exact ownership, versions and safety checks in
-[Native Tool Inventory](native-tool-inventory.md), `native/toolchain.json`, and
+[Native Tool Inventory](native-tool-inventory.md), `native/toolchain.json`,
+`native/agent-tools.json` and
 the focused tests before changing preparation behavior.
+
+## Pre-Agent VM Boundary Check
+
+Before starting agent work, after a VM reboot and when diagnosing isolation,
+run the workspace boundary check from the reviewed workspace checkout in a
+fresh normal-user guest shell:
+
+```bash
+./scripts/check-agent-vm-boundary.sh \
+  --worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" \
+  --bare-parent "$BUDGET_ANALYZER_BARE_PARENT"
+```
+
+Before user installation has exported those variables, pass the same canonical
+absolute repository parents selected for preparation. The check proves the
+Ubuntu QEMU/KVM identity, normal account and home, absence of forwarded
+credentials and endpoint authority, guest-local clones with matching bare
+origins, safe Git configuration, and healthy default guest Docker. It performs
+no writes and does not require provider CLIs, agent helpers, AI Session Handler,
+platform binaries or an orchestration checkout. Missing guest Docker is a
+runtime failure.
+
+Read
+[Native Guest User Tools](native-user-tools.md#pre-agent-vm-boundary-check)
+before changing or diagnosing this interface. First provisioning applies the
+same rules before writes, while treating missing Git or Docker as installable;
+unsafe ownership, symlinks, collisions, forwarded authority and partial or
+unhealthy Docker still fail. Workers must not run provisioning to repair a
+failed boundary.
+
+Every workspace-managed provider launch also enforces these rules: the
+`claude`, `codex`, `gemini` and `codex-lean` wrappers run the installed base
+copy, and the proxy launchers run them before any proxy or trust change. A
+failure blocks the provider, with the reason on stderr; success is silent.
+There is no bypass. The manual check remains the diagnosis path for a blocked
+launch and the gate for work started outside provider launchers. See
+[Provider Launch Enforcement](native-user-tools.md#provider-launch-enforcement).
 
 ## Canonical Native Runtime Contract
 
 After human preparation and ingress trust are complete, use one workspace-owned
-check for both first application bootstrap and daily startup:
+read-only check:
 
 ```bash
 ./scripts/check-agent-vm-tools.sh \
@@ -130,11 +186,16 @@ check for both first application bootstrap and daily startup:
 ```
 
 Both arguments are mandatory canonical absolute directories selected during
-workspace preparation. The check proves the VM/user/home, repository,
-forwarded-authority, guest Docker, manifest-owned native tool, managed user
-environment and established OS/NSS trust contract. It is read-only and never
-uses sudo, installs or repairs anything, authenticates a provider, changes
-trust, or changes Docker and Kind. Read
+workspace preparation. The check always starts with the same boundary rules
+(VM/user/home, repository, forwarded-authority and guest Docker), then
+verifies the `base`, `claude`, `codex`, `gemini` and `extras` components
+independently, including manifest-owned native tools, managed user resources
+and, in `extras`, established OS/NSS trust. Without `--component` it is the
+full check; a repeatable `--component NAME` limits verification to those
+components without relaxing the boundary or their own checks, and one failing
+component never fails another. It is read-only and never uses sudo, installs
+or repairs anything, authenticates a provider, changes trust, or changes Docker
+and Kind. Orchestration does not invoke it. Read
 [Native Guest User Tools](native-user-tools.md#canonical-read-only-native-runtime-contract)
 before changing or diagnosing this interface. Keep application and exact
 Kubernetes-target checks in orchestration.
@@ -240,21 +301,29 @@ force-push or automate publication from the guest.
 
 ## Application Startup And Rebuild
 
-For daily work, open a fresh normal-user guest shell and run:
-
-```bash
-cd /srv/budget-analyzer/worktrees/orchestration
-./scripts/bootstrap/check-agent-vm-prerequisites.sh --native-runtime
-tilt up
-```
+For daily work, open a fresh normal-user guest shell, run the
+[pre-agent VM boundary check](#pre-agent-vm-boundary-check), then start the
+application with orchestration's
+[Daily Startup](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#daily-startup)
+read-only preflight and `tilt up`. Orchestration's checks protect the
+application environment and do not depend on workspace, but they do not check
+the VM boundary.
 
 Launch `codex`, `claude`, `gemini` or `ai-run` from the relevant guest working
 clone. Agent exit and reentry are independent of Tilt, Docker and Kind.
 
-For first bootstrap or an intentional clean application rebuild, follow the
-[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#development-vm-first-bootstrap).
+For first bootstrap or an intentional clean application rebuild, open a fresh
+normal-user guest shell, run the
+[pre-agent VM boundary check](#pre-agent-vm-boundary-check), then follow the
+[Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#first-bootstrap).
 Orchestration `./setup.sh` recreates Kind and is not a daily-start
-command. Do not import host Docker state or move Docker data into a shared path.
+command.
+
+In the VM, the boundary check is required before both `./setup.sh` and daily
+startup. Orchestration never invokes it. Orchestration's Docker guard only
+checks transport: it accepts any reachable local Unix socket, including a host
+socket forwarded into the VM. Its success is therefore not VM-boundary
+evidence. Do not import host Docker state or move Docker data into a shared path.
 
 For a fully clean environment, create a new reviewed Ubuntu VM, rerun native
 preparation and repository setup, transfer only the approved TLS leaf, key and
@@ -267,7 +336,12 @@ Workspace owns the explicit loopback-only SSH **host tunnel** from the personal
 host to listeners on VM loopback. Orchestration owns **guest publication**:
 application and operator endpoints made available from Kubernetes services or
 processes on VM loopback. Application and cluster state, endpoint selection,
-and publication health remain orchestration concerns.
+and publication health remain orchestration concerns. The host tunnels below
+forward only the loopback ports orchestration publishes; its
+[Port Reference](https://github.com/budgetanalyzer/orchestration/blob/main/docs/architecture/port-reference.md)
+and
+[Operator Entry Points](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#operator-entry-points)
+remain authoritative for those ports and URLs.
 
 `budget-agent-vm-forward` is the separately reviewed SSH host profile used as
 the tunnel target. It supplies connection identity and boundary controls; it

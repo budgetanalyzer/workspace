@@ -2,7 +2,11 @@
 
 The native installer exposes commands through the normal guest user's
 `.local/bin`. Plain `claude`, `codex` and `gemini` retain their upstream
-defaults. Optional aliases are installed in
+defaults. Every provider launch, including the lean, proxy and AI Session
+Handler paths, first runs the workspace VM boundary and refuses to start the
+provider if it fails; see
+[Provider Launch Enforcement](native-user-tools.md#provider-launch-enforcement).
+Optional aliases are installed in
 `~/.local/share/budget-analyzer-native/aliases.sh` but are not sourced
 automatically; opt in explicitly when needed:
 
@@ -69,14 +73,16 @@ transcript. Use `ai-run --help` for the command summary.
   Claude environment settings or replacing its prompt.
 - `codex-with-proxy` and `codex-max-with-proxy` delegate to `codex-lean`.
 
-These launchers require the separate human-created inspection identity
-described in [HTTPS Traffic Inspection](traffic-inspection.md). They bind only
+They run the VM boundary before starting the proxy, changing proxy or trust
+variables, or starting a provider. These launchers require the separate
+human-created inspection identity described in
+[HTTPS Traffic Inspection](traffic-inspection.md). They bind only
 to loopback, keep upstream TLS verification enabled and scope proxy/trust
 variables to the launched provider process.
 
 Canonical launcher implementations and resources live under `native/helpers/`
 and `scripts/native/proxy.py`; command mappings live in
-[`native/toolchain.json`](../native/toolchain.json).
+[`native/agent-tools.json`](../native/agent-tools.json).
 
 ## Lean Claude Launchers
 

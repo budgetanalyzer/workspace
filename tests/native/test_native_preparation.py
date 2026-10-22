@@ -76,12 +76,28 @@ fi
             ['sudo', 'system', 'profile', 'user', 'user', 'fragment'],
             [line.split()[0] for line in lines],
         )
-        self.assertIn(str(self.worktrees), lines[3])
-        self.assertIn(str(self.bares), lines[3])
+        for line in lines[1:4]:
+            self.assertIn(f'--worktree-parent {self.worktrees}', line)
+            self.assertIn(f'--bare-parent {self.bares}', line)
         logs = list((self.workspace / 'tmp/native-preparation').glob(
             'prepare-*.log'))
         self.assertEqual(1, len(logs))
         self.assertEqual(0o600, logs[0].stat().st_mode & 0o777)
+
+    def test_forwards_selected_components_only_to_user_installation(self):
+        result = self.run_script('--bare-parent', str(self.bares),
+                                 '--component', 'base', '--component', 'claude')
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        lines = self.calls.read_text().splitlines()
+        users = [line for line in lines if line.startswith('user ')]
+        self.assertEqual(2, len(users))
+        for line in users:
+            self.assertTrue(line.endswith('--component base --component claude'), line)
+        for line in lines:
+            if line.startswith(('system ', 'profile ')):
+                self.assertNotIn('--component', line)
+        missing = self.run_script('--bare-parent', str(self.bares), '--component')
+        self.assertEqual(2, missing.returncode)
 
     def test_failure_short_circuits_later_installers(self):
         self.stub(self.scripts / 'install-agent-vm-bwrap-profile.sh',

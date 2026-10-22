@@ -10,6 +10,15 @@ import sys
 import tempfile
 import time
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from boundary import BoundaryError, VmBoundary  # noqa: E402  pylint: disable=wrong-import-position
+
+# Managed global provider prefix; Playwright keeps its separate npm project.
+PROVIDER_BIN = 'providers/bin'
+
 
 class ProxyError(RuntimeError):
     pass
@@ -37,10 +46,14 @@ def proxy_arguments(port, home):
 def provider_arguments(action, user_args, root=None):
     if action.startswith('codex'):
         return [str(root / 'helpers/codex-lean.sh') if root else 'codex-lean', *user_args]
-    return [str(root / 'npm/node_modules/.bin/claude') if root else 'claude', *user_args]
+    return [str(root / PROVIDER_BIN / 'claude') if root else 'claude', *user_args]
 
 
 def launch(action, user_args):
+    if action != 'start-proxy':
+        # Fail closed before any proxy, trust-variable change or provider start.
+        VmBoundary(os.environ['BUDGET_ANALYZER_WORKTREE_PARENT'],
+                   os.environ['BUDGET_ANALYZER_BARE_PARENT']).check_boundary()
     home = Path(os.environ['HOME'])
     root = Path(os.environ['BUDGET_ANALYZER_NATIVE_ROOT'])
     worktrees = Path(os.environ['BUDGET_ANALYZER_WORKTREE_PARENT'])
@@ -68,7 +81,7 @@ def launch(action, user_args):
             stream.write(Path('/etc/ssl/certs/ca-certificates.crt').read_bytes())
             stream.write(b'\n' + (conf / 'mitmproxy-ca-cert.pem').read_bytes())
         endpoint = f'http://127.0.0.1:{port}'
-        env['CODEX_REAL_BIN'] = str(root / 'npm/node_modules/.bin/codex')
+        env['CODEX_REAL_BIN'] = str(root / PROVIDER_BIN / 'codex')
         env.update(HTTP_PROXY=endpoint, HTTPS_PROXY=endpoint, SSL_CERT_FILE=str(bundle),
                    REQUESTS_CA_BUNDLE=str(bundle), NODE_EXTRA_CA_CERTS=str(bundle))
         if action == 'codex-max-with-proxy':
@@ -102,6 +115,10 @@ def main():
     args, remaining = parser.parse_known_args()
     try:
         return launch(args.action, remaining)
+    except BoundaryError as exc:
+        print(f'agent launch blocked by VM boundary: {exc}; provider not started. '
+              'Diagnose with scripts/check-agent-vm-boundary.sh', file=sys.stderr)
+        return 1
     except (ProxyError, OSError, ValueError, KeyError) as exc:
         print('native-proxy: ' + str(exc), file=sys.stderr)
         return 1

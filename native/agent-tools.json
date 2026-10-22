@@ -1,0 +1,345 @@
+{
+  "schema": 1,
+  "policy": "Normal-user agent tools; the system provisioner never loads this file. Provider CLIs float: first install or an explicit human update resolves the latest published npm release into the managed provider prefix, and routine preparation keeps installed versions. Playwright is exact: native/npm/package-lock.json is its single version, integrity and tarball source, and the reviewed Chromium apt provenance in native/toolchain.json must match it. Components (base, claude, codex, gemini, extras) are installed and verified independently; every managed file, command, setting, home path, environment key and check belongs to exactly one component. The base fragment exports trust_environment; every component selection rejects a conflicting value.",
+  "trust_environment": [
+    "SSL_CERT_FILE",
+    "NODE_EXTRA_CA_CERTS",
+    "REQUESTS_CA_BUNDLE"
+  ],
+  "components": {
+    "base": {
+      "description": "Installed system tools and shared environment files: environment fragment, shell startup line, npm configuration, opt-in aliases and the shared boundary/installer modules.",
+      "files": {
+        "aliases.sh": "native/helpers/bash_aliases.sh",
+        "helpers/bash_aliases.sh": "native/helpers/bash_aliases.sh",
+        "boundary.py": "scripts/native/boundary.py",
+        "user_tools.py": "scripts/native/user_tools.py",
+        "toolchain.json": "native/toolchain.json",
+        "agent-tools.json": "native/agent-tools.json",
+        "npm-user.conf": "",
+        "npm-global.conf": ""
+      },
+      "home_paths": [
+        ".m2/repository",
+        ".gradle"
+      ],
+      "environment": [
+        "GRADLE_USER_HOME",
+        "MAVEN_OPTS",
+        "NPM_CONFIG_PREFIX",
+        "PIPX_HOME",
+        "PIPX_BIN_DIR",
+        "NODE_PATH"
+      ],
+      "checks": [
+        "system-packages",
+        "node-npm",
+        "jdk",
+        "system-downloads",
+        "bwrap-apparmor"
+      ]
+    },
+    "claude": {
+      "description": "Claude Code CLI, its settings overlay, conversation skill, lean launcher and system prompt.",
+      "files": {
+        "helpers/claude-lean.sh": "native/helpers/claude-lean.sh",
+        "helpers/claude-settings.json": "native/helpers/claude-settings.json",
+        "helpers/settings-overlay.json": "native/helpers/settings-overlay.json",
+        "helpers/skills/save-conversation/SKILL.md": "native/helpers/skills/save-conversation/SKILL.md",
+        "helpers/system-prompt.md": "native/helpers/system-prompt.md"
+      },
+      "home_paths": [],
+      "provider_home": ".claude",
+      "environment": [
+        "CLAUDE_CONFIG_DIR"
+      ],
+      "checks": [
+        "claude-cli",
+        "claude-settings-overlay",
+        "conversation-skill"
+      ]
+    },
+    "codex": {
+      "description": "Codex CLI and its lean launcher.",
+      "files": {
+        "helpers/codex-lean.sh": "native/helpers/codex-lean.sh"
+      },
+      "home_paths": [],
+      "provider_home": ".codex",
+      "environment": [
+        "CODEX_HOME"
+      ],
+      "checks": [
+        "codex-cli"
+      ]
+    },
+    "gemini": {
+      "description": "Gemini CLI.",
+      "files": {},
+      "home_paths": [],
+      "provider_home": ".gemini",
+      "environment": [
+        "GEMINI_CLI_HOME"
+      ],
+      "checks": [
+        "gemini-cli"
+      ]
+    },
+    "extras": {
+      "description": "AI Session Handler and ai-run, proxy and mitm helpers, Playwright/Chromium, the statusline, via-annotator and the local CA trust helpers. Installing the trust helpers does not require trust; the full check does.",
+      "files": {
+        "helpers/ai-run.sh": "native/helpers/ai-run.sh",
+        "helpers/mitmflow-body": "native/helpers/mitmflow-body",
+        "helpers/mitmflow-detail": "native/helpers/mitmflow-detail",
+        "helpers/mitmflow-render.py": "native/helpers/mitmflow-render.py",
+        "helpers/mitmflows": "native/helpers/mitmflows",
+        "helpers/statusline-command.sh": "native/helpers/statusline-command.sh",
+        "helpers/via-annotator.sh": "native/helpers/via-annotator.sh",
+        "local_ca.py": "scripts/native/local_ca.py",
+        "proxy.py": "scripts/native/proxy.py"
+      },
+      "home_paths": [
+        ".pki/nssdb",
+        ".cache/ms-playwright"
+      ],
+      "environment": [
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ],
+      "checks": [
+        "chromium-apt",
+        "ai-session-handler-checkout",
+        "playwright-lock",
+        "agent-user-tools",
+        "helper-commands",
+        "playwright-chromium",
+        "local-ca-trust"
+      ]
+    }
+  },
+  "providers": {
+    "claude": {
+      "owner": "normal-user",
+      "method": "npm-global-latest",
+      "package": "@anthropic-ai/claude-code",
+      "policy": "float-latest-explicit-human-update",
+      "check": [
+        "claude",
+        "--version"
+      ],
+      "component": "claude"
+    },
+    "codex": {
+      "owner": "normal-user",
+      "method": "npm-global-latest",
+      "package": "@openai/codex",
+      "policy": "float-latest-explicit-human-update",
+      "check": [
+        "codex",
+        "--version"
+      ],
+      "component": "codex"
+    },
+    "gemini": {
+      "owner": "normal-user",
+      "method": "npm-global-latest",
+      "package": "@google/gemini-cli",
+      "policy": "float-latest-explicit-human-update",
+      "check": [
+        "gemini",
+        "--version"
+      ],
+      "component": "gemini"
+    }
+  },
+  "user_tools": {
+    "playwright": {
+      "owner": "normal-user",
+      "method": "npm-lock",
+      "source": "native/npm/package-lock.json",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "playwright",
+        "--version"
+      ],
+      "component": "extras",
+      "commands": [
+        "playwright"
+      ]
+    },
+    "mitmproxy": {
+      "owner": "normal-user",
+      "method": "pipx",
+      "version": "12.2.3",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "mitmproxy",
+        "--version"
+      ],
+      "component": "extras",
+      "commands": [
+        "mitmproxy",
+        "mitmweb",
+        "mitmdump"
+      ]
+    },
+    "ai-session-handler": {
+      "owner": "normal-user",
+      "method": "pipx-editable-guest-checkout",
+      "source": "../ai-session-handler",
+      "version": "checkout-revision",
+      "policy": "explicit-reviewed-refresh",
+      "check": [
+        "ai-session-handler",
+        "--version"
+      ],
+      "component": "extras",
+      "commands": [
+        "ai-session-handler",
+        "ai-session-handler-codex-high",
+        "ai-session-handler-claude-high",
+        "ai-session-handler-claude-medium"
+      ]
+    },
+    "chromium": {
+      "owner": "normal-user",
+      "method": "playwright-install",
+      "policy": "selected-by-locked-playwright",
+      "check": [
+        "playwright",
+        "install",
+        "--list"
+      ],
+      "component": "extras",
+      "commands": []
+    }
+  },
+  "helpers": {
+    "ai-run": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "ai-run --help; mocked argument-forwarding fixture",
+      "native_source": "native/helpers/ai-run.sh",
+      "component": "extras"
+    },
+    "check-budget-analyzer-local-ca-trust": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "read-only trust fixture and human-verified HTTPS matrix",
+      "native_source": "scripts/native/local_ca.py",
+      "component": "extras"
+    },
+    "claude-lean": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic or credentials during installation",
+      "native_source": "native/helpers/claude-lean.sh",
+      "component": "claude"
+    },
+    "claude-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py",
+      "component": "extras"
+    },
+    "codex-lean": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "native/helpers/codex-lean.sh",
+      "component": "codex"
+    },
+    "codex-max-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py",
+      "component": "extras"
+    },
+    "codex-with-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py",
+      "component": "extras"
+    },
+    "ensure-budget-analyzer-local-ca-trust": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mocked trust fixture; explicit human trust activation for the exact local origin",
+      "native_source": "scripts/native/local_ca.py",
+      "component": "extras"
+    },
+    "mitmflow-body": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflow-body --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflow-body",
+      "component": "extras"
+    },
+    "mitmflow-detail": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflow-detail --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflow-detail",
+      "component": "extras"
+    },
+    "mitmflow-render.py": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "native/helpers/mitmflow-render.py",
+      "component": "extras"
+    },
+    "mitmflows": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "mitmflows --help (offline argparse path)",
+      "native_source": "native/helpers/mitmflows",
+      "component": "extras"
+    },
+    "start-proxy": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline mocked fixture; no provider traffic, proxy listener, CA or credentials during installation",
+      "native_source": "scripts/native/proxy.py",
+      "component": "extras"
+    },
+    "statusline-command": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "offline fixture tests/native/check_statusline.py; reads stdin only, no network, credentials or files",
+      "native_source": "native/helpers/statusline-command.sh",
+      "component": "extras"
+    },
+    "via-annotator": {
+      "owner": "normal-user",
+      "method": "reviewed-native-user-helper-install",
+      "policy": "workspace-revision",
+      "check": "via-annotator --version; via-annotator --check; human foreground bind/stop proof",
+      "native_source": "native/helpers/via-annotator.sh",
+      "component": "extras"
+    }
+  },
+  "reviewed_sources": {
+    "aliases": "native/helpers/bash_aliases.sh",
+    "settings": "native/helpers/settings-overlay.json",
+    "skill": "native/helpers/skills/save-conversation/SKILL.md",
+    "system_prompt": "native/helpers/system-prompt.md",
+    "npm_lock": "native/npm/package-lock.json"
+  }
+}

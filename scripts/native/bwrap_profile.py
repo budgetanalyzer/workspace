@@ -11,8 +11,8 @@ from provision import MANIFEST, REPO, ProvisionError, Provisioner, load_manifest
 
 class BwrapProfileInstaller(Provisioner):
     def preflight(self):
-        # Reuse the system installer's native VM, user, ownership and Docker
-        # gates. No downloads or system installation run from this helper.
+        # Reuse the system installer's shared VM boundary, ownership and
+        # Docker gates. No downloads or system installation run from this helper.
         super().preflight()
         require(self.existing_docker, 'complete system provisioning before bwrap profile setup')
         for command in ('bwrap', 'aa-status', 'apparmor_parser'):
@@ -73,9 +73,12 @@ class BwrapProfileInstaller(Provisioner):
 def main():
     parser = argparse.ArgumentParser(description='Human-only setup for the scoped /usr/bin/bwrap AppArmor profile in the Ubuntu 24.04 QEMU/KVM guest. Run sudo -v first. Existing profiles are preserved; no sysctl, sudoers, reboot or Docker changes.')
     parser.add_argument('--docker-user', default=pwd.getpwuid(os.getuid()).pw_name)
+    parser.add_argument('--worktree-parent', required=True)
+    parser.add_argument('--bare-parent', required=True)
     args = parser.parse_args()
     try:
-        BwrapProfileInstaller(load_manifest(MANIFEST), args.docker_user).run()
+        BwrapProfileInstaller(load_manifest(MANIFEST), args.docker_user,
+                              args.worktree_parent, args.bare_parent).run()
     except (ProvisionError, OSError, ValueError, KeyError) as exc:
         print(f'install-agent-vm-bwrap-profile: {exc}', file=sys.stderr)
         return 1

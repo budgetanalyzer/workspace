@@ -12,14 +12,14 @@ REPO = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('user_tools', REPO / 'scripts/native/user_tools.py')
 u = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(u)
-data = json.loads((REPO / 'native/toolchain.json').read_text())
+data = json.loads((REPO / 'native/agent-tools.json').read_text())
 setup = u.UserTools('/fixture/work trees', '/fixture/bare repos')
-setup.validate_lock(REPO / 'native/npm/package-lock.json')
+setup.validate_lock(REPO / 'native/npm')
 for command, tool in data['helpers'].items():
     assert (REPO / tool['native_source']).is_file(), f'native helper unmapped: {command}'
     assert tool['method'] == 'reviewed-native-user-helper-install'
 assert (REPO / 'native/helpers/settings-overlay.json').is_file()
-for module in ('user_tools.py', 'proxy.py', 'local_ca.py'):
+for module in ('boundary.py', 'user_tools.py', 'proxy.py', 'local_ca.py'):
     text = (REPO / 'scripts/native' / module).read_text()
     for forbidden in ('shell=True', 'verify=False', 'ssl_insecure=true', 'ignore_https_errors', 'NOPASSWD', "'sudo', '-n'", 'git clone', '/home/vscode', ':-/workspace'):
         assert forbidden not in text, f'unsafe/container-specific construct in {module}: {forbidden}'
@@ -30,7 +30,9 @@ with tempfile.TemporaryDirectory(prefix='shells-', dir=scratch) as name:
     home = Path(name)
     setup.home, setup.uid = home, os.getuid()
     setup.root, setup.bin, setup.fragment = home / 'resources', home / 'bin', home / 'env.sh'
-    files = setup.plan_files()
+    files = {}
+    for component in u.COMPONENTS:
+        files.update(setup.component_files(component))
     for command in data['helpers']:
         assert setup.bin / command in files, f'command not installed: {command}'
     shells = []
@@ -42,11 +44,12 @@ with tempfile.TemporaryDirectory(prefix='shells-', dir=scratch) as name:
             shells.append(path)
     shells += list((REPO / 'native/helpers').glob('*.sh'))
     shells += [REPO / 'native/helpers' / name for name in ('mitmflows', 'mitmflow-detail', 'mitmflow-body')]
-    shells += [REPO / 'scripts' / name for name in ('provision-agent-vm-guest.sh', 'install-agent-vm-user-tools.sh', 'check-agent-vm-tools.sh', 'install-agent-vm-local-ca-trust.sh', 'install-agent-vm-bwrap-profile.sh', 'prepare-agent-vm-native.sh')]
+    shells += [REPO / 'scripts' / name for name in ('provision-agent-vm-guest.sh', 'install-agent-vm-user-tools.sh', 'check-agent-vm-boundary.sh', 'check-agent-vm-tools.sh', 'install-agent-vm-local-ca-trust.sh', 'install-agent-vm-bwrap-profile.sh', 'prepare-agent-vm-native.sh')]
     for path in shells:
         subprocess.run(['bash', '-n', str(path)], check=True)
     subprocess.run(['shellcheck', '--shell=bash', *map(str, shells)], check=True)
 
+orchestration = REPO.parent / 'orchestration'
 for doc in ('README.md', 'AGENTS.md', 'docs/host-isolation.md',
             'docs/host-isolation-audit.md', 'docs/native-user-tools.md',
             'docs/native-tool-inventory.md', 'docs/local-budget-analyzer-tls.md',
@@ -57,7 +60,14 @@ for doc in ('README.md', 'AGENTS.md', 'docs/host-isolation.md',
         if raw.startswith(('https://', 'http://', '#')):
             continue
         target = raw.split('#', 1)[0].strip('<>')
-        path = REPO / target.lstrip('/') if target.startswith('/') else (REPO / doc).parent / target
+        path = Path(os.path.normpath(
+            REPO / target.lstrip('/') if target.startswith('/') else (REPO / doc).parent / target))
+        # Orchestration links are checked only when that sibling checkout exists.
+        if path.is_relative_to(orchestration):
+            if not orchestration.is_dir():
+                continue
+        else:
+            assert path.is_relative_to(REPO), f'{doc}: link escapes repository {raw}'
         assert path.exists(), f'{doc}: broken link {raw}'
 sandbox_guide = (REPO / 'docs/native-user-tools.md').read_text()
 assert 'codex sandbox -P :workspace' in sandbox_guide
@@ -69,4 +79,4 @@ for parent in ('native', 'scripts/native', 'tests/native'):
         if path.is_file() and '__pycache__' not in path.parts:
             lines = path.read_text().splitlines()
             assert all(line == line.rstrip() for line in lines), f'trailing whitespace: {path}'
-print(f'Native environment PASS: locked npm dependencies; {len(data["helpers"])} command mappings; {len(shells)} shell files/wrappers; source guards, links and new-file whitespace.')
+print(f'Native environment PASS: locked Playwright npm project; {len(data["helpers"])} command mappings; {len(shells)} shell files/wrappers; source guards, links and new-file whitespace.')

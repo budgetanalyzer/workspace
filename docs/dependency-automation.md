@@ -9,30 +9,34 @@ disabled, and Dependabot remains alert-only.
 ## Update Discovery
 
 `renovate.json` keeps the standard npm manager for `native/npm/package.json`
-and its lockfile. Narrow regex custom managers extract only the owning object
-and version field for native declarations with a trustworthy standard
-datasource. Every external dependency declaration in `native/toolchain.json`
-has exactly one discovery or review owner in this matrix; helpers and
-`reviewed_sources` are workspace source mappings, not external dependencies.
+and its lockfile, which now declare only Playwright. Narrow regex custom
+managers extract only the owning object and version field for native
+declarations with a trustworthy standard datasource. Every external dependency
+declaration in `native/toolchain.json` and `native/agent-tools.json` has
+exactly one discovery or review owner in this matrix, or is an intentionally
+floating provider; helpers and `reviewed_sources` are workspace source
+mappings, not external dependencies.
 
 | Manifest declaration | Discovery or review owner | Renovate identity / review boundary |
 | --- | --- | --- |
-| `user_tools` npm entries: Claude Code, Codex CLI, Gemini CLI and Playwright | npm discovery | Package names from `native/npm/package.json`; the npm manager also updates the lockfile |
-| `downloads`: kubectl, Helm, Tilt, Kind and actionlint | Custom standard-datasource discovery | `kubernetes/kubernetes`, `helm/helm`, `tilt-dev/tilt`, `kubernetes-sigs/kind` and `rhysd/actionlint` through GitHub Releases |
+| `agent-tools.json` `user_tools.playwright` | npm discovery | `playwright` from `native/npm/package.json`; the npm manager also updates the lockfile, which is Playwright's single version, integrity and tarball source |
+| `agent-tools.json` `providers`: Claude Code, Codex CLI, Gemini CLI | Intentionally untracked | Floating by human policy: latest on first install or explicit `--update-provider NAME`; no repository version, integrity value or Renovate identity |
+| `downloads.actionlint` | Custom standard-datasource discovery | `rhysd/actionlint` through GitHub Releases |
 | `downloads.go` | Custom standard-datasource discovery | `go` through `golang-version` |
-| `user_tools.mitmproxy` | Custom standard-datasource discovery | `mitmproxy` through PyPI |
+| `agent-tools.json` `user_tools.mitmproxy` | Custom standard-datasource discovery | `mitmproxy` through PyPI |
 | `repositories.nodesource` Node major | Custom standard-datasource discovery | `node` through `node-version`; the signed NodeSource repository selects the available patch and its key, policy and lifecycle companions remain reviewed together |
 | `os`, `apt`, `chromium_apt` and `repositories.azul` | Signed-repository/distribution selection | Ubuntu 24.04 and the declared Zulu major remain human-reviewed repository/lifecycle inputs; installed patches are retained |
-| `downloads.via` and `user_tools.ai-session-handler` | Explicit manual review | No suitable complete standard feed or immutable package identity covers the reviewed archive/asset relationship or editable guest checkout |
-| `user_tools.chromium` | Explicit manual review | This is a Playwright-derived selection reviewed with the Playwright npm update, not a second Renovate dependency |
+| `downloads.via` and `agent-tools.json` `user_tools.ai-session-handler` | Explicit manual review | No suitable complete standard feed or immutable package identity covers the reviewed archive/asset relationship or editable guest checkout |
+| `agent-tools.json` `user_tools.chromium` | Explicit manual review | This is a Playwright-derived selection reviewed with the Playwright npm update, not a second Renovate dependency |
 
 Checksums, architecture URLs, validation patterns, versioned destinations and
 repository signing-key fingerprints are companion fields of the owning
 dependency above, not additional dependency identities. Their explicit review
 remains mandatory even when Renovate discovers the version.
 
-The custom managers preserve the Dockerfile-era coverage for Go, Helm, kubectl,
-Tilt, Kind, actionlint, mitmproxy and Node against current native declarations.
+The custom managers preserve the Dockerfile-era coverage for Go, actionlint,
+mitmproxy and Node against current native declarations. kubectl, Helm, Tilt and
+Kind are orchestration-owned and are not discovered here.
 They do not reopen the retired Ubuntu-container or Docker-in-Docker proposals,
 or the deleted workflow-only `setup-trivy` proposal. A Mend run after
 publication is expected to create replacement proposals against the current
@@ -41,20 +45,22 @@ native declarations when newer releases exist.
 ## Review Incomplete Proposals
 
 Renovate changes only the extracted version for downloaded tools. Those
-kubectl, Helm, Tilt, Kind, actionlint and Go proposals are Dependency Dashboard
+actionlint and Go proposals are Dependency Dashboard
 approval-gated and labelled `checksum-required`. Before approval and merge,
 review and update both architecture URLs and SHA-256 values, ARM64 availability,
-the validation pattern, the versioned destination where applicable, lifecycle
-compatibility and any orchestration version/checksum contract. Renovate does
+the validation pattern, the versioned destination where applicable and
+lifecycle compatibility. Renovate does
 not generate or guess checksums, fingerprints, architecture support or
 compatibility. The native checks intentionally reject the bot's initial
 version-only edit; never weaken them to make that partial proposal pass.
 
-An npm proposal is also discovery rather than a complete reviewed refresh.
-Direct versions, every affected lock entry, registry tarball URLs, integrity
-values and `native/toolchain.json` must agree before merge. A Playwright change
-must additionally refresh the manifest's Chromium package-source and derived
-selection records. Ordinary npm proposals remain enabled and major updates
+A Playwright npm proposal is also discovery rather than a complete reviewed
+refresh. The lockfile is Playwright's single version source; `package.json`,
+every affected lock entry, registry tarball URLs and integrity values must
+agree before merge. The reviewed `chromium_apt` and `chromium_apt_source`
+records in `native/toolchain.json` are separate inputs that must be refreshed
+for the new release; the native checks reject a lockfile-only upgrade until
+that provenance names the locked version. Ordinary npm proposals remain enabled and major updates
 retain the shared Dashboard-approval policy.
 
 A Node-major proposal must keep the NodeSource source, both repository policy
@@ -82,12 +88,16 @@ manual dispatch. It has only `contents: read`, uses the Node 24 action baseline
 and never invokes a provisioner, `sudo`, Docker, Kind, Tilt, trust installation
 or a self-hosted runner.
 
-The job runs the strict pinned Renovate validator and the standalone,
-workspace-owned offline native validation contract, including committed-source
-lock closure. That contract records separate results for the focused Claude
-settings replacement, lean-launcher and status-line verifiers, which run
-directly because they are outside `unittest` discovery. Sibling orchestration contract parity remains part of local
-native validation and is intentionally excluded from hosted CI. The job then
+The job runs `tests/native/run-source-validation.sh --publication committed`,
+the single source-validation command list: the strict pinned Renovate
+validator and the standalone, workspace-owned offline native validation
+contract, including committed-source lock closure. It records a separate
+result per check, including the focused Claude settings replacement,
+lean-launcher and status-line verifiers, which run directly because they are
+outside `unittest` discovery. It then reruns the same suite through
+`tests/native/check-source-validation-without-orchestration.sh` from a copy of
+the checkout with no orchestration sibling, proving workspace validation never
+reads or requires an orchestration checkout. The job then
 downloads every `native/toolchain.json` public release asset for both `amd64`
 and `arm64` into temporary storage, verifies each declared SHA-256 and checks
 safe archive shape where installation extracts an archive. It never executes
@@ -137,6 +147,8 @@ PYTHONPYCACHEPREFIX=tmp/pycache python3 -m unittest discover -s tests/native -v
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_claude_settings.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_lean_launchers.py
 PYTHONPYCACHEPREFIX=tmp/pycache python3 tests/native/check_statusline.py
+NPM_CONFIG_CACHE=tmp/renovate-npm-cache \
+  tests/native/check-source-validation-without-orchestration.sh --publication proposed
 PYTHONPYCACHEPREFIX=tmp/pycache python3 scripts/native/verify_release_inputs.py \
   --manifest native/toolchain.json \
   --output tmp/native-release-validation/release-verification.json \
@@ -145,9 +157,9 @@ actionlint .github/workflows/native-dependency-validation.yml
 git diff --check
 ```
 
-The dry run must extract the four direct npm packages and exactly these custom
-identities: `kubernetes/kubernetes`, `helm/helm`, `tilt-dev/tilt`,
-`kubernetes-sigs/kind`, `rhysd/actionlint`, `go`, `mitmproxy` and `node`.
+The dry run must extract only the direct npm package `playwright`, exactly
+these custom identities: `rhysd/actionlint`, `go`, `mitmproxy` and `node`, and
+no identity for the floating provider CLIs.
 Container-image, Docker feature and retired action records must remain absent.
 Keep any redirected debug log and all Renovate/npm caches under `tmp/`.
 
@@ -183,8 +195,8 @@ Use `--publication committed` only after the reviewed native lock and related
 inputs exist in `HEAD`; that mode validates a real `git archive HEAD` transfer.
 If a GitHub Actions workflow changes, run `actionlint` against it.
 
-Renovate does not establish lifecycle support. Node, Go, Java, Ubuntu,
-Kubernetes, Helm, Kind and the other native tools remain subject to the
+Renovate does not establish lifecycle support. Node, Go, Java, Ubuntu and the
+other native tools remain subject to the
 quarterly human upstream-support review owned by the shared policy.
 
 ## Post-Publication Acceptance
@@ -193,25 +205,24 @@ These are human-only hosted checks. Perform them after publishing the reviewed
 commit; local validation and historical Actions runs do not satisfy them.
 
 1. Trigger or await a Mend Renovate run for the default branch. In the
-   Dependency Dashboard, require the four npm identities (`@anthropic-ai/claude-code`,
-   `@openai/codex`, `@google/gemini-cli`, and `playwright`) and all eight custom
-   identities (`kubernetes/kubernetes`, `helm/helm`, `tilt-dev/tilt`,
-   `kubernetes-sigs/kind`, `rhysd/actionlint`, `go`, `mitmproxy`, and `node`) to
-   be present without extraction or lookup errors.
+   Dependency Dashboard, require the npm identity `playwright` and all four
+   custom identities (`rhysd/actionlint`, `go`, `mitmproxy`, and `node`) to
+   be present without extraction or lookup errors, and require no identity for
+   the floating provider CLIs.
 2. When updates exist, require new branches and pull requests to modify
-   `native/npm/package.json`, its lockfile, or `native/toolchain.json` as
-   appropriate. Do not reopen or reuse an autoclosed Dockerfile-era branch, and
+   `native/npm/package.json`, its lockfile, `native/toolchain.json` or
+   `native/agent-tools.json` as appropriate. Do not reopen or reuse an autoclosed Dockerfile-era branch, and
    reject a replacement proposal that targets deleted container or workflow
    paths.
 3. Confirm checksum-coupled proposals remain Dashboard approval-gated and that
    version-only edits fail the native companion-field checks until both
    architecture URLs/checksums, validation patterns and any versioned
-   destination or orchestration contract are reviewed and updated.
+   destination are reviewed and updated.
 4. Trigger or observe `Native Dependency Validation` on the published commit.
    Require the hosted run to complete using no repository secret, then download
    its single seven-day artifact and inspect all seven allowlisted JSON files.
    Require `overall-status.json` and each component status to be complete, all
-   fourteen release records to be verified across `amd64` and `arm64`, both npm
+   six release records to be verified across `amd64` and `arm64`, both npm
    audit reports to be valid, and the complete manual-lifecycle inventory to be
    present.
 

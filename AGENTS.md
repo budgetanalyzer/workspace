@@ -74,6 +74,10 @@ find .github/workflows -maxdepth 1 -type f | sort
 - Read `docs/native-tool-inventory.md`, `native/toolchain.json`,
   `scripts/provision-agent-vm-guest.sh` and `scripts/native/provision.py` before
   changing system installation, versions, checksums or capability ownership.
+  Read `native/agent-tools.json`, `native/npm/package-lock.json` and
+  `scripts/native/user_tools.py` before changing provider, Playwright or helper
+  declarations. Keep provider CLIs floating and Playwright pinned by its
+  lockfile.
 - Read `docs/native-user-tools.md` before changing normal-user setup, helpers,
   settings merge, proxy behavior, permissions, trust ownership or the canonical
   read-only native runtime verifier.
@@ -132,10 +136,37 @@ lean-prompt behavior is part of the test or workflow.
 - Native installed ensure/check trust commands are read-only. Missing trust
   requires the exact human installer command they report.
 - Preserve guest Docker, Kind, provider state, user work and host/runtime data.
-- Treat `scripts/check-agent-vm-tools.sh` as the single read-only contract for
-  native VM, normal-user, repository, credential, tool, trust and guest-Docker
-  readiness. Do not add a weaker sibling-specific mode or another native
-  preflight implementation.
+- Run agents only as the normal development user inside the development VM.
+  Former guest-specific and personal-host agent runtimes are retired; do not
+  reconstruct them.
+- Keep GitHub credentials and publication on the personal host. Never expose a
+  personal-host credential, mount, Docker or libvirt socket or kubeconfig, or
+  any staging or production kubeconfig, cloud credential, user credential or
+  session cookie, to the guest.
+- Do not treat a VM marker, cluster name or process name as proof of
+  personal-host isolation. Only the human accesses the personal host.
+- Guest OS/NSS trust is installed only by the human-run workspace trust
+  installer. Read `docs/host-isolation.md#security-boundary` before changing
+  any of these runtime rules.
+- Before agent work, after a VM reboot and when diagnosing isolation, run
+  `scripts/check-agent-vm-boundary.sh` from the reviewed workspace checkout
+  with the canonical worktree and bare-repository parents. It is workspace's
+  own public read-only VM, normal-user, repository, authority and guest-Docker
+  boundary check; it does not require provider or agent tooling or an
+  orchestration checkout, and orchestration does not invoke it.
+- Keep `scripts/native/boundary.py` as the shared boundary implementation for
+  provisioning, user installation, verification and provider launches. Every
+  workspace-managed provider launch path runs it first and fails closed,
+  silently on success; never add a bypass, cache or unguarded provider
+  launcher. Read `docs/native-user-tools.md#provider-launch-enforcement`
+  before changing wrappers, `proxy.py` or a launcher. Treat
+  `scripts/check-agent-vm-tools.sh` without `--component` as the single
+  complete read-only contract for tool, trust and boundary readiness.
+  Component selections (`base`, `claude`, `codex`, `gemini`, `extras`) isolate
+  failures; they always run the boundary first and never relax a component's
+  own checks. Assign every managed file, command, setting and check to exactly
+  one component in `native/agent-tools.json`. Do not add a weaker
+  sibling-specific mode or duplicate preflight implementation.
 - Stop and report missing tools, credentials or environment prerequisites
   instead of inventing workarounds.
 - Do not treat archived or plan-oriented docs as active implementation
@@ -156,8 +187,10 @@ lean-prompt behavior is part of the test or workflow.
 
 - Use checked-in scripts and configuration rather than reconstructing commands
   from memory.
-- Keep native system/user/helper changes aligned with `native/toolchain.json`;
-  do not create a second capability inventory.
+- Keep system changes aligned with `native/toolchain.json` and agent-tool,
+  provider and helper changes aligned with `native/agent-tools.json`; do not
+  create another capability inventory. Never make the system provisioner load
+  agent-tool declarations.
 - Keep application bootstrap, the exact local Kind target, Tilt and Kubernetes
   mutation in orchestration. Workspace checks native readiness and must not
   absorb application or cluster-state checks.
@@ -181,6 +214,12 @@ lean-prompt behavior is part of the test or workflow.
   checks listed in `docs/native-tool-inventory.md`.
 - After user setup/helper/settings changes, also run the static environment,
   shell and Python checks in `docs/native-user-tools.md`.
+- Keep `tests/native/run-source-validation.sh` as the single source-validation
+  command list that CI runs. Before finishing native changes, run
+  `tests/native/check-source-validation-without-orchestration.sh --publication proposed`.
+  Never make a script, test or workflow read, source or require an
+  orchestration checkout. Links into `../orchestration/` are checked only when
+  the sibling exists.
 - Keep mocked safety checks under repository `tmp/`; never touch real
   credentials, provider homes or trust stores.
 - Run `bash -n` and ShellCheck for changed shell scripts.

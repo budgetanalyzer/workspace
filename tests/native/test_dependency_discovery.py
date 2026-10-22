@@ -9,14 +9,23 @@ REPO = Path(__file__).resolve().parents[2]
 CONFIG = json.loads((REPO / 'renovate.json').read_text())
 TOOLCHAIN_TEXT = (REPO / 'native/toolchain.json').read_text()
 TOOLCHAIN = json.loads(TOOLCHAIN_TEXT)
+AGENT_TEXT = (REPO / 'native/agent-tools.json').read_text()
+AGENT = json.loads(AGENT_TEXT)
+MANIFEST_TEXT = {
+    '/^native\\/toolchain\\.json$/': TOOLCHAIN_TEXT,
+    '/^native\\/agent-tools\\.json$/': AGENT_TEXT,
+}
+EXPECTED_MANIFEST = {
+    'rhysd/actionlint': '/^native\\/toolchain\\.json$/',
+    'go': '/^native\\/toolchain\\.json$/',
+    'node': '/^native\\/toolchain\\.json$/',
+    'mitmproxy': '/^native\\/agent-tools\\.json$/',
+}
+PROVIDERS = ('@anthropic-ai/claude-code', '@openai/codex', '@google/gemini-cli')
 WORKFLOW_TEXT = (
     REPO / '.github/workflows/native-dependency-validation.yml').read_text()
 
 EXPECTED_CUSTOM_IDENTITIES = {
-    ('kubernetes/kubernetes', 'github-releases'),
-    ('helm/helm', 'github-releases'),
-    ('tilt-dev/tilt', 'github-releases'),
-    ('kubernetes-sigs/kind', 'github-releases'),
     ('rhysd/actionlint', 'github-releases'),
     ('go', 'golang-version'),
     ('mitmproxy', 'pypi'),
@@ -36,42 +45,44 @@ class DependencyDiscoveryTests(unittest.TestCase):
 
         extracted = {}
         for manager in managers:
-            self.assertEqual(
-                ['/^native\\/toolchain\\.json$/'],
-                manager.get('managerFilePatterns'),
-            )
+            file_pattern = EXPECTED_MANIFEST[manager['depNameTemplate']]
+            self.assertEqual([file_pattern], manager.get('managerFilePatterns'))
             self.assertEqual(1, len(manager.get('matchStrings', [])))
             # The checked-in expressions use only syntax shared by RE2 and
             # Python apart from named-capture spelling.
             pattern = manager['matchStrings'][0].replace(
                 '(?<currentValue>', '(?P<currentValue>')
-            matches = list(re.finditer(pattern, TOOLCHAIN_TEXT))
+            matches = list(re.finditer(pattern, MANIFEST_TEXT[file_pattern]))
             self.assertEqual(1, len(matches), manager['description'])
             extracted[manager['depNameTemplate']] = matches[0].group('currentValue')
 
-        self.assertEqual(TOOLCHAIN['downloads']['kubectl']['version'],
-                         extracted['kubernetes/kubernetes'])
-        self.assertEqual(TOOLCHAIN['downloads']['helm']['version'],
-                         extracted['helm/helm'])
-        self.assertEqual(TOOLCHAIN['downloads']['tilt']['version'],
-                         extracted['tilt-dev/tilt'])
-        self.assertEqual(TOOLCHAIN['downloads']['kind']['version'],
-                         extracted['kubernetes-sigs/kind'])
         self.assertEqual(TOOLCHAIN['downloads']['actionlint']['version'],
                          extracted['rhysd/actionlint'])
         self.assertEqual(TOOLCHAIN['downloads']['go']['version'], extracted['go'])
-        self.assertEqual(TOOLCHAIN['user_tools']['mitmproxy']['version'],
+        self.assertEqual(AGENT['user_tools']['mitmproxy']['version'],
                          extracted['mitmproxy'])
         self.assertEqual('24', extracted['node'])
 
-    def test_standard_npm_discovery_owns_exact_direct_set(self):
+    def test_standard_npm_discovery_tracks_only_locked_playwright(self):
         package = json.loads((REPO / 'native/npm/package.json').read_text())
-        expected = {
-            name: tool['version']
-            for name, tool in TOOLCHAIN['user_tools'].items()
-            if tool.get('method') == 'npm'
-        }
-        self.assertEqual(expected, package['dependencies'])
+        lock = json.loads((REPO / 'native/npm/package-lock.json').read_text())
+        self.assertEqual(
+            {'playwright': lock['packages']['node_modules/playwright']['version']},
+            package['dependencies'])
+
+    def test_floating_providers_have_no_discovery_identity(self):
+        renovate_text = (REPO / 'renovate.json').read_text()
+        npm_text = ''.join(
+            (REPO / 'native/npm' / name).read_text()
+            for name in ('package.json', 'package-lock.json'))
+        self.assertEqual(set(PROVIDERS),
+                         {p['package'] for p in AGENT['providers'].values()})
+        for package in PROVIDERS:
+            self.assertNotIn(package, renovate_text)
+            self.assertNotIn(package, npm_text)
+            self.assertNotIn(package, TOOLCHAIN_TEXT)
+        for provider in AGENT['providers'].values():
+            self.assertFalse({'version', 'integrity', 'tarball'} & set(provider))
 
     def test_checksum_coupled_identities_are_approval_gated(self):
         rules = CONFIG.get('packageRules', [])
@@ -83,10 +94,7 @@ class DependencyDiscoveryTests(unittest.TestCase):
         rule = checksum_rules[0]
         self.assertTrue(rule.get('dependencyDashboardApproval'))
         self.assertEqual(
-            {
-                'kubernetes/kubernetes', 'helm/helm', 'tilt-dev/tilt',
-                'kubernetes-sigs/kind', 'rhysd/actionlint', 'go',
-            },
+            {'rhysd/actionlint', 'go'},
             set(rule.get('matchPackageNames', [])),
         )
 
@@ -96,8 +104,8 @@ class DependencyDiscoveryTests(unittest.TestCase):
                 '$manifest[0].chromium_apt', '$manifest[0].chromium_apt_source',
                 '.value.source', '.value.fingerprint', '.value.policy',
                 '$manifest[0].downloads.via',
-                '$manifest[0].user_tools["ai-session-handler"]',
-                '$manifest[0].user_tools.chromium'):
+                '$agent[0].user_tools["ai-session-handler"]',
+                '$agent[0].user_tools.chromium'):
             self.assertIn(required, WORKFLOW_TEXT)
 
 

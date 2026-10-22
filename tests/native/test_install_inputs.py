@@ -27,10 +27,10 @@ class InstallInputTests(unittest.TestCase):
     def test_reviewed_source_is_complete(self):
         lock_hash, package_count = inputs.validate_source(REPO)
         self.assertEqual(
-            'f42dff943f668e927407f16ef214f43ea2e88f319c9d0deae13e5b27f6df8b91',
+            'a9a9e5ba0bdb4e13517d28e2b15f74a7a470348f23fdf2dae4df95543d9fd3af',
             lock_hash,
         )
-        self.assertGreater(package_count, 4)
+        self.assertEqual(2, package_count)
 
     def test_missing_lock_is_rejected(self):
         with tempfile.TemporaryDirectory(prefix='missing-lock-', dir=SCRATCH) as name:
@@ -59,39 +59,99 @@ class InstallInputTests(unittest.TestCase):
                     inputs.InstallInputError, 'missing required install input'):
                 inputs.validate_source(root)
 
+    def test_missing_boundary_module_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix='missing-boundary-', dir=SCRATCH) as name:
+            root = Path(name)
+            self.copied_inputs(root)
+            (root / inputs.BOUNDARY_PATH).unlink()
+            with self.assertRaisesRegex(
+                    inputs.InstallInputError, 'missing required install input'):
+                inputs.validate_source(root)
+
     def test_ignored_lock_is_rejected(self):
         with self.assertRaisesRegex(
                 inputs.InstallInputError, 'required install input is ignored'):
             inputs.git_input_state(
                 REPO, Path('ignored-fixture/package-lock.json'))
 
-    def test_npm_version_only_edit_is_rejected(self):
-        with tempfile.TemporaryDirectory(prefix='npm-version-', dir=SCRATCH) as name:
+    def edited(self, prefix, edit, message):
+        with tempfile.TemporaryDirectory(prefix=prefix, dir=SCRATCH) as name:
             root = Path(name)
             self.copied_inputs(root)
-            manifest_path = root / 'native/toolchain.json'
-            manifest = json.loads(manifest_path.read_text())
-            manifest['user_tools']['@openai/codex']['version'] = '0.161.0'
-            manifest_path.write_text(json.dumps(manifest))
-            with self.assertRaisesRegex(
-                    inputs.InstallInputError,
-                    'npm manifest and toolchain direct versions mismatch'):
+            documents = {
+                relative: json.loads((root / relative).read_text())
+                for relative in (Path('native/npm/package.json'), inputs.LOCK_PATH,
+                                 Path('native/toolchain.json'), inputs.AGENT_MANIFEST_PATH)
+            }
+            edit(*documents.values())
+            for relative, document in documents.items():
+                (root / relative).write_text(json.dumps(document))
+            with self.assertRaisesRegex(inputs.InstallInputError, message):
                 inputs.validate_source(root)
 
-    def test_playwright_duplicate_inputs_are_required(self):
-        with tempfile.TemporaryDirectory(prefix='playwright-', dir=SCRATCH) as name:
+    def test_missing_agent_manifest_is_rejected(self):
+        with tempfile.TemporaryDirectory(prefix='missing-agent-', dir=SCRATCH) as name:
             root = Path(name)
             self.copied_inputs(root)
-            manifest_path = root / 'native/toolchain.json'
-            manifest = json.loads(manifest_path.read_text())
+            (root / inputs.AGENT_MANIFEST_PATH).unlink()
+            with self.assertRaisesRegex(
+                    inputs.InstallInputError, 'missing required install input'):
+                inputs.validate_source(root)
+
+    def test_lockfile_only_playwright_upgrade_fails_on_stale_apt_provenance(self):
+        def edit(package, lock, manifest, agent):
+            package['dependencies']['playwright'] = '1.64.0'
+            lock['packages']['']['dependencies']['playwright'] = '1.64.0'
+            entry = lock['packages']['node_modules/playwright']
+            entry['version'] = '1.64.0'
+            entry['resolved'] = entry['resolved'].replace('1.63.0', '1.64.0')
+        self.edited('playwright-lock-only-', edit,
+                    'Chromium apt source and locked Playwright version mismatch')
+
+    def test_stale_apt_provenance_is_rejected(self):
+        def edit(package, lock, manifest, agent):
             manifest['chromium_apt_source'] = manifest['chromium_apt_source'].replace(
                 'playwright-core 1.63.0', 'playwright-core 1.62.0')
-            manifest_path.write_text(json.dumps(manifest))
-            with self.assertRaisesRegex(
-                    inputs.InstallInputError,
-                    'Chromium apt source and Playwright version mismatch'):
-                inputs.validate_source(root)
+        self.edited('playwright-apt-', edit,
+                    'Chromium apt source and locked Playwright version mismatch')
 
+    def test_package_and_lock_disagreement_is_rejected(self):
+        def edit(package, lock, manifest, agent):
+            package['dependencies']['playwright'] = '1.64.0'
+            lock['packages']['']['dependencies']['playwright'] = '1.64.0'
+        self.edited('playwright-package-', edit,
+                    'npm manifest and lock Playwright version mismatch')
+
+    def test_root_dependency_disagreement_is_rejected(self):
+        def edit(package, lock, manifest, agent):
+            package['dependencies']['playwright'] = '1.64.0'
+        self.edited('playwright-root-', edit,
+                    'npm manifest and lock direct dependencies mismatch')
+
+    def test_missing_transitive_integrity_is_rejected(self):
+        def edit(package, lock, manifest, agent):
+            del lock['packages']['node_modules/playwright-core']['integrity']
+        self.edited('playwright-integrity-', edit,
+                    'playwright-core: missing SHA-512 integrity')
+
+    def test_non_registry_transitive_tarball_is_rejected(self):
+        def edit(package, lock, manifest, agent):
+            lock['packages']['node_modules/playwright-core']['resolved'] = (
+                'http://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz')
+        self.edited('playwright-https-', edit, 'registry HTTPS tarball missing')
+
+    def test_provider_cannot_return_to_the_locked_project(self):
+        def edit(package, lock, manifest, agent):
+            package['dependencies']['@openai/codex'] = '0.161.0'
+            lock['packages']['']['dependencies']['@openai/codex'] = '0.161.0'
+        self.edited('provider-lock-', edit,
+                    'exactly the pinned Playwright project')
+
+    def test_floating_provider_cannot_carry_a_pin(self):
+        def edit(package, lock, manifest, agent):
+            agent['providers']['codex']['version'] = '0.161.0'
+        self.edited('provider-pin-', edit,
+                    '@openai/codex: floating provider must not carry a pin')
 
 if __name__ == '__main__':
     unittest.main()
