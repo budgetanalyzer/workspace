@@ -10,6 +10,12 @@ import sys
 import tempfile
 import time
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from boundary import BoundaryError, VmBoundary  # noqa: E402  pylint: disable=wrong-import-position
+
 # Managed global provider prefix; Playwright keeps its separate npm project.
 PROVIDER_BIN = 'providers/bin'
 
@@ -44,6 +50,10 @@ def provider_arguments(action, user_args, root=None):
 
 
 def launch(action, user_args):
+    if action != 'start-proxy':
+        # Fail closed before any proxy, trust-variable change or provider start.
+        VmBoundary(os.environ['BUDGET_ANALYZER_WORKTREE_PARENT'],
+                   os.environ['BUDGET_ANALYZER_BARE_PARENT']).check_boundary()
     home = Path(os.environ['HOME'])
     root = Path(os.environ['BUDGET_ANALYZER_NATIVE_ROOT'])
     worktrees = Path(os.environ['BUDGET_ANALYZER_WORKTREE_PARENT'])
@@ -105,6 +115,10 @@ def main():
     args, remaining = parser.parse_known_args()
     try:
         return launch(args.action, remaining)
+    except BoundaryError as exc:
+        print(f'agent launch blocked by VM boundary: {exc}; provider not started. '
+              'Diagnose with scripts/check-agent-vm-boundary.sh', file=sys.stderr)
+        return 1
     except (ProxyError, OSError, ValueError, KeyError) as exc:
         print('native-proxy: ' + str(exc), file=sys.stderr)
         return 1

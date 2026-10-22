@@ -1,6 +1,7 @@
 """Focused safety checks for the human-run system provisioner."""
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -48,6 +49,7 @@ class PreflightProbe(provision.Provisioner):
         self.origin_bad = False
         self.installed_packages = set()
         self.endpoint = 'unix:///var/run/docker.sock'
+        self.real_commands = ()
         self.absent_user = False
         self.account_uid = self.current = os.getuid()
         self.path('/etc').mkdir(parents=True)
@@ -113,6 +115,9 @@ class PreflightProbe(provision.Provisioner):
     def command(self, argv, *, privileged=False, check=True):
         args = [str(arg) for arg in argv]
         self.calls.append((args, privileged))
+        if args[:2] in self.real_commands:
+            # Production command handling over a patched subprocess.run.
+            return provision.Provisioner.command(self, argv, privileged=privileged, check=check)
         code, output = 0, ''
         if args[:2] == ['systemd-detect-virt', '--container']:
             output = self.container
@@ -233,6 +238,38 @@ class ProvisionSafetyTests(unittest.TestCase):
         path.write_text(json.dumps(manifest))
         with self.assertRaisesRegex(provision.ProvisionError, message):
             provision.load_manifest(path)
+
+    def test_failing_boundary_probes_never_surface_command_output(self):
+        secret = 'fatal: https://user:fixture-secret@host.example/private'
+        cases = (
+            ('git probe', [['git', '-C']], lambda p: None, 'git: boundary probe failed'),
+            ('privileged docker root', [['docker', 'info']], lambda p: p.enable_docker(),
+             'docker: boundary probe failed'),
+        )
+        for label, commands, configure, message in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                probe = self.probe(directory)
+                configure(probe)
+                probe.real_commands = commands
+                failed = subprocess.CompletedProcess([], 128, 'fixture-secret stdout', secret)
+                with patch.object(provision.subprocess, 'run', return_value=failed) as run, \
+                        patch('sys.stdout', new_callable=io.StringIO) as stdout:
+                    with self.assertRaisesRegex(provision.ProvisionError, message) as raised:
+                        probe.preflight()
+                self.assertTrue(run.called)
+                self.assertNotIn('fixture-secret', str(raised.exception))
+                self.assertNotIn('fixture-secret', stdout.getvalue())
+        # The privileged override still pins the guest socket through sudo.
+        argv = run.call_args.args[0]
+        self.assertEqual(['sudo', '-n', '--', 'docker', '--host', 'unix:///var/run/docker.sock',
+                          'info'], argv[:7])
+
+    def test_non_boundary_command_failures_keep_detail(self):
+        probe = provision.Provisioner(minimal_manifest(), 'developer', '/fixture/w', '/fixture/b')
+        failed = subprocess.CompletedProcess([], 2, '', 'apt detail')
+        with patch.object(provision.subprocess, 'run', return_value=failed):
+            with self.assertRaisesRegex(provision.ProvisionError, 'apt detail'):
+                probe.command(['apt-get', 'update'])
 
     def test_invalid_targets_reject_before_sudo_or_download(self):
         cases = (

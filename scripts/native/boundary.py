@@ -6,6 +6,11 @@ guest-local repositories with bare origins, Git configuration, absent
 credential/proxy/endpoint bridges and the guest Docker endpoint. It does not
 require provider CLIs, agent helpers, AI Session Handler, platform binaries or
 any sibling checkout other than this workspace.
+
+The checkout entry point must run from the selected workspace clone. The copy
+installed in the native root is the provider launch guard: it requires the
+selected workspace checkout to exist, prints nothing on success and reports
+failures only on stderr.
 """
 import argparse
 import grp
@@ -19,6 +24,8 @@ import subprocess
 import sys
 
 REPO = Path(__file__).resolve().parents[2]
+ENTRY = Path(__file__).resolve().parent
+NATIVE_ROOT = '.local/share/budget-analyzer-native'
 SHELLS = ('/bin/bash', '/usr/bin/bash', '/bin/sh', '/bin/zsh', '/usr/bin/zsh')
 DENIED_ENV = ('SSH_AUTH_SOCK', 'GITHUB_TOKEN', 'GH_TOKEN', 'GIT_ASKPASS', 'SSH_ASKPASS',
               'GPG_AGENT_INFO', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'TESTCONTAINERS_HOST_OVERRIDE',
@@ -44,6 +51,11 @@ def is_private_primary_group(user, primary_gid, path_gid):
             not set(group.gr_mem) - {user})
 
 
+def installed_entry(home):
+    """True for the base component's copy in the account's native root."""
+    return ENTRY == Path(home) / NATIVE_ROOT
+
+
 class VmBoundary:
     """Shared boundary rules; fixtures substitute observations, never gates."""
     error = BoundaryError
@@ -61,6 +73,13 @@ class VmBoundary:
         result = subprocess.run([str(a) for a in args], text=True, capture_output=True, env=self.env)
         self.require(not check or result.returncode == 0,
                      f'{Path(str(args[0])).name}: command failed (exit {result.returncode}); inspect privately')
+        return result
+
+    def probe(self, args, **options):
+        """Boundary observation: no subclass surfaces probe output on failure."""
+        result = self.command(args, check=False, **options)
+        self.require(result.returncode == 0,
+                     f'{Path(str(args[0])).name}: boundary probe failed (exit {result.returncode}); inspect privately')
         return result
 
     def which(self, name):
@@ -83,7 +102,7 @@ class VmBoundary:
         return result.returncode == 0 and result.stdout.strip() == 'install ok installed'
 
     def docker_root(self):
-        return self.command(['docker', 'info', '--format', '{{.DockerRootDir}}']).stdout.strip()
+        return self.probe(['docker', 'info', '--format', '{{.DockerRootDir}}']).stdout.strip()
 
     def owned(self, path, *, directory=False, private=True):
         self.require(path.exists() and not path.is_symlink(), f'missing or symlinked path: {path}')
@@ -97,7 +116,7 @@ class VmBoundary:
             self.require(path.is_dir(), f'expected directory: {path}')
 
     def git_config(self, repo):
-        result = self.command(['git', '-C', repo, 'config', '--null', '--list', '--includes'])
+        result = self.probe(['git', '-C', repo, 'config', '--null', '--list', '--includes'])
         for record in result.stdout.split('\0'):
             key = record.split('\n', 1)[0].lower()
             self.require(not re.search(r'^(credential\.|include\.|includeif\.|url\.|http\..*extraheader|core\.sshcommand|core\.askpass|gpg\.)', key),
@@ -154,7 +173,9 @@ class VmBoundary:
             self.require(path.is_absolute() and path.resolve() == path,
                          'repository parents must be canonical absolute paths')
             self.owned(path, directory=True, private=False)
-        self.require((self.worktrees / 'workspace').resolve() == REPO,
+        # The installed copy lives in the native root, so only the checkout
+        # entry point can prove it runs from the selected workspace clone.
+        self.require(installed_entry(self.home) or (self.worktrees / 'workspace').resolve() == REPO,
                      'entry point must come from the selected workspace clone')
         self.repos = sorted(p for p in self.worktrees.iterdir() if (p / '.git').exists())
         self.require(self.worktrees / 'workspace' in self.repos, 'missing local checkout: workspace')
@@ -170,19 +191,19 @@ class VmBoundary:
             self.owned(bare / 'config', private=False)
             if not git:
                 continue
-            self.require(self.command(['git', '-C', bare, 'rev-parse', '--is-bare-repository']).stdout.strip() == 'true',
+            self.require(self.probe(['git', '-C', bare, 'rev-parse', '--is-bare-repository']).stdout.strip() == 'true',
                          'matching guest-local bare origin is absent')
-            self.require(self.command(['git', '-C', bare, 'remote']).stdout.strip() == '', 'bare origin has an external remote')
+            self.require(self.probe(['git', '-C', bare, 'remote']).stdout.strip() == '', 'bare origin has an external remote')
             self.git_config(repo)
             self.git_config(bare)
-            self.require(self.command(['git', '-C', repo, 'rev-parse', '--show-toplevel']).stdout.strip() == str(repo),
+            self.require(self.probe(['git', '-C', repo, 'rev-parse', '--show-toplevel']).stdout.strip() == str(repo),
                          'checkout is not a standalone local clone')
-            self.require(self.command(['git', '-C', repo, 'remote']).stdout.strip() == 'origin', 'extra or missing Git remote')
+            self.require(self.probe(['git', '-C', repo, 'remote']).stdout.strip() == 'origin', 'extra or missing Git remote')
             for push in (False, True):
                 argv = ['git', '-C', repo, 'remote', 'get-url', '--all']
                 if push:
                     argv.append('--push')
-                self.require(self.command([*argv, 'origin']).stdout.strip() == str(bare),
+                self.require(self.probe([*argv, 'origin']).stdout.strip() == str(bare),
                              'wrong origin/push URL; human must inspect, no automatic Git repair')
 
     def check_docker(self, installable):
@@ -197,9 +218,9 @@ class VmBoundary:
             self.require(not socket.exists() and not self.installed('docker.io') and
                          not self.installed('docker-ce'), 'partial Docker installation needs human repair')
             return
-        self.require(self.command(['docker', 'context', 'show']).stdout.strip() == 'default',
+        self.require(self.probe(['docker', 'context', 'show']).stdout.strip() == 'default',
                      'requires default guest Docker context')
-        endpoint = self.command(['docker', 'context', 'inspect', 'default', '--format', '{{.Endpoints.docker.Host}}'])
+        endpoint = self.probe(['docker', 'context', 'inspect', 'default', '--format', '{{.Endpoints.docker.Host}}'])
         self.require(endpoint.stdout.strip() == 'unix://' + DOCKER_SOCKET,
                      'rejecting remote/custom Docker endpoint; requires guest Unix Docker socket')
         self.require(socket.is_socket(), 'guest Docker socket missing')
@@ -215,12 +236,21 @@ def main():
     parser.add_argument('--worktree-parent', required=True)
     parser.add_argument('--bare-parent', required=True)
     args = parser.parse_args()
+    guard = False
     try:
+        guard = installed_entry(pwd.getpwuid(os.getuid()).pw_dir)
         boundary = VmBoundary(args.worktree_parent, args.bare_parent)
         boundary.check_boundary()
     except (BoundaryError, OSError, ValueError, KeyError) as exc:
-        print(f'check-agent-vm-boundary: {exc}', file=sys.stderr)
+        if guard:
+            print(f'agent launch blocked by VM boundary: {exc}; provider not started. '
+                  'Diagnose with scripts/check-agent-vm-boundary.sh', file=sys.stderr)
+        else:
+            print(f'check-agent-vm-boundary: {exc}', file=sys.stderr)
         return 1
+    if guard:
+        # Provider output consumers parse stdout; success stays silent.
+        return 0
     print(f'VM boundary PASS: user={boundary.user}; home={boundary.home}; '
           f'local repositories={len(boundary.repos)}; guest Docker default context')
     return 0

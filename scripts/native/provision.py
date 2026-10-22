@@ -138,7 +138,7 @@ class Provisioner(VmBoundary):
 
     def docker_root(self):
         # The user may not be in the docker group before first provisioning.
-        return self.command(['docker', 'info', '--format', '{{.DockerRootDir}}'], privileged=True).stdout.strip()
+        return self.probe(['docker', 'info', '--format', '{{.DockerRootDir}}'], privileged=True).stdout.strip()
 
     def preflight(self):
         require(re.fullmatch(r'[a-z_][a-z0-9_-]*\$?', self.user), 'invalid guest user name')

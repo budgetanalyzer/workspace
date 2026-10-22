@@ -103,6 +103,9 @@ in `scripts/native/local_ca.py` and `scripts/native/proxy.py`. Settings, the
 conversation skill and prompt resources also live under `native/helpers/`.
 Every command
 gets an executable user wrapper that loads the same small environment fragment.
+Provider and `codex-lean` wrappers, and the proxy provider launchers, also run
+the installed VM boundary first
+([launch enforcement](native-user-tools.md#provider-launch-enforcement)).
 The read-only source/environment checker renders those wrappers under `tmp/`
 and validates shell syntax and ShellCheck. Every workspace-owned path in the
 agent-tool manifest's `reviewed_sources` map resolves in a standalone checkout. Native
@@ -186,7 +189,10 @@ commit, use `--publication committed`; only that mode validates a true
 The compact harness replaces privileged/download commands only where needed to
 prove the safety boundary: wrong OS, container/non-VM execution, a remote
 Docker endpoint, root or missing users and missing bootstrap commands reject
-before sudo/downloads; checksum failure rejects before mutation; spaced paths
+before sudo/downloads; a failing boundary Git or Docker probe, including the
+privileged `docker info` data-root probe, reports only the command name and
+exit status, never its output, while other provisioning command failures keep
+their detail; checksum failure rejects before mutation; spaced paths
 remain single arguments; and a repeat with healthy Docker performs no package
 or restart operation. It deliberately does not emulate apt output, package
 transactions, systemd, repositories or browser installation. Static checks

@@ -166,6 +166,14 @@ unsafe ownership, symlinks, collisions, forwarded authority and partial or
 unhealthy Docker still fail. Workers must not run provisioning to repair a
 failed boundary.
 
+Every workspace-managed provider launch also enforces these rules: the
+`claude`, `codex`, `gemini` and `codex-lean` wrappers run the installed base
+copy, and the proxy launchers run them before any proxy or trust change. A
+failure blocks the provider, with the reason on stderr; success is silent.
+There is no bypass. The manual check remains the diagnosis path for a blocked
+launch and the gate for work started outside provider launchers. See
+[Provider Launch Enforcement](native-user-tools.md#provider-launch-enforcement).
+
 ## Canonical Native Runtime Contract
 
 After human preparation and ingress trust are complete, use one workspace-owned
@@ -298,15 +306,24 @@ For daily work, open a fresh normal-user guest shell, run the
 application with orchestration's
 [Daily Startup](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#daily-startup)
 read-only preflight and `tilt up`. Orchestration's checks protect the
-application environment on their own and do not depend on workspace.
+application environment and do not depend on workspace, but they do not check
+the VM boundary.
 
 Launch `codex`, `claude`, `gemini` or `ai-run` from the relevant guest working
 clone. Agent exit and reentry are independent of Tilt, Docker and Kind.
 
-For first bootstrap or an intentional clean application rebuild, follow the
+For first bootstrap or an intentional clean application rebuild, open a fresh
+normal-user guest shell, run the
+[pre-agent VM boundary check](#pre-agent-vm-boundary-check), then follow the
 [Getting Started guide](https://github.com/budgetanalyzer/orchestration/blob/main/docs/development/getting-started.md#first-bootstrap).
 Orchestration `./setup.sh` recreates Kind and is not a daily-start
-command. Do not import host Docker state or move Docker data into a shared path.
+command.
+
+In the VM, the boundary check is required before both `./setup.sh` and daily
+startup. Orchestration never invokes it. Orchestration's Docker guard only
+checks transport: it accepts any reachable local Unix socket, including a host
+socket forwarded into the VM. Its success is therefore not VM-boundary
+evidence. Do not import host Docker state or move Docker data into a shared path.
 
 For a fully clean environment, create a new reviewed Ubuntu VM, rerun native
 preparation and repository setup, transfer only the approved TLS leaf, key and

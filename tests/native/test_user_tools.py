@@ -34,6 +34,7 @@ proxy_spec = importlib.util.spec_from_file_location(
 proxy = importlib.util.module_from_spec(proxy_spec)
 proxy_spec.loader.exec_module(proxy)
 REAL_POPEN = subprocess.Popen
+REAL_RUN = subprocess.run
 
 
 class LocalCaPathSafetyTests(unittest.TestCase):
@@ -291,13 +292,18 @@ class ProxyProviderLaunchTests(unittest.TestCase):
             stub = provider_bin / name
             stub.write_text('#!/usr/bin/env bash\n'
                             'printf "%s\\n" "$0" "$HTTPS_PROXY" "${CODEX_REAL_BIN:-}" '
-                            '"${CODEX_REASONING_EFFORT:-}" "$@" > "$RECORD"\n')
+                            '"${CODEX_REASONING_EFFORT:-}" "$@" > "$RECORD"\n'
+                            'printf "%s\\n" "${SSL_CERT_FILE:-}" "${REQUESTS_CA_BUNDLE:-}" '
+                            '"${NODE_EXTRA_CA_CERTS:-}" > "$RECORD.trust"\n')
             stub.chmod(0o700)
         self.env = {'HOME': str(base / 'home'), 'PATH': '/usr/bin:/bin',
                     'RECORD': str(self.record),
                     'BUDGET_ANALYZER_NATIVE_ROOT': str(self.root),
-                    'BUDGET_ANALYZER_WORKTREE_PARENT': str(base / 'worktrees')}
+                    'BUDGET_ANALYZER_WORKTREE_PARENT': str(base / 'worktrees'),
+                    'BUDGET_ANALYZER_BARE_PARENT': str(base / 'bares')}
         self.listening = False
+        self.events = []
+        self.boundary_error = None
 
     def tearDown(self):
         self.temp.cleanup()
@@ -319,20 +325,73 @@ class ProxyProviderLaunchTests(unittest.TestCase):
                 return 0 if test.listening else 111
         return Probe()
 
+    def boundary(self, worktrees, bares):
+        test = self
+
+        class Boundary:
+            def check_boundary(self):
+                test.events.append(('boundary', worktrees, bares, os.environ.get('SSL_CERT_FILE')))
+                if test.boundary_error:
+                    raise proxy.BoundaryError(test.boundary_error)
+        return Boundary()
+
     def popen(self, args, **kwargs):
+        self.events.append((args[0],))
         if args[0] != 'mitmweb':
             return REAL_POPEN(args, **kwargs)
         self.listening = True
         return SimpleNamespace(poll=lambda: None, terminate=lambda: None,
                                wait=lambda timeout=None: 0)
 
+    def patches(self):
+        stack = contextlib.ExitStack()
+        stack.enter_context(patch.dict(os.environ, self.env, clear=True))
+        stack.enter_context(patch.object(proxy, 'VmBoundary', side_effect=self.boundary))
+        stack.enter_context(patch.object(proxy, 'proxy_arguments', return_value=(['mitmweb'], self.conf)))
+        stack.enter_context(patch.object(proxy.socket, 'socket', side_effect=self.socket))
+        stack.enter_context(patch.object(proxy.subprocess, 'Popen', side_effect=self.popen))
+        return stack
+
     def launch(self, action, user_args):
-        with patch.dict(os.environ, self.env, clear=True), \
-                patch.object(proxy, 'proxy_arguments', return_value=(['mitmweb'], self.conf)), \
-                patch.object(proxy.socket, 'socket', side_effect=self.socket), \
-                patch.object(proxy.subprocess, 'Popen', side_effect=self.popen):
+        with self.patches():
             self.assertEqual(0, proxy.launch(action, user_args))
+        # The boundary runs first, with the exported parents and unchanged trust.
+        self.assertEqual(('boundary', self.env['BUDGET_ANALYZER_WORKTREE_PARENT'],
+                          self.env['BUDGET_ANALYZER_BARE_PARENT'], None), self.events[0])
+        self.assertEqual(['boundary', 'mitmweb'], [event[0] for event in self.events[:2]])
         return self.record.read_text().splitlines()
+
+    def test_boundary_failure_starts_no_proxy_or_provider(self):
+        self.boundary_error = 'SSH_AUTH_SOCK must be absent'
+        for action in ('claude-with-proxy', 'codex-with-proxy', 'codex-max-with-proxy'):
+            with self.subTest(action=action):
+                self.events.clear()
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with self.patches(), patch.object(sys, 'argv', ['proxy.py', action, 'tail']), \
+                        contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    self.assertEqual(1, proxy.main())
+                self.assertEqual(['boundary'], [event[0] for event in self.events])
+                self.assertFalse(self.record.exists())
+                # No private flow storage or combined trust bundle was prepared.
+                self.assertFalse(Path(self.env['BUDGET_ANALYZER_WORKTREE_PARENT']).exists())
+                self.assertEqual('', stdout.getvalue())
+                self.assertTrue(stderr.getvalue().startswith(
+                    'agent launch blocked by VM boundary: SSH_AUTH_SOCK must be absent'))
+
+    def test_proxy_bundle_reaches_only_the_provider_child(self):
+        # The caller keeps the managed trust values that component checks read;
+        # only the provider child receives the combined inspection bundle.
+        keys = ('SSL_CERT_FILE', 'REQUESTS_CA_BUNDLE', 'NODE_EXTRA_CA_CERTS')
+        self.env.update(dict.fromkeys(keys, user_tools.SYSTEM_BUNDLE))
+        with self.patches():
+            self.assertEqual(0, proxy.launch('claude-with-proxy', []))
+            self.assertEqual({key: user_tools.SYSTEM_BUNDLE for key in keys},
+                             {key: os.environ[key] for key in keys})
+        self.assertEqual(user_tools.SYSTEM_BUNDLE, self.events[0][3])
+        child = Path(str(self.record) + '.trust').read_text().splitlines()
+        self.assertEqual(1, len(set(child)))
+        self.assertNotEqual(user_tools.SYSTEM_BUNDLE, child[0])
+        self.assertEqual('mitmproxy-private', Path(child[0]).parent.name)
 
     def test_claude_with_proxy_runs_managed_prefix_binary_with_exact_argv(self):
         record = self.launch('claude-with-proxy', ['--model', 'fixture', 'two words'])
@@ -351,6 +410,112 @@ class ProxyProviderLaunchTests(unittest.TestCase):
         self.assertIn('model_reasoning_effort="xhigh"', record)
         self.assertEqual('tail arg', record[-1])
         self.assertNotIn('npm/node_modules', '\n'.join(record))
+
+
+GUARD_STUB = """import os
+from pathlib import Path
+import sys
+Path(os.environ['GUARD_LOG']).write_text('\\n'.join(sys.argv[1:]))
+if os.environ.get('GUARD_FAIL'):
+    print('agent launch blocked by VM boundary: SSH_AUTH_SOCK must be absent', file=sys.stderr)
+    sys.exit(1)
+"""
+PROVIDER_STUB = ('#!/usr/bin/env bash\n'
+                 'printf "%s\\n" "$0" "${CODEX_REAL_BIN:-}" "$@" > "$RECORD"\n')
+
+
+class ProviderLaunchGuardTests(unittest.TestCase):
+    """Every rendered provider launch path runs the installed boundary first."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='launch guard ', dir=SCRATCH)
+        base = Path(self.temp.name)
+        self.probe = UserToolsProbe(base)
+        with patch.object(user_tools, 'REPO', self.probe.repo), \
+                patch.object(boundary, 'REPO', self.probe.repo), \
+                patch.object(user_tools.subprocess, 'run',
+                             side_effect=AssertionError('live fixture command prohibited')), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.probe.preflight()
+            files = {}
+            for component in user_tools.COMPONENTS:
+                files.update(self.probe.component_files(component))
+        for path, (content, mode) in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+            path.chmod(mode)
+        provider_bin = self.probe.provider_bin()
+        provider_bin.mkdir(parents=True)
+        for name in (*self.probe.agent['providers'], 'unchecked-codex'):
+            (provider_bin / name).write_text(PROVIDER_STUB)
+            (provider_bin / name).chmod(0o700)
+        self.record, self.guard_log = base / 'record', base / 'guard-log'
+        self.env = {'HOME': str(self.probe.home), 'PATH': '/usr/bin:/bin',
+                    'RECORD': str(self.record), 'GUARD_LOG': str(self.guard_log)}
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def stub_guard(self):
+        (self.probe.root / 'boundary.py').write_text(GUARD_STUB)
+
+    def run_command(self, name, *args, **env):
+        self.record.unlink(missing_ok=True)
+        self.guard_log.unlink(missing_ok=True)
+        # Resolve by name through PATH, as AI Session Handler and shells do.
+        return REAL_RUN(['bash', '--noprofile', '--norc', '-c', '"$@"', 'launch', name, *args],
+                        env={**self.env, 'PATH': f'{self.probe.bin}:{self.env["PATH"]}', **env},
+                        text=True, capture_output=True, check=False)
+
+    launch_paths = {'claude': 'claude', 'codex': 'codex', 'gemini': 'gemini',
+                    'claude-lean': 'claude', 'codex-lean': 'codex'}
+
+    def test_boundary_failure_starts_no_provider(self):
+        self.stub_guard()
+        for name in self.launch_paths:
+            with self.subTest(name=name):
+                result = self.run_command(name, 'tail', GUARD_FAIL='1')
+                self.assertEqual(1, result.returncode)
+                self.assertFalse(self.record.exists())
+                self.assertEqual('', result.stdout)
+                self.assertIn('agent launch blocked by VM boundary', result.stderr)
+
+    def test_boundary_success_launches_silently_with_exported_parents(self):
+        self.stub_guard()
+        for name, provider in self.launch_paths.items():
+            with self.subTest(name=name):
+                result = self.run_command(name, 'two words',
+                                          CODEX_REAL_BIN=str(self.probe.provider_bin() / 'unchecked-codex'))
+                self.assertEqual((0, '', ''), (result.returncode, result.stdout, result.stderr))
+                self.assertEqual(['--worktree-parent', str(self.probe.worktrees),
+                                  '--bare-parent', str(self.probe.bares)],
+                                 self.guard_log.read_text().splitlines())
+                record = self.record.read_text().splitlines()
+                self.assertEqual(str(self.probe.provider_bin() / provider), record[0])
+                self.assertEqual('two words', record[-1])
+                if name == 'codex-lean':
+                    # An inherited CODEX_REAL_BIN never selects an unchecked provider.
+                    self.assertEqual(str(self.probe.provider_bin() / 'codex'), record[1])
+
+    def test_real_installed_boundary_fails_closed_for_every_path(self):
+        # The fixture HOME is not the account home, so the real rules reject it
+        # (an unusual test account may fail an earlier identity rule instead).
+        for name in (*self.launch_paths, 'claude-with-proxy', 'codex-with-proxy',
+                     'codex-max-with-proxy'):
+            with self.subTest(name=name):
+                result = self.run_command(name, 'tail')
+                self.assertEqual(1, result.returncode)
+                self.assertFalse(self.record.exists())
+                self.assertEqual('', result.stdout)
+                self.assertRegex(result.stderr, r'^(check-agent-vm-boundary|'
+                                                r'agent launch blocked by VM boundary): ')
+                self.assertNotIn('Traceback', result.stderr)
+
+    def test_only_provider_launchers_are_guarded(self):
+        guarded = {path.name for path in self.probe.bin.iterdir()
+                   if 'boundary.py' in path.read_text()}
+        self.assertEqual(set(self.probe.agent['providers']) | set(user_tools.PROVIDER_LAUNCHERS),
+                         guarded)
 
 
 class PublicVerifierInterfaceTests(unittest.TestCase):
@@ -904,6 +1069,36 @@ class UserInstallerSafetyTests(unittest.TestCase):
                             patch.object(self.probe, 'run', side_effect=AssertionError('component ran')):
                         self.assertEqual(1, user_tools.main())
                     restore()
+
+    def test_trust_environment_conflict_fails_every_selection(self):
+        self.install()
+        managed = self.probe.environment_values()
+        argv = ['user_tools.py', 'check', '--worktree-parent', str(self.probe.worktrees),
+                '--bare-parent', str(self.probe.bares)]
+
+        def check(component):
+            stderr = io.StringIO()
+            with patch.object(sys, 'argv', [*argv, '--component', component]), \
+                    patch.object(user_tools, 'UserTools', lambda *_: self.probe), \
+                    contextlib.redirect_stderr(stderr):
+                return user_tools.main(), stderr.getvalue()
+
+        self.assertEqual(['SSL_CERT_FILE', 'NODE_EXTRA_CA_CERTS', 'REQUESTS_CA_BUNDLE'],
+                         self.probe.agent['trust_environment'])
+        for component in user_tools.COMPONENTS:
+            for key in self.probe.agent['trust_environment']:
+                with self.subTest(component=component, key=key):
+                    self.probe.env[key] = '/fixture/private-bundle.pem'
+                    code, stderr = check(component)
+                    self.assertEqual(1, code)
+                    self.assertIn(f'{component}: FAIL: conflicting {key}', stderr)
+                    self.assertNotIn('private-bundle', stderr)
+                    with self.assertRaisesRegex(user_tools.UserToolsError, f'conflicting {key}'):
+                        self.probe.install(component)
+                    self.probe.env[key] = managed[key]
+                    self.assertEqual((0, ''), check(component))
+                    del self.probe.env[key]
+                    self.assertEqual((0, ''), check(component))
 
     def test_cli_selects_components_and_reports_each(self):
         self.install()

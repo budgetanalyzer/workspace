@@ -155,7 +155,11 @@ lean-prompt behavior is part of the test or workflow.
   boundary check; it does not require provider or agent tooling or an
   orchestration checkout, and orchestration does not invoke it.
 - Keep `scripts/native/boundary.py` as the shared boundary implementation for
-  provisioning, user installation and verification. Treat
+  provisioning, user installation, verification and provider launches. Every
+  workspace-managed provider launch path runs it first and fails closed,
+  silently on success; never add a bypass, cache or unguarded provider
+  launcher. Read `docs/native-user-tools.md#provider-launch-enforcement`
+  before changing wrappers, `proxy.py` or a launcher. Treat
   `scripts/check-agent-vm-tools.sh` without `--component` as the single
   complete read-only contract for tool, trust and boundary readiness.
   Component selections (`base`, `claude`, `codex`, `gemini`, `extras`) isolate

@@ -1,6 +1,11 @@
 {
   "schema": 1,
-  "policy": "Normal-user agent tools; the system provisioner never loads this file. Provider CLIs float: first install or an explicit human update resolves the latest published npm release into the managed provider prefix, and routine preparation keeps installed versions. Playwright is exact: native/npm/package-lock.json is its single version, integrity and tarball source, and the reviewed Chromium apt provenance in native/toolchain.json must match it. Components (base, claude, codex, gemini, extras) are installed and verified independently; every managed file, command, setting, home path, environment key and check belongs to exactly one component.",
+  "policy": "Normal-user agent tools; the system provisioner never loads this file. Provider CLIs float: first install or an explicit human update resolves the latest published npm release into the managed provider prefix, and routine preparation keeps installed versions. Playwright is exact: native/npm/package-lock.json is its single version, integrity and tarball source, and the reviewed Chromium apt provenance in native/toolchain.json must match it. Components (base, claude, codex, gemini, extras) are installed and verified independently; every managed file, command, setting, home path, environment key and check belongs to exactly one component. The base fragment exports trust_environment; every component selection rejects a conflicting value.",
+  "trust_environment": [
+    "SSL_CERT_FILE",
+    "NODE_EXTRA_CA_CERTS",
+    "REQUESTS_CA_BUNDLE"
+  ],
   "components": {
     "base": {
       "description": "Installed system tools and shared environment files: environment fragment, shell startup line, npm configuration, opt-in aliases and the shared boundary/installer modules.",
@@ -24,9 +29,7 @@
         "NPM_CONFIG_PREFIX",
         "PIPX_HOME",
         "PIPX_BIN_DIR",
-        "NODE_PATH",
-        "SSL_CERT_FILE",
-        "NODE_EXTRA_CA_CERTS"
+        "NODE_PATH"
       ],
       "checks": [
         "system-packages",

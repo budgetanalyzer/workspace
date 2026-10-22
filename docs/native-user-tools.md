@@ -168,16 +168,30 @@ path, environment key and check belongs to exactly one of them:
 
 With no `--component`, `install` and `check` cover every component in that
 order. The VM boundary always runs first; if it fails, no component runs and
-the command fails for every selection. Each component then checks only its own
-prerequisites, writes only its own files and records, and reports `PASS` or
-`FAIL`; the command exits nonzero if any selected component failed, after
+the command fails for every selection. Each component then checks the shared
+trust-environment conflict rule and only its own other prerequisites, writes
+only its own files and records, and reports `PASS` or `FAIL`; the command exits nonzero if any selected component failed, after
 reporting all of them. A component that is not selected is left untouched, not
 uninstalled. Fresh-shell command resolution covers only the selected
 components' commands.
 
+The trust-environment rule is declared once, as `trust_environment` in
+`native/agent-tools.json`: `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` and
+`REQUESTS_CA_BUNDLE`, which the base fragment exports. Every component's
+`install` and `check` fail when one of them is set in the caller's
+environment to anything other than the managed system bundle, and report only
+the key name. Unset or managed values pass. The proxy launchers set their
+inspection bundle only in the provider child's environment after the boundary
+passes, so they do not trip this rule. Run checks from a normal shell; inside
+a proxied provider session the boundary already rejects the inherited proxy
+variables.
+
 The non-base components require only that `base` has been installed (its
 state record and environment fragment exist), because every `.local/bin`
-wrapper sources that fragment; a stale `base` does not block them. A provider's
+wrapper sources that fragment; a stale `base` does not block them. Provider
+launches and provider checks do run the installed base `boundary.py`
+([launch enforcement](#provider-launch-enforcement)), so refresh `base` before
+the providers when the boundary changes. A provider's
 check never requires an extra: `claude-lean --proxy` uses the optional
 `claude-with-proxy` from `extras`, but the `claude` check does not. Installing
 the trust helpers does not require trust; the `extras` check does.
@@ -259,7 +273,9 @@ installer installs a missing provider at `@latest` with registry HTTPS, npm
 integrity verification on and no `sudo`; it never resolves a newer version for
 an installed provider during routine preparation. The `.local/bin` wrappers and
 proxy adapters launch providers from the prefix's `bin` directory, including
-the `CODEX_REAL_BIN` path that Codex proxy commands pass to `codex-lean`.
+the `CODEX_REAL_BIN` path that Codex proxy commands pass to `codex-lean`. Every
+provider launch first passes the
+[VM boundary](#provider-launch-enforcement).
 
 To update one provider, stop its workers and run, from a fresh shell:
 
@@ -357,6 +373,40 @@ Docker or Git is treated as installable. Partial Docker installations,
 unhealthy existing Docker, unsafe ownership, symlinks and forwarded authority
 still fail before any write.
 
+### Provider Launch Enforcement
+
+Every workspace-managed provider launch runs the same `VmBoundary` rules before
+the provider starts, and fails closed. A forwarded agent, credential store,
+injected Git configuration, proxy variable or non-guest Docker endpoint then
+blocks the launch without relying on the manual check:
+
+| Launch path | Guard |
+| --- | --- |
+| `claude`, `codex`, `gemini` in `.local/bin` | The wrapper sources the environment fragment, then runs the installed base `boundary.py` with `BUDGET_ANALYZER_WORKTREE_PARENT` and `BUDGET_ANALYZER_BARE_PARENT`, and `exec`s the provider only on success |
+| `claude-lean` | Starts Claude only through the guarded `claude` wrapper or `claude-with-proxy` |
+| `codex-lean` | Its wrapper runs the same guard, then pins `CODEX_REAL_BIN` to the managed `codex`, so an inherited value cannot select an unchecked binary |
+| `claude-with-proxy`, `codex-with-proxy`, `codex-max-with-proxy` | `proxy.py` runs the boundary in-process before it starts mitmweb, sets proxy or trust variables (`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `NODE_EXTRA_CA_CERTS`) or starts a provider |
+| AI Session Handler wrappers and `ai-run` | Resolve `codex-lean` or `claude-lean` through `PATH`, so they reach the guards above |
+
+The installed copy lives in the native root, not a workspace clone. It
+therefore requires the selected workspace checkout to exist instead of
+requiring that it runs from that clone; every other rule is unchanged. On
+success it writes nothing to stdout or stderr, so handler and `codex exec`
+output parsing is unaffected. On failure it writes the boundary reason to
+stderr, exits nonzero and never prints Git configuration, environment values
+or credentials. There is no bypass switch, cache or "already checked" marker;
+each launch reruns the check, whose cost grows with the number of local
+repositories.
+`check_provider` runs `.local/bin/NAME --version`, so provider verification
+exercises the guard. `start-proxy`, Playwright, mitmproxy tools, trust helpers,
+`via-annotator` and the statusline are not provider launches and are not
+guarded.
+
+The guard protects against human misconfiguration, not a compromised agent,
+which can already edit its own home. Keep running the manual check above to
+diagnose a blocked launch and before work started outside these launchers.
+New wrappers take effect only after the human reinstalls the user tools.
+
 ## Canonical Read-Only Native Runtime Contract
 
 `scripts/check-agent-vm-tools.sh` is the workspace's full native runtime
@@ -386,6 +436,8 @@ contract, starting with the [VM boundary check](#pre-agent-vm-boundary-check):
   origins and no credential/include/rewrite/forwarding Git configuration.
 - The default Docker context, `unix:///var/run/docker.sock`, a real guest Unix
   socket and `/var/lib/docker` data root.
+- Every component: no conflicting `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` or
+  `REQUESTS_CA_BUNDLE`, also under `--component`.
 - `base`: all manifest packages, Node major 24, npm 10 or newer, JDK/Javac
   major 25, exact manifest download releases and current shared environment
   files.
@@ -605,7 +657,7 @@ selection and permission mode actually ran.
 
 | Command | Actual permission behavior |
 | --- | --- |
-| Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers only load environment and forward arguments |
+| Plain `codex`, `claude`, `gemini` | Native upstream defaults/configuration; wrappers load the environment, run the [launch boundary](#provider-launch-enforcement) and forward arguments |
 | `codex-lean`, its proxy variants | Existing explicit `--dangerously-bypass-approvals-and-sandbox`, `approval_policy="never"`, `sandbox_mode="danger-full-access"`; not an OS sandbox |
 | `ai-session-handler-codex-high`, `ai-session-handler-claude-high`, `ai-session-handler-claude-medium`, `ai-run` | Handler selects high-reasoning `codex-lean exec` or high- or medium-effort `claude-lean`; all selected modes have full guest access |
 | `claude-with-proxy` | Upstream Claude permission behavior through the inspection proxy, with no added Claude environment |
@@ -692,18 +744,48 @@ Workspace no longer serves as orchestration's startup verifier, the VM
 boundary check has its own entry point, installation and verification are
 component-scoped, provider CLIs float and the trust installer takes explicit
 inputs. These steps are human-only and have not been run by an agent. There is
-no in-place upgrade or migration from the previous layout (the combined npm
-prefix and the single `state/managed-files.json` and `state/installation.json`
-records).
+no in-place upgrade or migration from the previous layout. That layout used one
+combined npm prefix and kept its only records directly in the native root, as
+`$HOME/.local/share/budget-analyzer-native/managed-files.json` and
+`installation.json`; it had no trust record. The new layout keeps per-component
+records under `state/COMPONENT/`, so a fresh install has no record of the old
+files. Any old managed file left at a path the new install plans, notably the
+old `~/.local/bin` wrappers, is then an unmanaged collision.
 
-1. Clean install. After every worker has stopped, privately move aside the
-   previous workspace-managed native root `$HOME/.local/share/budget-analyzer-native`
-   (it also holds the old trust record and any optional inspection directory)
-   and `$HOME/.config/budget-analyzer-native`. Keep provider homes and
-   credentials. From a fresh shell in the reviewed workspace checkout, run
-   `./scripts/prepare-agent-vm-native.sh` as described in
-   [Review And System Preparation](#review-and-system-preparation). Review any
-   reported collision privately instead of forcing it.
+1. Clean install. After every worker has stopped, from a fresh shell:
+   1. List the previously managed paths, read-only and without printing file
+      contents. The old record lists the native-root files, the environment
+      fragment and the `~/.local/bin` wrappers; keep only the paths outside the
+      native root and config directory:
+
+      ```bash
+      old_root="$HOME/.local/share/budget-analyzer-native"
+      old_config="$HOME/.config/budget-analyzer-native"
+      jq -r 'keys[]' "$old_root/managed-files.json" |
+        grep -vF -e "$old_root/" -e "$old_config/"
+      ```
+
+   2. Review that list privately, then move each listed file that still exists
+      into a private directory outside `.local` and `.config`, for example
+      `mkdir -m 0700 "$HOME/budget-analyzer-native-previous"` and
+      `mv -n -- PATH "$HOME/budget-analyzer-native-previous/"`. Do not
+      delete or overwrite them, and do not move unlisted files.
+   3. Move aside the old native root `$old_root` (it also holds the old npm
+      prefix, pipx state, records and any optional inspection directory) and
+      `$old_config` the same way. Keep provider homes, credentials,
+      `~/.claude/settings.json` (the install merges its overlay) and the
+      conversation skill (unchanged content). The `# budget-analyzer-native`
+      shell-startup line stays; until reinstallation, new shells report the
+      missing fragment, and the base install accepts the identical line.
+   4. From a fresh shell in the reviewed workspace checkout, run
+      `./scripts/prepare-agent-vm-native.sh` as described in
+      [Review And System Preparation](#review-and-system-preparation). Review
+      any reported collision privately instead of forcing it.
+
+   The guarded provider wrappers from
+   [Provider Launch Enforcement](#provider-launch-enforcement) take effect only
+   after this reinstallation. Until then, the old wrappers, if still present,
+   run providers without the boundary.
 2. Trust. Run `install-agent-vm-local-ca-trust.sh` with the explicit
    `--ca-file` and `--leaf-file` inputs from
    [Establish Exact Ingress Trust](#establish-exact-ingress-trust).
@@ -764,7 +846,10 @@ rejection, missing browser/trust reporting, quoted path forwarding, runner
 sequencing and short-circuit behavior. Boundary fixtures pass with only the
 workspace checkout and no provider, helper, handler or platform command. They
 reject every identity, authority, repository and guest Docker negative case
-without writes. It invokes no real trust, provider,
+without writes, in both checkout and installed-copy modes. Launch-guard
+fixtures run every rendered provider launch path and every proxy launcher,
+proving that a boundary failure starts no provider or proxy and that success
+adds no output. It invokes no real trust, provider,
 package, Docker or AppArmor command and generates no CA. The static source checker renders
 generated wrappers into `tmp/`, validates native mappings/locks/links and runs
 shell syntax/ShellCheck. The human owns real package/browser behavior, loaded

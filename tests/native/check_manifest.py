@@ -46,6 +46,11 @@ for component, spec in components.items():
         assert component in agent['providers'], f'{component}: provider home without provider'
     for check in spec['checks']:
         assert hasattr(user_module.UserTools, 'check_' + check.replace('-', '_')), f'unimplemented check {check}'
+# Trust keys are declared once, outside every component list, and are exported.
+trust = agent['trust_environment']
+assert len(trust) == len(set(trust)) and not {('environment', key) for key in trust} & set(owners), \
+    'trust_environment keys must be declared once'
+assert {'SSL_CERT_FILE', 'NODE_EXTRA_CA_CERTS', 'REQUESTS_CA_BUNDLE'} <= set(trust), 'trust_environment incomplete'
 helper_sources = {source for spec in components.values() for source in spec['files'].values()
                   if source.startswith('native/helpers/')}
 for path in (REPO / 'native/helpers').rglob('*'):

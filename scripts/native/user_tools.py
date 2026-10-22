@@ -32,6 +32,9 @@ COMPONENTS = ('base', 'claude', 'codex', 'gemini', 'extras')
 PREREQUISITE_CHECKS = ('system-packages', 'node-npm', 'jdk', 'system-downloads', 'bwrap-apparmor',
                        'chromium-apt', 'ai-session-handler-checkout', 'playwright-lock')
 SHELL_FILES = ('.profile', '.bashrc', '.bash_profile', '.bash_login', '.zprofile', '.zshrc')
+# Helpers that can start a provider without its guarded wrapper; their wrapper
+# runs the boundary and pins the checked provider binary.
+PROVIDER_LAUNCHERS = {'codex-lean': 'codex'}
 
 
 class UserToolsError(BoundaryError):
@@ -100,8 +103,9 @@ class UserTools(VmBoundary):
     def prerequisites(self, component):
         """Only this component's own prerequisites; never another component's state."""
         spec = self.spec(component)
-        for key in spec['environment']:
-            # Installer owns these exports; conflicting user settings need review.
+        # Every selection checks the base-exported trust keys, then its own keys;
+        # the installer owns these exports and conflicting settings need review.
+        for key in [*self.agent['trust_environment'], *spec['environment']]:
             if key in self.env:
                 expected = self.environment_values().get(key)
                 require(expected is not None and self.env[key] == expected, f'conflicting {key}; review privately')
@@ -165,9 +169,21 @@ class UserTools(VmBoundary):
             mode = 0o700 if target.startswith('helpers/') else 0o600
             files[self.root / target] = ((REPO / source).read_text() if source else '', mode)
         for name, target in self.owned_commands(component).items():
-            files[self.bin / name] = ('#!/usr/bin/env bash\nset -euo pipefail\n'
-                                      f'. {shlex.quote(str(self.fragment))}\nexec {target} "$@"\n', 0o700)
+            files[self.bin / name] = (self.wrapper(name, target), 0o700)
         return files
+
+    def wrapper(self, name, target):
+        lines = ['#!/usr/bin/env bash', 'set -euo pipefail', f'. {shlex.quote(str(self.fragment))}']
+        if name in self.agent['providers'] or name in PROVIDER_LAUNCHERS:
+            # Fail closed: the installed base boundary runs before any provider starts.
+            lines.append(f'python3 -I {shlex.quote(str(self.root / "boundary.py"))} '
+                         '--worktree-parent "$BUDGET_ANALYZER_WORKTREE_PARENT" '
+                         '--bare-parent "$BUDGET_ANALYZER_BARE_PARENT"')
+        if name in PROVIDER_LAUNCHERS:
+            # An inherited CODEX_REAL_BIN must not select an unchecked provider.
+            provider = shlex.quote(str(self.provider_bin() / PROVIDER_LAUNCHERS[name]))
+            lines.append(f'export CODEX_REAL_BIN={provider}')
+        return '\n'.join([*lines, f'exec {target} "$@"']) + '\n'
 
     def all_planned_paths(self):
         return {str(path) for component in COMPONENTS for path in self.component_files(component)}

@@ -3,6 +3,9 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import contextlib
+import io
+import pwd
 import socket as sockets
 import subprocess
 import sys
@@ -102,6 +105,8 @@ class BoundaryProbe(boundary.VmBoundary):
 
 
 class BoundaryTests(unittest.TestCase):
+    other_clone_message = 'selected workspace clone'
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='boundary path with spaces ', dir=SCRATCH)
         self.probe = BoundaryProbe(Path(self.temp.name))
@@ -219,7 +224,7 @@ class BoundaryTests(unittest.TestCase):
             ('symlinked parent', symlink_bare_parent, 'canonical absolute'),
             ('other workspace clone', lambda p: (
                 p.repo.rename(p.worktrees / 'other'),
-                p.repo.symlink_to(p.worktrees / 'other')), 'selected workspace clone'),
+                p.repo.symlink_to(p.worktrees / 'other')), self.other_clone_message),
             ('missing git', lambda p: p.missing.add('git'), 'git is required'),
         ))
 
@@ -250,6 +255,61 @@ class BoundaryTests(unittest.TestCase):
         self.probe.socket = True
         with self.assertRaisesRegex(boundary.BoundaryError, 'partial Docker'):
             self.probe.check_boundary(installable=True)
+
+
+class InstalledLaunchGuardTests(BoundaryTests):
+    """The base component's copy in the native root guards provider launches.
+
+    Every inherited rule runs again in installed mode. A substituted clone
+    still fails closed, through its missing guest-local bare origin."""
+    other_clone_message = 'missing or symlinked path'
+
+    def setUp(self):
+        super().setUp()
+        self.entry_patch = patch.object(boundary, 'ENTRY', self.probe.home / boundary.NATIVE_ROOT)
+        self.entry_patch.start()
+        # The installed copy's own location is never the workspace clone.
+        boundary.REPO = self.probe.home / '.local'
+
+    def tearDown(self):
+        self.entry_patch.stop()
+        super().tearDown()
+
+    def test_installed_copy_requires_selected_checkout_not_its_location(self):
+        self.probe.check_boundary()
+        self.assertEqual([self.probe.repo], self.probe.repos)
+        self.entry_patch.stop()
+        with self.assertRaisesRegex(boundary.BoundaryError, 'selected workspace clone'):
+            self.probe.check_boundary()
+        self.entry_patch.start()
+        (self.probe.repo / '.git').rmdir()
+        with self.assertRaisesRegex(boundary.BoundaryError, 'missing local checkout: workspace'):
+            self.probe.check_boundary()
+
+    def main(self, installed):
+        account_home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+        entry = account_home / boundary.NATIVE_ROOT if installed else boundary.REPO
+        argv = ['boundary.py', '--worktree-parent', str(self.probe.worktrees),
+                '--bare-parent', str(self.probe.bares)]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(boundary, 'ENTRY', entry), patch.object(sys, 'argv', argv), \
+                patch.object(boundary, 'VmBoundary', lambda *_: self.probe), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = boundary.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_installed_entry_is_silent_on_success_and_reports_failure_on_stderr(self):
+        boundary.REPO = self.probe.repo
+        self.assertEqual((0, '', ''), self.main(installed=True))
+        code, stdout, _ = self.main(installed=False)
+        self.assertEqual(0, code)
+        self.assertTrue(stdout.startswith('VM boundary PASS'))
+        self.probe.env['SSH_AUTH_SOCK'] = 'fixture-secret-never-print'
+        code, stdout, stderr = self.main(installed=True)
+        self.assertEqual((1, ''), (code, stdout))
+        self.assertTrue(stderr.startswith('agent launch blocked by VM boundary: SSH_AUTH_SOCK'))
+        self.assertIn('provider not started', stderr)
+        self.assertNotIn('fixture-secret', stderr)
 
 
 class PublicBoundaryInterfaceTests(unittest.TestCase):
