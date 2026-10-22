@@ -157,8 +157,9 @@ actionlint .github/workflows/native-dependency-validation.yml
 git diff --check
 ```
 
-The dry run must extract the four direct npm packages and exactly these custom
-identities: `rhysd/actionlint`, `go`, `mitmproxy` and `node`.
+The dry run must extract only the direct npm package `playwright`, exactly
+these custom identities: `rhysd/actionlint`, `go`, `mitmproxy` and `node`, and
+no identity for the floating provider CLIs.
 Container-image, Docker feature and retired action records must remain absent.
 Keep any redirected debug log and all Renovate/npm caches under `tmp/`.
 
