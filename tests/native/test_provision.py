@@ -395,10 +395,14 @@ class ProvisionSafetyTests(unittest.TestCase):
     def test_go_version_requires_matching_destination(self):
         def mutate(manifest):
             tool = manifest['downloads']['go']
-            tool['version'] = '1.24.2'
-            tool['version_pattern'] = r'(?<![0-9.])1\.24\.2(?![0-9.])'
+            current = tool['version']
+            major, minor, patch = current.split('.')
+            bumped = f'{major}.{minor}.{int(patch) + 1}'
+            tool['version'] = bumped
+            tool['version_pattern'] = (
+                r'(?<![0-9.])' + bumped.replace('.', r'\.') + r'(?![0-9.])')
             for release in tool['platforms'].values():
-                release['url'] = release['url'].replace('1.24.1', '1.24.2')
+                release['url'] = release['url'].replace(current, bumped)
 
         self.assert_manifest_rejected(
             mutate, 'go: destination does not match reviewed version')

@@ -136,25 +136,25 @@
     },
     "go": {
       "owner": "system",
-      "version": "1.24.1",
+      "version": "1.27.3",
       "policy": "explicit-reviewed-refresh",
       "method": "go",
-      "destination": "/opt/budget-analyzer-native/go-1.24.1",
+      "destination": "/opt/budget-analyzer-native/go-1.27.3",
       "platforms": {
         "amd64": {
-          "url": "https://go.dev/dl/go1.24.1.linux-amd64.tar.gz",
-          "sha256": "cb2396bae64183cdccf81a9a6df0aea3bce9511fc21469fb89a0c00470088073"
+          "url": "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz",
+          "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40"
         },
         "arm64": {
-          "url": "https://go.dev/dl/go1.24.1.linux-arm64.tar.gz",
-          "sha256": "8df5750ffc0281017fb6070fba450f5d22b600a02081dceef47966ffaf36a3af"
+          "url": "https://go.dev/dl/go1.27.3.linux-arm64.tar.gz",
+          "sha256": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49"
         }
       },
       "check": [
         "go",
         "version"
       ],
-      "version_pattern": "(?<![0-9.])1\\.24\\.1(?![0-9.])"
+      "version_pattern": "(?<![0-9.])1\\.27\\.3(?![0-9.])"
     },
     "via": {
       "owner": "system",
