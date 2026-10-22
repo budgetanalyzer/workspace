@@ -136,7 +136,7 @@
     },
     "go": {
       "owner": "system",
-      "version": "1.24.1",
+      "version": "1.27.3",
       "policy": "explicit-reviewed-refresh",
       "method": "go",
       "destination": "/opt/budget-analyzer-native/go-1.24.1",
