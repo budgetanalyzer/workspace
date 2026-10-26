@@ -239,6 +239,8 @@ class UserToolsProbe(user_tools.UserTools):
                 (modules / '.package-lock.json').write_text('{}')
         elif name == 'pipx' and args[1] == 'runpip':
             output = 'mitmproxy==12.2.3\nfixture-dependency==1.0.0'
+        elif name == 'pipx' and args[1] == 'uninstall':
+            shutil.rmtree(self.root / 'pipx/venvs' / args[2])
         elif name == 'pipx':
             package = 'ai-session-handler' if '--editable' in args else 'mitmproxy'
             (self.root / 'pipx/venvs' / package / 'bin').mkdir(parents=True)
@@ -712,6 +714,45 @@ class UserInstallerSafetyTests(unittest.TestCase):
         self.assertEqual([['npm', 'ci', '--prefix', str(self.probe.root / 'npm'),
                            '--no-audit', '--no-fund']], self.npm_calls())
         self.assertEqual(providers, self.provider_trees())
+
+    def test_reviewed_playwright_lock_change_refreshes_npm_project(self):
+        self.install()
+        providers = self.provider_trees()
+        record = self.probe.state_dir('extras') / 'installation.json'
+        installed_lock = self.probe.root / 'npm/package-lock.json'
+        # Model the previous successful install of an older reviewed lock.
+        installed_lock.write_text('{"previous": "lock"}\n')
+        report = json.loads(record.read_text())
+        report['npm_lock_sha256'] = user_tools.digest(installed_lock)
+        record.write_text(json.dumps(report))
+        self.probe.calls.clear()
+        self.install('extras')
+        self.assertEqual([['npm', 'ci', '--prefix', str(self.probe.root / 'npm'),
+                           '--no-audit', '--no-fund']], self.npm_calls())
+        repo_lock = self.probe.repo / 'native/npm/package-lock.json'
+        self.assertEqual(repo_lock.read_bytes(), installed_lock.read_bytes())
+        self.assertEqual(user_tools.digest(repo_lock),
+                         json.loads(record.read_text())['npm_lock_sha256'])
+        self.assertEqual(providers, self.provider_trees())
+        self.probe.calls.clear()
+        self.install('extras')
+        self.assertEqual([], self.npm_calls())
+
+    def test_reviewed_mitmproxy_change_reinstalls_only_its_venv(self):
+        self.install()
+        self.probe.agent['user_tools']['mitmproxy']['version'] = '99.0.0'
+        self.probe.calls.clear()
+        self.install('extras')
+        pipx = [call for call in self.probe.calls
+                if call[0] == 'pipx' and call[1] in ('install', 'uninstall')]
+        self.assertEqual([['pipx', 'uninstall', 'mitmproxy'],
+                          ['pipx', 'install', 'mitmproxy==99.0.0']], pipx)
+        self.assertEqual('99.0.0', json.loads(
+            (self.probe.state_dir('extras') / 'installation.json').read_text())['mitmproxy_version'])
+        self.probe.calls.clear()
+        self.install('extras')
+        self.assertFalse(any(call[0] == 'pipx' and call[1] in ('install', 'uninstall')
+                             for call in self.probe.calls))
 
     def test_missing_or_escaped_provider_fails_verification(self):
         self.install()

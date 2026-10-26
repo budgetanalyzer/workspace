@@ -368,21 +368,28 @@ class UserTools(VmBoundary):
         npm_dir = self.root / 'npm'
         npm_files = [REPO / 'native/npm' / name for name in ('package.json', 'package-lock.json')]
         for source in npm_files:
-            target = npm_dir / source.name
-            self.home_path(target)
-            require(not target.exists() or target.read_bytes() == source.read_bytes(),
-                    'npm inputs changed; review explicit refresh in docs/native-user-tools.md')
+            self.home_path(npm_dir / source.name)
         playwright = self.validate_lock(REPO / 'native/npm')
+        mitmproxy = self.agent['user_tools']['mitmproxy']['version']
         for path in (self.root / 'pipx', self.root / 'pipx-bin', self.root / 'npm-cache'):
             self.home_path(path)
+        # The record is written only after a successful run, so a reviewed version
+        # change, or an interrupted earlier refresh, converges on the next run.
+        record = self.state_dir('extras') / 'installation.json'
+        previous = json.loads(record.read_text()) if record.is_file() else {}
+        npm_refresh = previous.get('npm_lock_sha256') != digest(npm_files[1])
+        mitmproxy_refresh = previous.get('mitmproxy_version') != mitmproxy
 
         def apply(env, _update):
             for source in npm_files:
                 self.write(npm_dir / source.name, source.read_text())
             # No upstream interactive startup, auto-clone, --force or pipx ensurepath.
-            if not (npm_dir / 'node_modules/.package-lock.json').exists():
+            # npm ci replaces node_modules wholesale from the reviewed lock.
+            if npm_refresh or not (npm_dir / 'node_modules/.package-lock.json').exists():
                 self.command(['npm', 'ci', '--prefix', npm_dir, '--no-audit', '--no-fund'], env=env)
-            for package, source in [('mitmproxy', 'mitmproxy==' + self.agent['user_tools']['mitmproxy']['version']),
+            if mitmproxy_refresh and (self.root / 'pipx/venvs/mitmproxy').exists():
+                self.command(['pipx', 'uninstall', 'mitmproxy'], env=env)
+            for package, source in [('mitmproxy', 'mitmproxy==' + mitmproxy),
                                     ('ai-session-handler', str(self.handler))]:
                 if not (self.root / 'pipx/venvs' / package).exists():
                     args = ['pipx', 'install']
@@ -395,7 +402,7 @@ class UserTools(VmBoundary):
             return {'handler_revision': self.command(['git', '-C', self.handler, 'rev-parse', 'HEAD']).stdout.strip(),
                     'handler_dirty_paths': self.command(['git', '-C', self.handler, 'status', '--porcelain']).stdout.splitlines(),
                     'npm_lock_sha256': digest(npm_files[1]), 'playwright_version': playwright,
-                    'mitmproxy_version': self.agent['user_tools']['mitmproxy']['version'],
+                    'mitmproxy_version': mitmproxy,
                     'mitmproxy_resolved_dependencies': self.command(
                         ['pipx', 'runpip', 'mitmproxy', 'freeze', '--all'], env=env).stdout.splitlines()}
         return apply

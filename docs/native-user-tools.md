@@ -146,9 +146,11 @@ read -r -p 'Existing guest bare-repository parent: ' native_bare_parent
 
 Add a repeatable `--component NAME` to either run to install only those
 [components](#components). The second run retains installed packages,
-configuration, credentials and the single managed hook/shell line. Chromium installation is rechecked by the
-pinned Playwright installer; it may recover a missing payload, never upgrades
-the npm selection. Repeat runs keep installed provider CLI versions. Trust is not required to finish user tool installation; the
+configuration, credentials and the single managed hook/shell line. A rerun
+after a reviewed Playwright lock or mitmproxy version change converges those
+installations, as described below. Chromium installation
+is rechecked by the pinned Playwright installer, which installs the browser the
+locked version selects. Repeat runs keep installed provider CLI versions. Trust is not required to finish user tool installation; the
 full read-only verifier requires established system/NSS trust after the next
 section. Installation does not authenticate, launch proxies or generate CAs.
 
@@ -252,15 +254,20 @@ pipx reinstall ai-session-handler
 ```
 
 mitmproxy's exact top-level release is pinned;
-pipx resolves transitive PyPI dependencies on first install and records them.
-Reruns retain that environment. The Playwright project uses the tracked full
+pipx resolves transitive PyPI dependencies on install and records them.
+Reruns retain that environment until the declared version differs from the
+`mitmproxy_version` in the last successful `extras` installation record; the
+installer then uninstalls only the managed mitmproxy pipx environment and
+installs the declared release. The Playwright project uses the tracked full
 integrity lock with `npm ci`, isolated config/cache and verified HTTPS, and
 never touches the provider prefix. Reviewed npm lifecycle scripts may compile
-their locked optional dependencies. A Playwright refresh requires reviewing the
-lock, `package.json` and the Chromium apt inputs in `native/toolchain.json`
-together, then privately removing only the managed Playwright npm project and
-rerunning; the installer refuses to perform that removal or upgrade
-automatically.
+their locked optional dependencies. When the reviewed lock differs from the
+`npm_lock_sha256` in that record, a rerun copies the new `package.json` and
+lock and runs `npm ci`, which replaces the managed `node_modules` wholesale;
+`playwright install chromium` then installs the newly selected browser. The
+record is written only after a successful run, so an interrupted refresh
+converges on the next rerun. The lock, `package.json` and the Chromium apt
+inputs in `native/toolchain.json` are still reviewed together before merge.
 
 ### Provider CLIs
 
