@@ -84,7 +84,8 @@ owned by their service and orchestration repositories.
 `.github/workflows/native-dependency-validation.yml` is the active
 repository-input evidence workflow. It runs for relevant pushes to `main`,
 same-repository pull requests targeting `main`, a bounded Monday schedule and
-manual dispatch. It has only `contents: read`, uses the Node 24 action baseline
+manual dispatch. It has only `contents: read`, follows the shared
+[Actions ref policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md#ownership-and-update-policy)
 and never invokes a provisioner, `sudo`, Docker, Kind, Tilt, trust installation
 or a self-hosted runner.
 
