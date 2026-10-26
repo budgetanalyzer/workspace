@@ -365,6 +365,33 @@ class ProvisionSafetyTests(unittest.TestCase):
         self.assertEqual(1, len(probe.downloads))
         self.assertEqual(work / 'fixture-tool.download', probe.downloads[0][1])
 
+    def test_go_staging_keeps_directories_readable_under_private_umask(self):
+        import tarfile
+        source = self.root / 'go archive source'
+        (source / 'go/bin').mkdir(parents=True)
+        (source / 'go/bin/go').write_text('#!/bin/sh\n')
+        (source / 'go/bin/go').chmod(0o755)
+        archive = self.root / 'go.tar.gz'
+        with tarfile.open(archive, 'w:gz') as tar:
+            tar.add(source / 'go', arcname='go')
+        body = archive.read_bytes()
+        probe = StageProbe(self.root)
+        probe.pending = {'go': {'method': 'go', 'platforms': {'amd64': {
+            'url': 'https://example.invalid/go.tar.gz',
+            'sha256': hashlib.sha256(body).hexdigest()}}}}
+        probe.download = lambda url, destination: destination.write_bytes(body)
+        work = self.root / 'go staging'
+        work.mkdir()
+        previous = os.umask(0o077)
+        try:
+            staged = probe.stage(work)
+        finally:
+            os.umask(previous)
+        for path in (staged['go'], staged['go'] / 'go', staged['go'] / 'go/bin'):
+            self.assertEqual(0o755, path.stat().st_mode & 0o777, path)
+        self.assertEqual(0o755, (staged['go'] / 'go/bin/go').stat().st_mode & 0o777)
+        self.assertEqual([], probe.privileged)
+
     def test_system_manifest_excludes_agent_tool_declarations(self):
         manifest = json.loads(provision.MANIFEST.read_text())
         self.assertFalse({'user_tools', 'providers', 'helpers'} & set(manifest))

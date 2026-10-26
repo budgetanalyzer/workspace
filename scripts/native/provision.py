@@ -311,6 +311,11 @@ class Provisioner(VmBoundary):
                     require(all((member.name == 'go' and member.isdir()) or member.name.startswith('go/')
                                 for member in tar.getmembers()), 'unexpected Go archive layout')
                     tar.extractall(extracted, filter='data')
+                # The data filter ignores directory modes, so the caller's
+                # umask (077 under the preparation runner) would otherwise
+                # make the installed tree unreadable to the normal user.
+                for directory, _, _ in os.walk(extracted):
+                    os.chmod(directory, 0o755)
             else:
                 with zipfile.ZipFile(archive) as zip_file:
                     for filename in ('via_image_annotator.html', 'LICENSE', 'README.md'):

@@ -203,7 +203,10 @@ arbitrary checksum or signing-key relationships.
 
 The Go archive validator accepts the official top-level `go` directory entry
 and its contents, rejects a non-directory root or unrelated paths, and retains
-the extraction filter that rejects path traversal. An `unexpected Go archive
+the extraction filter that rejects path traversal. Because that filter ignores
+archive directory modes, staging sets every extracted directory to `0755` so
+the installed tree stays readable under the preparation runner's private
+umask. An `unexpected Go archive
 layout` failure occurs during staging before system mutation; review the input
 and validator before rerunning the provisioner.
 
