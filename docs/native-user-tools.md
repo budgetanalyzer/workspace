@@ -196,9 +196,8 @@ check never requires an extra: `claude-lean --proxy` uses the optional
 `claude-with-proxy` from `extras`, but the `claude` check does not. Installing
 the trust helpers does not require trust; the `extras` check does.
 
-The reviewed `native/npm/package-lock.json` is the Playwright-only project and
-has SHA-256
-`b9a22b8f4376aba7d70c792a9ac2c98ed28545fc32e62d4376fc10c88923dd05`.
+The reviewed `native/npm/package-lock.json` is the Playwright-only project; its
+reviewed SHA-256 is pinned once, in `tests/native/test_install_inputs.py`.
 It is the single source of Playwright's version, integrity and tarball. The
 focused input checker validates every locked package's registry HTTPS URL and
 SHA-512 integrity, that `package.json` names the same exact Playwright version,

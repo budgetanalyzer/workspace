@@ -85,7 +85,7 @@
         "native/npm/package.json"
       ],
       "prBodyNotes": [
-        "Playwright is the only native npm dependency; `package-lock.json` is its single version, tarball and integrity source and `package.json` must match it. Before merge, review the new release's Ubuntu 24.04 Chromium native dependency lists and update `chromium_apt` and `chromium_apt_source` in `native/toolchain.json`. The native checks reject a lock-only upgrade until that separately reviewed provenance matches. Provider CLIs float outside this project and are not tracked."
+        "Playwright is the only native npm dependency; `package-lock.json` is its single version, tarball and integrity source and `package.json` must match it. Before merge, review the new release's Ubuntu 24.04 Chromium native dependency lists and update `chromium_apt` and `chromium_apt_source` in `native/toolchain.json`, plus the reviewed lock SHA-256 in `tests/native/test_install_inputs.py`. The native checks reject a lock-only upgrade until that separately reviewed provenance matches. Provider CLIs float outside this project and are not tracked."
       ]
     },
     {

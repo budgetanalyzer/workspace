@@ -60,8 +60,10 @@ every affected lock entry, registry tarball URLs and integrity values must
 agree before merge. The reviewed `chromium_apt` and `chromium_apt_source`
 records in `native/toolchain.json` are separate inputs that must be refreshed
 for the new release; the native checks reject a lockfile-only upgrade until
-that provenance names the locked version. Ordinary npm proposals remain enabled and major updates
-retain the shared Dashboard-approval policy.
+that provenance names the locked version. Also update the reviewed lock
+SHA-256 pinned in `tests/native/test_install_inputs.py`; the other Playwright
+test fixtures derive their versions from the lock. Ordinary npm proposals
+remain enabled and major updates retain the shared Dashboard-approval policy.
 
 A Node-major proposal must keep the NodeSource source, both repository policy
 records and native runtime checks aligned. NodeSource and Azul apt patch

@@ -33,6 +33,8 @@ proxy_spec = importlib.util.spec_from_file_location(
     'native_proxy', REPO / 'scripts/native/proxy.py')
 proxy = importlib.util.module_from_spec(proxy_spec)
 proxy_spec.loader.exec_module(proxy)
+LOCKED_PLAYWRIGHT = json.loads((REPO / 'native/npm/package-lock.json').read_text())[
+    'packages']['node_modules/playwright']['version']
 REAL_POPEN = subprocess.Popen
 REAL_RUN = subprocess.run
 
@@ -255,7 +257,7 @@ class UserToolsProbe(user_tools.UserTools):
             output = self.user_tool_version_overrides.get(name, f'{name} 0.0.1-floating')
         elif name in ('mitmproxy', 'playwright'):
             default = (self.agent['user_tools']['mitmproxy']['version'] if name == 'mitmproxy'
-                       else 'Version 1.64.1')
+                       else f'Version {LOCKED_PLAYWRIGHT}')
             output = self.user_tool_version_overrides.get(name, default)
         elif name == 'python':
             output = str(self.handler / 'src/ai_session_handler/__init__.py')
