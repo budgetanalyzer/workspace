@@ -198,7 +198,7 @@ the trust helpers does not require trust; the `extras` check does.
 
 The reviewed `native/npm/package-lock.json` is the Playwright-only project and
 has SHA-256
-`a9a9e5ba0bdb4e13517d28e2b15f74a7a470348f23fdf2dae4df95543d9fd3af`.
+`b9a22b8f4376aba7d70c792a9ac2c98ed28545fc32e62d4376fc10c88923dd05`.
 It is the single source of Playwright's version, integrity and tarball. The
 focused input checker validates every locked package's registry HTTPS URL and
 SHA-512 integrity, that `package.json` names the same exact Playwright version,
