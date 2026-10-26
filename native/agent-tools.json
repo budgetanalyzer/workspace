@@ -169,7 +169,7 @@
     "mitmproxy": {
       "owner": "normal-user",
       "method": "pipx",
-      "version": "12.2.3",
+      "version": "12.3.1",
       "policy": "explicit-reviewed-refresh",
       "check": [
         "mitmproxy",
