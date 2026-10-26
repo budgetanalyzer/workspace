@@ -91,7 +91,7 @@
     "libxkbcommon0",
     "libxrandr2"
   ],
-  "chromium_apt_source": "playwright-core 1.63.0 Ubuntu 24.04 tools+chromium native dependency lists; same list for x64/arm64. The normal-user installer owns the browser download.",
+  "chromium_apt_source": "playwright-core 1.64.1 Ubuntu 24.04 tools+chromium native dependency lists; same list for x64/arm64. The normal-user installer owns the browser download.",
   "repositories": {
     "nodesource": {
       "key_url": "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key",

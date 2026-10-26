@@ -14,6 +14,10 @@ spec = importlib.util.spec_from_file_location(
     'check_install_inputs', REPO / 'tests/native/check_install_inputs.py')
 inputs = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inputs)
+LOCKED_PLAYWRIGHT = json.loads((REPO / inputs.LOCK_PATH).read_text())[
+    'packages']['node_modules/playwright']['version']
+_major, _minor, _ = LOCKED_PLAYWRIGHT.split('.')
+NEWER_PLAYWRIGHT = f'{_major}.{int(_minor) + 1}.0'
 
 
 class InstallInputTests(unittest.TestCase):
@@ -27,7 +31,7 @@ class InstallInputTests(unittest.TestCase):
     def test_reviewed_source_is_complete(self):
         lock_hash, package_count = inputs.validate_source(REPO)
         self.assertEqual(
-            'a9a9e5ba0bdb4e13517d28e2b15f74a7a470348f23fdf2dae4df95543d9fd3af',
+            'b9a22b8f4376aba7d70c792a9ac2c98ed28545fc32e62d4376fc10c88923dd05',
             lock_hash,
         )
         self.assertEqual(2, package_count)
@@ -100,31 +104,31 @@ class InstallInputTests(unittest.TestCase):
 
     def test_lockfile_only_playwright_upgrade_fails_on_stale_apt_provenance(self):
         def edit(package, lock, manifest, agent):
-            package['dependencies']['playwright'] = '1.64.0'
-            lock['packages']['']['dependencies']['playwright'] = '1.64.0'
+            package['dependencies']['playwright'] = NEWER_PLAYWRIGHT
+            lock['packages']['']['dependencies']['playwright'] = NEWER_PLAYWRIGHT
             entry = lock['packages']['node_modules/playwright']
-            entry['version'] = '1.64.0'
-            entry['resolved'] = entry['resolved'].replace('1.63.0', '1.64.0')
+            entry['version'] = NEWER_PLAYWRIGHT
+            entry['resolved'] = entry['resolved'].replace(LOCKED_PLAYWRIGHT, NEWER_PLAYWRIGHT)
         self.edited('playwright-lock-only-', edit,
                     'Chromium apt source and locked Playwright version mismatch')
 
     def test_stale_apt_provenance_is_rejected(self):
         def edit(package, lock, manifest, agent):
             manifest['chromium_apt_source'] = manifest['chromium_apt_source'].replace(
-                'playwright-core 1.63.0', 'playwright-core 1.62.0')
+                f'playwright-core {LOCKED_PLAYWRIGHT} ', 'playwright-core 0.0.0 ')
         self.edited('playwright-apt-', edit,
                     'Chromium apt source and locked Playwright version mismatch')
 
     def test_package_and_lock_disagreement_is_rejected(self):
         def edit(package, lock, manifest, agent):
-            package['dependencies']['playwright'] = '1.64.0'
-            lock['packages']['']['dependencies']['playwright'] = '1.64.0'
+            package['dependencies']['playwright'] = NEWER_PLAYWRIGHT
+            lock['packages']['']['dependencies']['playwright'] = NEWER_PLAYWRIGHT
         self.edited('playwright-package-', edit,
                     'npm manifest and lock Playwright version mismatch')
 
     def test_root_dependency_disagreement_is_rejected(self):
         def edit(package, lock, manifest, agent):
-            package['dependencies']['playwright'] = '1.64.0'
+            package['dependencies']['playwright'] = NEWER_PLAYWRIGHT
         self.edited('playwright-root-', edit,
                     'npm manifest and lock direct dependencies mismatch')
 
@@ -136,8 +140,8 @@ class InstallInputTests(unittest.TestCase):
 
     def test_non_registry_transitive_tarball_is_rejected(self):
         def edit(package, lock, manifest, agent):
-            lock['packages']['node_modules/playwright-core']['resolved'] = (
-                'http://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz')
+            entry = lock['packages']['node_modules/playwright-core']
+            entry['resolved'] = entry['resolved'].replace('https://', 'http://', 1)
         self.edited('playwright-https-', edit, 'registry HTTPS tarball missing')
 
     def test_provider_cannot_return_to_the_locked_project(self):

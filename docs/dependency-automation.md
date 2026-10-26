@@ -60,8 +60,10 @@ every affected lock entry, registry tarball URLs and integrity values must
 agree before merge. The reviewed `chromium_apt` and `chromium_apt_source`
 records in `native/toolchain.json` are separate inputs that must be refreshed
 for the new release; the native checks reject a lockfile-only upgrade until
-that provenance names the locked version. Ordinary npm proposals remain enabled and major updates
-retain the shared Dashboard-approval policy.
+that provenance names the locked version. Also update the reviewed lock
+SHA-256 pinned in `tests/native/test_install_inputs.py`; the other Playwright
+test fixtures derive their versions from the lock. Ordinary npm proposals
+remain enabled and major updates retain the shared Dashboard-approval policy.
 
 A Node-major proposal must keep the NodeSource source, both repository policy
 records and native runtime checks aligned. NodeSource and Azul apt patch
@@ -84,7 +86,8 @@ owned by their service and orchestration repositories.
 `.github/workflows/native-dependency-validation.yml` is the active
 repository-input evidence workflow. It runs for relevant pushes to `main`,
 same-repository pull requests targeting `main`, a bounded Monday schedule and
-manual dispatch. It has only `contents: read`, uses the Node 24 action baseline
+manual dispatch. It has only `contents: read`, follows the shared
+[Actions ref policy](https://github.com/budgetanalyzer/orchestration/blob/main/docs/dependency-automation.md#ownership-and-update-policy)
 and never invokes a provisioner, `sudo`, Docker, Kind, Tilt, trust installation
 or a self-hosted runner.
 
