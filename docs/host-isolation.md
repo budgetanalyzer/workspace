@@ -71,9 +71,9 @@ not installation inputs owned by this repository. Changes to the VM definition,
 network, firewall or host SSH policy require human review.
 
 Point-in-time VM backup is also a personal-host responsibility. Use the
-[Development VM Snapshot Runbook](development-vm-snapshot.md) for the
-human-only cold snapshot procedure, including disks at nonstandard host paths,
-UEFI NVRAM, virtual TPM state and validation. Keep concrete snapshot paths and
+[Development VM Snapshot Runbook](development-vm-snapshot.md): the
+human-only `scripts/snapshot-agent-vm.sh` takes a cold snapshot of every disk,
+UEFI NVRAM and virtual TPM state, then validates it. Keep concrete snapshot paths and
 inventories outside the repository and guest-accessible storage.
 
 ## SSH Clients And Optional VS Code Profile

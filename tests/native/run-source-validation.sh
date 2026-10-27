@@ -120,6 +120,7 @@ run_check() {
         scripts/install-agent-vm-local-ca-trust.sh \
         scripts/install-agent-vm-bwrap-profile.sh \
         scripts/prepare-agent-vm-native.sh \
+        scripts/snapshot-agent-vm.sh \
         tests/native/run-source-validation.sh \
         tests/native/check-source-validation-without-orchestration.sh
       ;;
@@ -132,6 +133,7 @@ run_check() {
         scripts/install-agent-vm-local-ca-trust.sh \
         scripts/install-agent-vm-bwrap-profile.sh \
         scripts/prepare-agent-vm-native.sh \
+        scripts/snapshot-agent-vm.sh \
         tests/native/run-source-validation.sh \
         tests/native/check-source-validation-without-orchestration.sh \
         native/helpers/ai-run.sh \
@@ -162,6 +164,7 @@ run_check() {
         tests/native/test_install_inputs.py \
         tests/native/test_dependency_discovery.py \
         tests/native/test_release_inputs.py \
+        tests/native/test_vm_snapshot.py \
         tests/native/check_manifest.py \
         tests/native/check_install_inputs.py \
         tests/native/check_user_environment.py \
